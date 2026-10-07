@@ -1,0 +1,21 @@
+# systemd user service: copy to ~/.config/systemd/user/ and adjust paths and PASSWORD
+[Unit]
+Description=За стеклом — разум жильца
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/UnderWatch
+ExecStart=/usr/bin/python3 -u %h/UnderWatch/server/app.py
+Environment=HOST=0.0.0.0
+Environment=PORT=8765
+Environment=PASSWORD=change-me
+Environment=WAKE_HOUR=8
+Environment=SLEEP_HOUR=17
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:%h/UnderWatch/data/server.log
+StandardError=append:%h/UnderWatch/data/server.log
+
+[Install]
+WantedBy=default.target

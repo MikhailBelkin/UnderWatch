@@ -1,0 +1,4 @@
+# runtime data: the resident's state, diary, chat and logs
+data/
+__pycache__/
+*.pyc
