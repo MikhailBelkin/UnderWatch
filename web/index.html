@@ -300,7 +300,7 @@ const PL = {
   bed:{x:131,face:1,ru:'кровать'}, window:{x:118,face:1,ru:'окно'}, wardrobe:{x:288,face:1,ru:'шкаф'},
   sofa:{x:458,face:1,ru:'диван'}, tv:{x:582,face:1,ru:'телевизор'}, music:{x:720,face:1,ru:'проигрыватель'},
   fridge:{x:792,face:1,ru:'холодильник'}, stove:{x:878,face:1,ru:'плита'}, center:{x:640,face:-1,ru:'середина комнаты'},
-  toilet:{x:1020,face:1,ru:'унитаз'}, sink:{x:1078,face:1,ru:'раковина'}, shower:{x:1146,face:-1,ru:'душ'},
+  toilet:{x:1020,face:1,ru:'унитаз'}, ksink:{x:866,face:1,ru:'кухонная мойка'}, sink:{x:1078,face:1,ru:'раковина'}, shower:{x:1146,face:-1,ru:'душ'},
   door:{x:338,face:1,ru:'дверной проём'}
 };
 function roomAt(x){ return x < 338 ? 'спальня' : x < 800 ? 'гостиная' : 'кухня'; }
@@ -397,6 +397,11 @@ const GEST = {
   brush:{d:7, ru:'чистит зубы', f:(p,t) => { p.shR = 1.25; p.elR = 2.35 + 0.18*Math.sin(t*22); p.head = -0.05; p.shL = 0.2; p.elL = 0.5; if (Math.random() < 0.12) spark(S.head.x + 9*S.face, S.head.y + 7, 'foam', {vx:rand(-6,6), vy:rand(-6,4), max:0.8}); }},
   wash:{d:3.5, ru:'умывается', f:(p,t) => { const c = (Math.sin(t*5) + 1)/2; p.lean = 0.35; p.head = 0.2; p.shR = 0.9 + 0.6*c; p.elR = 0.4 + 1.6*c; p.shL = 0.85 + 0.6*c; p.elL = 0.4 + 1.5*c; if (Math.random() < 0.2) spark(S.x + 16*S.face, FLOOR - 68, 'drop', {vx:rand(-20,20), vy:rand(-50,-10), max:0.4}); }},
   comb:{d:4.5, ru:'причёсывается', f:(p,t) => { p.shR = 2.3; p.elR = 1.6 + 0.35*Math.sin(t*7); p.head = -0.1 + 0.05*Math.sin(t*7); p.shL = 0.1; }},
+  browse:{d:3.2, ru:'выбирает одежду', f:(p,t) => { p.shR = 1.45; p.elR = 0.25 + 0.2*Math.sin(t*4); p.dx = 4*Math.sin(t*2.2); p.head = -0.05; p.lean = 0.05; S.lookTX = 1; S.lookTY = -0.2; }},
+  reachup:{d:1.3, ru:'достаёт с полки', f:(p,t) => { const k = Math.sin(PI*clamp(t/1.3,0,1)); p.shR = 2.6*k; p.elR = 0.2; p.head = -0.3*k; p.dy = -2*k; }},
+  changing:{d:7, ru:'переодевается', f:(p,t) => { p.shL = 1.8 + 0.8*Math.sin(t*5); p.elL = 1.2; p.shR = 2.2 + 0.7*Math.sin(t*5 + 1); p.elR = 1.0; p.dx = 2*Math.sin(t*3); }},
+  stir:{d:6, ru:'готовит', f:(p,t) => { p.shR = 1.25; p.elR = 0.35 + 0.28*Math.sin(t*8); p.shL = 0.95; p.elL = 0.35; p.lean = 0.1; p.head = 0.18; S.lookTX = 1; S.lookTY = 0.7; }},
+  scrub:{d:6, ru:'моет посуду', f:(p,t) => { p.shR = 1.15 + 0.15*Math.sin(t*9); p.elR = 0.5 + 0.3*Math.sin(t*9); p.shL = 1.05; p.elL = 0.6; p.lean = 0.2; p.head = 0.25; S.lookTX = 1; S.lookTY = 0.8; if (Math.random() < 0.25) spark(PL.ksink.x + 20 + rand(-6,6), FLOOR - 70, 'bubble', {vy:rand(-25,-10), vx:rand(-8,8), max:rand(0.8,1.4)}); }},
   unwrap:{d:2.8, ru:'открывает подарок', full:true, f:(p,t) => { const k = Math.min(1, Math.sin(PI*clamp(t/2.8,0,1))*1.8); p.dy = 14*k; p.hipL = 1.0*k; p.kneeL = -1.5*k; p.hipR = 0.95*k; p.kneeR = -1.45*k; p.lean = 0.35*k; p.shR = 1.0*k + 0.3*Math.sin(t*10)*k; p.elR = 0.5; p.shL = 0.9*k - 0.3*Math.sin(t*10)*k; p.elL = 0.5; p.head = 0.25*k; if (t > 1.8 && Math.random() < 0.5) spark(S.x + rand(-14,14), GROUND - rand(10,40), 'confetti', {vy:rand(-70,-30), col:pick(['#e0457a','#f2c94c','#3e6fd8','#3f9a5c'])}); }},
   admire:{d:2.6, ru:'любуется подарком', f:(p,t) => { const k = Math.min(1, Math.sin(PI*clamp(t/2.6,0,1))*1.7); p.shR = 1.9*k + p.shR*(1-k); p.elR = 0.9*k; p.head = -0.15*k; S.lookTX = 0.8; S.lookTY = -0.8; }},
   nuzzle:{d:2.6, ru:'жмурится от удовольствия', f:(p,t) => { const k = Math.sin(PI*clamp(t/2.6,0,1)); p.head -= 0.28*k; p.lean -= 0.06*k; p.sq += 1.5*k; S.blink = Math.max(S.blink, 0.05); }},
@@ -431,6 +436,7 @@ const ACT_RU = {
   phone_call:'звонит по телефону', workout:'делает зарядку', tidy_up:'прибирается', console_off:'выключает приставку',
   date:'ужинает с вами при свечах', dance_together:'танцует с вами', together:'проводит время с вами',
   open_gift:'открывает подарок', eat_treat:'ест вкусняшку', use_item:'радуется подарку',
+  wash_dishes:'моет посуду',
   close_valve:'перекрывает воду', mop_floor:'вытирает пол', use_toilet:'идёт в туалет', shower:'принимает душ',
   brush_teeth:'чистит зубы', wash_face:'умывается', comb_hair:'причёсывается'
 };
@@ -453,8 +459,8 @@ function expand(a, plan){
                                              : [fx(() => { S.hold.R = 'thing:' + (a.kind || 'other'); }), gest('admire', {end:() => { S.hold.R = null; }})];
     case 'date': return [walk('sofa'), loop('date')];
     case 'dance_together': return [walk('center'), loop('dancing')];
-    case 'use_toilet': return [walk('toilet'), loop('toilet')];
-    case 'shower': return [walk('shower'), loop('shower')];
+    case 'use_toilet': return [walk('toilet'), loop('toilet'), wait(60)];
+    case 'shower': return [walk('shower'), loop('shower'), wait(150)];
     case 'brush_teeth': return [walk('sink'), fx(() => { S.hold.R = 'toothbrush'; S.hold.L = null; }), gest('brush', {end:() => { S.hold.R = null; }})];
     case 'wash_face': return [walk('sink'), gest('wash')];
     case 'comb_hair': return [walk('sink'), fx(() => { S.hold.R = 'comb'; }), gest('comb', {end:() => { S.hold.R = null; }})];
@@ -463,8 +469,11 @@ function expand(a, plan){
     case 'music_on': return [walk('music'), gest('reach', {end:() => { S.music = true; }}), loop('listen')];
     case 'music_off': return [walk('music'), gest('reach', {end:() => { S.music = false; }}), loop(null)];
     case 'cook': plan.plate = true;
-      return [walk('stove'), fx(() => { S.stove = true; S.hold.R = 'spoon'; S.hold.L = null; }),
-        gest('cook', {end:() => { S.stove = false; S.hold.R = 'spoon'; S.hold.L = 'plate'; }})];
+      return [walk('fridge'), gest('reach', {start:() => { S.fridge = true; }, end:() => { S.hold.L = 'groceries'; }}), fx(() => { S.fridge = false; }),
+        walk('stove'), gest('reachup', {end:() => { S.panOut = true; }}),
+        fx(() => { S.stove = true; S.hold.R = 'spoon'; S.hold.L = null; }), gest('stir', {dur:30}),
+        fx(() => { S.stove = false; }), gest('reachup', {end:() => { S.hold.R = null; S.hold.L = 'plate'; }})];
+    case 'wash_dishes': return [walk('ksink'), gest('scrub', {dur:22, end:() => { S.dishes = 0; }})];
     case 'eat': {
       const pre = plan.plate ? [] : [walk('fridge'), gest('reach', {start:() => { S.fridge = true; }, end:() => { S.fridge = false; S.hold.L = 'plate'; S.hold.R = 'spoon'; }})];
       plan.plate = false;
@@ -475,8 +484,12 @@ function expand(a, plan){
     case 'sleep': return [fx(() => { S.tv = 'off'; S.music = false; S.hold.L = S.hold.R = null; }), walk('bed'), loop('sleep')];
     case 'change_clothes': {
       const col = OUTFITS[a.color] ? a.color : null, typ = OUTFIT_TYPES[a.outfit] ? a.outfit : null;
-      return [walk('wardrobe'), fx(() => { S.wardrobe = true; }),
-        gest('change', {midAt:1.3, mid:() => { S.outfit = {type:typ || 'casual', color:col || (typ ? null : nextOutfit())}; }}), wait(0.4), fx(() => { S.wardrobe = false; })];
+      const next = {type:typ || 'casual', color:col || (typ ? null : nextOutfit())};
+      return [walk('wardrobe'), fx(() => { S.wardrobe = true; }), gest('browse'),
+        gest('reach', {end:() => { S.taken = next.type; S.hold.R = 'garment:' + next.type; }}),
+        fx(() => { S.changing = true; S.dropped = normOutfit(S.outfit).type; }),
+        gest('changing', {midAt:3.5, mid:() => { S.outfit = next; S.hold.R = null; }}),
+        fx(() => { S.changing = false; S.taken = null; S.dropped = null; }), wait(0.6), fx(() => { S.wardrobe = false; })];
     }
     case 'light_on': case 'light_off': return [gest('point', {end:() => setRoomLights(a.room || roomKey(S.x), a.do === 'light_on')})];
     case 'look_window': return [walk('window'), loop('daydream')];
@@ -545,7 +558,7 @@ function stepUpdate(dt){
       c.t += dt;
       const G = GEST[c.g];
       if (c.mid && !c.midDone && c.t > c.midAt){ c.mid(); c.midDone = true; }
-      if (c.t >= G.d){ if (G.end) G.end(c); if (c.end) c.end(); S.cur = null; continue; }
+      if (c.t >= (c.dur || G.d)){ if (G.end) G.end(c); if (c.end) c.end(); S.cur = null; continue; }
       return;
     }
   }
@@ -795,8 +808,10 @@ function drawBedroom(ph){
   if (S.wardrobe){
     rect(wx + 4, wy + 4, ww - 8, wh - 8, '#5b3d27');
     line(wx + 6, wy + 22, wx + ww - 6, wy + 22, 2, C.metal);
+    const HANG = {dress:'dress', warm:'sweater', pajamas:'pj', casual:'tee', shorts:'tee', bathrobe:'robe', mini:'mini'};
     [['#c43d5a', 50, 'dress'], ['#a5523d', 34, 'sweater'], ['#9cc3e6', 40, 'pj'], ['#f2c94c', 26, 'tee'], ['#eae4d6', 48, 'robe'], ['#2a2a30', 22, 'mini']].forEach(([c, len, k], i) => {
       const cx = wx + 12 + i*10; line(cx, wy + 22, cx, wy + 28, 1, C.metal);
+      if (S.taken && HANG[S.taken] === k) return;
       if (k === 'dress' || k === 'robe'){ ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(cx - 3, wy + 28); ctx.lineTo(cx + 3, wy + 28); ctx.lineTo(cx + 6, wy + 28 + len); ctx.lineTo(cx - 6, wy + 28 + len); ctx.fill(); }
       else rr(cx - 5, wy + 28, 10, len, 2, c);
       if (k === 'pj') for (let d = 0; d < 4; d++) circle(cx - 2 + (d % 2)*4, wy + 33 + d*8, 0.9, '#ffffff');
@@ -980,7 +995,36 @@ function drawBathroom(){
   // bath mat
   rect(1064, FLOOR + 3, 42, 4, '#7fb7c9');
 }
+function drawWardrobeFront(){
+  if (!S.changing) return;
+  const x = 262, w = 56, top = FLOOR - 196;
+  ctx.save(); ctx.translate(x + w/2, 0); ctx.scale(1 + 0.02*Math.sin(S.t*6), 1); ctx.translate(-(x + w/2), 0);
+  rect(x, top, w, 198, C.wood); ctx.strokeStyle = C.woodDark; ctx.lineWidth = 2; ctx.strokeRect(x + 4, top + 6, w - 8, 186);
+  rect(x + 6, top + 92, 3, 18, C.metal);
+  const dsp = outfitSpec({type:S.dropped || 'casual', color:normOutfit(S.outfit).color});
+  ctx.fillStyle = dsp.top || dsp.bottom || '#3e6fd8'; ctx.beginPath(); ctx.moveTo(x + 14, top); ctx.quadraticCurveTo(x + 22, top - 8, x + 34, top); ctx.lineTo(x + 32, top + 16); ctx.lineTo(x + 16, top + 14); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+function drawKitchenSinkDishes(){
+  const scrubbing = S.cur && S.cur.k === 'gest' && S.cur.g === 'scrub';
+  const total = Math.min(4, S.dishes || 0), n = scrubbing ? Math.ceil(total*(1 - S.cur.t/(S.cur.dur || 6))) : total;
+  for (let i = 0; i < n; i++){ ctx.save(); ctx.translate(880 + i*3, FLOOR - 70 - i*2.2); ctx.rotate(-0.4 + i*0.12); ellipse(0, 0, 8, 2.4, '#f3f2ec'); ellipse(1, -0.6, 4, 1, '#c9a77a'); ctx.restore(); }
+}
+function drawToiletScreen(){
+  const busy = S.loop === 'toilet' && Math.abs(S.x - PL.toilet.x) < 4;
+  S.screenOpen = (S.screenOpen || 0) + ((busy ? 1 : 0) - (S.screenOpen || 0)) * 0.08;
+  const k = S.screenOpen, x0 = 1052 - 58*k, top = FLOOR - 118, h = 120, panels = 3, pw = (1052 - x0)/panels;
+  if (k < 0.04){ rect(1048, top + 8, 6, h - 8, '#b5835a'); rect(1049, top + 10, 4, h - 12, 'rgba(225,238,242,0.9)'); return; }
+  for (let i = 0; i < panels; i++){
+    const x = x0 + i*pw, skew = (i % 2 ? -3 : 3)*k;
+    ctx.fillStyle = 'rgba(232,242,245,0.94)'; ctx.beginPath(); ctx.moveTo(x, top + skew); ctx.lineTo(x + pw, top - skew); ctx.lineTo(x + pw, top + h - skew); ctx.lineTo(x, top + h + skew); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#b5835a'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.strokeStyle = 'rgba(181,131,90,0.35)'; ctx.lineWidth = 1; for (let j = 1; j < 5; j++){ ctx.beginPath(); ctx.moveTo(x + 2, top + j*h/5); ctx.lineTo(x + pw - 2, top + j*h/5); ctx.stroke(); }
+  }
+  if (k > 0.8){ rr(x0 + pw - 9, top + 22, 18, 9, 2, '#d2493f'); ctx.fillStyle = '#ffffff'; ctx.font = '700 5px "Golos Text", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('ЗАНЯТО', x0 + pw, top + 26.5); }
+}
 function drawBathFront(){
+  drawToiletScreen(); drawWardrobeFront();
   S.fog += ((S.loop === 'shower' ? 0.72 : 0) - S.fog) * 0.02;
   ctx.fillStyle = 'rgba(205,232,240,' + (0.16 + S.fog) + ')';
   ctx.fillRect(1122, FLOOR - 164, 52, 160);
@@ -1011,6 +1055,9 @@ function drawThing(kind, x, y){
 }
 function drawItem(kind, hand){
   if (kind && kind.startsWith('treat:')){ drawTreat(kind.slice(6), hand.hd.x + 4, hand.hd.y - 2); return; }
+  if (kind === 'groceries'){ const {hd} = hand; rr(hd.x - 6, hd.y - 2, 12, 8, 2, '#c9a77a'); circle(hd.x - 2, hd.y - 3, 2.6, '#d2493f'); circle(hd.x + 3, hd.y - 4, 2.2, '#3f9a5c'); rect(hd.x + 1, hd.y - 7, 3, 5, '#f3f2ec'); return; }
+  if (kind && kind.startsWith('garment:')){ const {hd} = hand, sp = outfitSpec({type:kind.slice(8)}); ctx.fillStyle = sp.skirt || sp.top || sp.bottom || '#ccc';
+    ctx.beginPath(); ctx.moveTo(hd.x - 3, hd.y); ctx.lineTo(hd.x + 3, hd.y); ctx.lineTo(hd.x + 7, hd.y + 22); ctx.lineTo(hd.x - 7, hd.y + 22); ctx.fill(); line(hd.x - 4, hd.y - 1, hd.x + 4, hd.y - 1, 1.2, C.metal); return; }
   if (kind && kind.startsWith('thing:')){ drawThing(kind.slice(6), hand.hd.x, hand.hd.y + 2); return; }
   if (!kind) return;
   const {hd, a2} = hand;
@@ -1304,6 +1351,7 @@ function drawParticles(){
     else if (p.kind === 'steam'){ circle(p.x, p.y, 3 + p.life*4, 'rgba(255,255,255,0.5)'); }
     else if (p.kind === 'heart'){ ctx.fillStyle = '#ef476f'; ctx.font = '700 13px system-ui, sans-serif'; ctx.fillText('♥', p.x, p.y); }
     else if (p.kind === 'confetti'){ rect(p.x, p.y, 3, 2, p.col); }
+    else if (p.kind === 'bubble'){ ctx.strokeStyle = 'rgba(200,230,250,0.9)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.arc(p.x, p.y, 1.6 + p.life, 0, PI*2); ctx.stroke(); }
     else if (p.kind === 'foam'){ circle(p.x, p.y, 1.6, 'rgba(255,255,255,0.95)'); }
     else if (p.kind === 'drop'){ circle(p.x, p.y, 1.8, 'rgba(120,180,240,0.9)'); }
     else if (p.kind === 'star'){ ctx.fillStyle = '#ffd166'; ctx.font = '700 12px system-ui, sans-serif'; ctx.fillText('✦', p.x, p.y); }
@@ -1361,7 +1409,7 @@ function draw(){
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   const ph = phase();
   drawOutside(ph); drawShell(); drawBedroom(ph); drawLiving(); drawKitchen(); drawBathroom();
-  drawGifts(); drawTogether(); drawPerson(); drawBlanketOver(); drawBathFront(); drawTouch(1/60); drawWater();
+  drawGifts(); drawTogether(); drawKitchenSinkDishes(); drawPerson(); drawBlanketOver(); drawBathFront(); drawTouch(1/60); drawWater();
   drawLighting(ph); drawParticles(); drawBubble();
 }
 let last = performance.now(), lastStatus = '';
@@ -1399,6 +1447,7 @@ const HOLD_FOR = {game:{R:'pad'}, read:{R:'book'}, write:{R:'pen', L:'note'}, ph
 function syncDevices(st){
   S.tv = st.tv; S.music = st.music; S.console = st.console; S.leak = st.leak;
   if (st.items) S.items = st.items;
+  if ('dishes' in st) S.dishes = st.dishes;
   if (st.outfit) S.outfit = normOutfit(st.outfit);
   for (const k in st.lights) S.lights[k] = st.lights[k];
 }

@@ -58,7 +58,7 @@ def log(*a):
 PLACES = {
     "bed": "кровать", "window": "окно", "wardrobe": "шкаф", "sofa": "диван", "tv": "телевизор",
     "music": "проигрыватель", "fridge": "холодильник", "stove": "плита", "center": "середина комнаты",
-    "toilet": "унитаз", "sink": "раковина", "shower": "душ",
+    "toilet": "унитаз", "sink": "раковина", "shower": "душ", "ksink": "кухонная мойка",
 }
 OUTFIT_TYPES = {"casual": "футболка и брюки", "pajamas": "пижама", "dress": "романтичное платье", "shorts": "шорты и футболка",
                 "warm": "джинсы и свитер", "mini": "миниюбка и топ", "swimsuit": "купальник", "underwear": "нижнее бельё",
@@ -87,7 +87,7 @@ ACTIONS = {
     "close_valve": ("stove", None, "перекрывает воду под мойкой"), "mop_floor": ("center", "mop", "вытирает пол"),
     "use_toilet": ("toilet", "toilet", "в туалете"), "shower": ("shower", "shower", "принимает душ"),
     "brush_teeth": ("sink", None, "чистит зубы"), "wash_face": ("sink", None, "умывается"),
-    "comb_hair": ("sink", None, "причёсывается у зеркала"),
+    "comb_hair": ("sink", None, "причёсывается у зеркала"), "wash_dishes": ("ksink", None, "моет посуду"),
 }
 ACTIONS_DOC = """walk_to{place} — пойти к месту; wave, nod, shake_head, shrug, jump, dance, think, laugh, bow, stretch — жесты (несколько секунд);
 sit — сесть на диван; stand — встать; watch_tv — сесть и смотреть телевизор; tv_off — выключить телевизор;
@@ -96,6 +96,7 @@ cook — приготовить еду на плите; eat — поесть (п
 change_clothes{outfit, color} — переодеться (outfit: casual — футболка и брюки, pajamas — пижама, dress — романтичное платье, shorts — шорты и футболка, warm — джинсы и свитер, mini — миниюбка и топ, swimsuit — купальник, underwear — нижнее бельё, bathrobe — халат, towel — полотенце; color — по желанию); light_on{room} / light_off{room} — свет (room: bedroom, living, kitchen, bathroom, all; без room — там, где ты); look_window — смотреть в окно, мечтать;
 together{kind} — провести время вместе с гостем (kind: date — свидание, ужин при свечах; movie — кино вдвоём; dance — танцевать вместе; cook — приготовить ужин вместе); соглашайся, только если правда хочется; предлагать можно и самому — первым;
 open_gift{id} — открыть подарок в обёртке; eat_treat{id} — съесть вкусняшку из подарков; use_item{id} — воспользоваться подаренной вещью (книгу — читать, пластинку — слушать, игрушку — обнять, одежду — примерить);
+wash_dishes — помыть грязную посуду в кухонной мойке;
 use_toilet — сходить в туалет; shower — принять душ; brush_teeth — почистить зубы; wash_face — умыться; comb_hair — причесаться у зеркала;
 console_off — выключить приставку; close_valve — перекрыть воду под мойкой (если течёт); mop_floor — вытирать воду с пола шваброй (имеет смысл, только когда вода уже не течёт);
 read_book — читать книгу на диване; phone_call — позвонить кому-то из друзей или родных; workout — зарядка;
@@ -436,7 +437,7 @@ DEFAULT_STATE = {
     "last_guest_ts": 0, "last_initiative": 0, "together": None, "invite": None,
     "lights": {"bed": True, "night": False, "liv": True, "floor": False, "kit": True, "bath": False}, "water": 0.0, "leak": False,
     "react_at": 0, "react_reasons": [], "last_react": 0, "touch_log": [], "flowers_ts": 0,
-    "items": [], "wishes": [], "next_id": 1,
+    "items": [], "wishes": [], "next_id": 1, "dishes": 0,
     "needs": {"hunger": 70, "energy": 85, "fun": 55, "social": 50, "hygiene": 70, "bladder": 80},
     "thought": "", "intent": "", "plan": [], "plan_day": "", "act_seq": 0, "last_act": None,
     "last_tick": 0, "last_decide": 0, "reflect_ts": 0, "reflect_day": "",
@@ -458,7 +459,7 @@ def save_state():
 
 def public_state():
     with state_lock:
-        s = {k: S[k] for k in ("name", "male", "location", "loop", "label", "until", "tv", "console", "music", "lights", "water", "leak", "flowers_ts", "items", "wishes", "together", "invite",
+        s = {k: S[k] for k in ("name", "male", "location", "loop", "label", "until", "tv", "console", "music", "lights", "water", "leak", "flowers_ts", "items", "wishes", "together", "invite", "dishes",
                                "outfit", "mood", "emo", "needs", "thought", "intent", "plan", "act_seq", "last_act")}
     t = now()
     s["awake_time"] = is_awake_time(t)
@@ -676,7 +677,10 @@ def clean_actions(raw):
 
 # where a bare walk_to obviously leads: "went to the TV" means "watches TV"
 NATURAL = {"tv": "watch_tv", "sofa": "sit", "music": "music_on", "stove": "cook", "fridge": "drink",
-           "window": "look_window", "wardrobe": "change_clothes", "bed": "sleep", "toilet": "use_toilet", "sink": "wash_face", "shower": "shower"}
+           "window": "look_window", "wardrobe": "change_clothes", "bed": "sleep", "toilet": "use_toilet", "sink": "wash_face", "shower": "shower", "ksink": "wash_dishes"}
+
+
+CHAIN_HOLD = {"use_toilet": 60, "shower": 150, "change_clothes": 16, "cook": 55, "wash_dishes": 28}  # seconds these take for the body
 
 
 def complete_chain(actions):
@@ -860,6 +864,9 @@ def act(actions, minutes=None, thought=None, intent=None, mood=None, aloud=None,
                 for k in ROOMS[room]:
                     S["lights"][k] = d == "light_on"
             if d == "close_valve": S["leak"] = False
+            if d == "eat": S["dishes"] = min(8, S.get("dishes", 0) + 1)
+            if d == "cook": S["dishes"] = min(8, S.get("dishes", 0) + 1)
+            if d == "wash_dishes": S["dishes"] = 0
             if a.get("id") is not None and d in ("open_gift", "eat_treat", "use_item", "read_book", "music_on", "look_window"):
                 gift_effects(a)
             if d == "sleep":
@@ -890,13 +897,15 @@ def act(actions, minutes=None, thought=None, intent=None, mood=None, aloud=None,
             S["together"] = None
         S["loop"], S["location"] = loop, loc
         S["label"] = LOOP_LABEL[loop] if loop else "стоит: " + PLACES[loc]
+        hold = sum(CHAIN_HOLD.get(a["do"], 0) for a in actions[:-1])  # time spent mid-chain (toilet, shower, cooking...)
+        hold_all = sum(CHAIN_HOLD.get(a["do"], 0) for a in actions)
         if loop == "mop":
-            S["until"] = time.time() + 30 * 60  # mopping lasts until the floor is dry (see update_needs)
+            S["until"] = time.time() + hold + 30 * 60  # mopping lasts until the floor is dry (see update_needs)
         elif loop in LOOP_LABEL and minutes:
-            S["until"] = time.time() + max(1, float(minutes)) * 60
+            S["until"] = time.time() + hold + max(1, float(minutes)) * 60
         elif actions:
             # quick chain (walk, cook, drink, gestures): decide again as soon as the body is done
-            S["until"] = time.time() + 30 + 6 * len(actions)
+            S["until"] = time.time() + hold_all + 30 + 6 * len(actions)
         if thought is not None: S["thought"] = thought
         if intent is not None: S["intent"] = intent
         if emotion:
@@ -996,6 +1005,8 @@ def world_line():
     elif S["water"] > 0.2:
         water = f" На полу лужа: {S['water']:.1f} см воды (течь уже перекрыта)."
     flowers = " На подоконнике в спальне стоят цветы от гостя." if time.time() - (S.get("flowers_ts") or 0) < 3 * 86400 else ""
+    if S.get("dishes"):
+        flowers += f" В кухонной мойке грязная посуда: {S['dishes']} шт."
     wrapped = [it for it in S["items"] if it["state"] == "wrapped"]
     treats = [it for it in S["items"] if it["state"] == "open" and it["kind"] in ("sweet", "drink")]
     things = [it for it in S["items"] if it["state"] == "open" and it["kind"] not in ("sweet", "drink", "flowers")]
