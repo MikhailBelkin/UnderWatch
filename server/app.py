@@ -60,6 +60,9 @@ PLACES = {
     "music": "проигрыватель", "fridge": "холодильник", "stove": "плита", "center": "середина комнаты",
     "toilet": "унитаз", "sink": "раковина", "shower": "душ",
 }
+OUTFIT_TYPES = {"casual": "футболка и брюки", "pajamas": "пижама", "dress": "романтичное платье", "shorts": "шорты и футболка",
+                "warm": "джинсы и свитер", "mini": "миниюбка и топ", "swimsuit": "купальник", "underwear": "нижнее бельё",
+                "bathrobe": "халат", "towel": "полотенце"}
 COLORS = {"red": "красное", "blue": "синее", "green": "зелёное", "yellow": "жёлтое", "purple": "фиолетовое",
           "orange": "оранжевое", "pink": "розовое", "black": "чёрное", "white": "белое"}
 # do -> (place it happens at, loop it leaves the body in, label)
@@ -89,7 +92,7 @@ ACTIONS_DOC = """walk_to{place} — пойти к месту; wave, nod, shake_h
 sit — сесть на диван; stand — встать; watch_tv — сесть и смотреть телевизор; tv_off — выключить телевизор;
 play_game — играть в приставку; music_on — поставить пластинку и слушать; music_off — выключить музыку;
 cook — приготовить еду на плите; eat — поесть (после cook или из холодильника); drink — попить из холодильника; open_fridge — заглянуть в холодильник;
-change_clothes{color} — переодеться; light_on{room} / light_off{room} — свет (room: bedroom, living, kitchen, bathroom, all; без room — там, где ты); look_window — смотреть в окно, мечтать;
+change_clothes{outfit, color} — переодеться (outfit: casual — футболка и брюки, pajamas — пижама, dress — романтичное платье, shorts — шорты и футболка, warm — джинсы и свитер, mini — миниюбка и топ, swimsuit — купальник, underwear — нижнее бельё, bathrobe — халат, towel — полотенце; color — по желанию); light_on{room} / light_off{room} — свет (room: bedroom, living, kitchen, bathroom, all; без room — там, где ты); look_window — смотреть в окно, мечтать;
 open_gift{id} — открыть подарок в обёртке; eat_treat{id} — съесть вкусняшку из подарков; use_item{id} — воспользоваться подаренной вещью (книгу — читать, пластинку — слушать, игрушку — обнять, одежду — примерить);
 use_toilet — сходить в туалет; shower — принять душ; brush_teeth — почистить зубы; wash_face — умыться; comb_hair — причесаться у зеркала;
 console_off — выключить приставку; close_valve — перекрыть воду под мойкой (если течёт); mop_floor — вытирать воду с пола шваброй (имеет смысл, только когда вода уже не течёт);
@@ -556,6 +559,17 @@ def needs_view():
     return {"words": {k: need_word(k, v) for k, v in S["needs"].items()}, "rates": rates, "why": why}
 
 
+def outfit_of():
+    o = S.get("outfit")
+    return {"type": "casual", "color": o} if isinstance(o, str) else (o or {"type": "casual", "color": "blue"})
+
+
+def outfit_text():
+    o = outfit_of()
+    name = "плавки" if o["type"] == "swimsuit" and S["male"] else OUTFIT_TYPES.get(o["type"], "одежда")
+    return name + (f", цвет {COLORS[o['color']]}" if o.get("color") in COLORS and o["type"] != "towel" else "")
+
+
 def clampn(v):
     return max(0, min(100, round(v, 1)))
 
@@ -603,6 +617,11 @@ def clean_actions(raw):
                 a.setdefault("room", arg)
             elif arg in COLORS:
                 a.setdefault("color", arg)
+            elif arg.split(",")[0].strip() in OUTFIT_TYPES:
+                parts = [x.strip() for x in arg.split(",")]
+                a.setdefault("outfit", parts[0])
+                if len(parts) > 1 and parts[1] in COLORS:
+                    a.setdefault("color", parts[1])
         if d not in ACTIONS:
             continue
         x = {"do": d}
@@ -617,6 +636,8 @@ def clean_actions(raw):
                 pass
         if d in ("light_on", "light_off") and a.get("room") in ROOMS:
             x["room"] = a["room"]
+        if d == "change_clothes" and a.get("outfit") in OUTFIT_TYPES:
+            x["outfit"] = a["outfit"]
         if d == "change_clothes" and a.get("color") in COLORS:
             x["color"] = a["color"]
         out.append(x)
@@ -786,10 +807,14 @@ def act(actions, minutes=None, thought=None, intent=None, mood=None, aloud=None,
                 S.update(tv="off", music=False, console=False)
                 S["lights"] = {k: False for k in S["lights"]}
             if d == "change_clothes":
-                S["outfit"] = a.get("color") or random.choice([c for c in COLORS if c != S["outfit"]])
-                a["color"] = S["outfit"]
+                typ = a.get("outfit") or "casual"
+                col = a.get("color") or (random.choice([c for c in COLORS if c != outfit_of().get("color")]) if typ == "casual" else None)
+                S["outfit"] = {"type": typ, "color": col}
+                a["outfit"], a["color"] = typ, col
             for k, v in INSTANT.get(d, {}).items():
                 S["needs"][k] = clampn(S["needs"][k] + v)
+        if S["loop"] == "shower" and loop != "shower" and not any(a["do"] == "change_clothes" for a in actions):
+            S["outfit"] = {"type": "towel", "color": None}
         if was_sleeping and loop != "sleep":
             S["lights"]["bed"] = True
         if loop == "mop" and S["water"] <= 0:
@@ -815,7 +840,8 @@ def act(actions, minutes=None, thought=None, intent=None, mood=None, aloud=None,
         msg = {"type": "act", "seq": S["act_seq"], "actions": actions, "thought": thought or "", "aloud": aloud or "", "source": source, "state": public_state()}
     hub.publish(msg)
     if actions:
-        emit_event("action", ", ".join(ACTIONS[a["do"]][2] + (" → " + PLACES[a["place"]] if a.get("place") else "") for a in actions),
+        emit_event("action", ", ".join(ACTIONS[a["do"]][2] + (" → " + PLACES[a["place"]] if a.get("place") else "")
+                                      + (f" ({OUTFIT_TYPES.get(a.get('outfit'), '')})" if a["do"] == "change_clothes" and a.get("outfit") else "") for a in actions),
                    {"actions": actions, "minutes": minutes})
 
 
@@ -860,6 +886,7 @@ def persona():
 У тебя есть тело, потребности, настроение, характер, увлечения и свои планы. Ты живёшь своей жизнью: никто не говорит тебе, что делать, ты решаешь сам{g('', 'а')}.
 Иногда с тобой разговаривает гость — человек, который смотрит на твою квартиру «через стекло». Ты о нём знаешь и рад{g('', 'а')} поболтать, но твоя жизнь не крутится вокруг него.
 Иногда в квартире что-то происходит само: гаснет свет, включается телевизор, прорывает трубу. Возможно, это проделки гостя — он, кажется, умеет влиять на твой мир. Реагируй на такое как живой человек: заметь, исправь, если мешает, удивись, поворчи или спроси гостя.
+В шкафу у тебя разная одежда: обычная (футболка и брюки), пижама, романтичное платье, шорты с футболкой, джинсы со свитером, миниюбка с топом, купальник, нижнее бельё, халат. Одевайся по ситуации и настроению: дома утром можно в пижаме или халате, после душа ты в полотенце, перед сном — пижама.
 Гость может дарить подарки — вкусняшки и вещи. Если тебе чего-то по-настоящему хочется, можешь попросить его (поле wish), но не выпрашивай постоянно: он сам решает, дарить ли и когда.
 Гость может и прикоснуться к тебе: погладить по голове, поцеловать в щёку, взять за руку, обнять, подарить цветы. Отвечай по-своему, исходя из того, как ты к нему сейчас относишься: это может быть приятно, трогательно, смущать или раздражать, если ты на него сердишься или он перебарщивает.
 У тебя живые эмоции — базовые по Экману: радость, грусть, страх, злость, удивление, отвращение, презрение. Они видны на лице и в позе и влияют на твои решения и слова. Каждый раз честно называй, что чувствуешь сейчас, и с какой силой; не каждое событие вызывает сильную эмоцию, а спокойствие — это neutral.
@@ -928,7 +955,7 @@ def situation():
         lines = [
             f"Сейчас {human_date(t)}. До сна {left // 60} ч {left % 60} мин.",
             f"Ты: {S['label']} ({room_ru(room_of(S['location']))}).",
-            world_line() + f" На тебе {COLORS.get(S['outfit'], S['outfit'])}.",
+            world_line() + f" На тебе: {outfit_text()}.",
             "Самочувствие (0 — плохо, 100 — отлично): " + ", ".join(f"{NEED_RU[k]} {int(v)} ({need_word(k, v)})" for k, v in n.items()) + (". " + "; ".join(hints).capitalize() + "." if hints else "."),
             emo_line(),
         ]
@@ -1285,7 +1312,9 @@ def mind_step():
                         S["reflect_day"] = day_key(t)
                     set_busy(None)
         if S["loop"] != "sleep":
-            act([{"do": "sleep"}], thought="Всё, на сегодня хватит. Спать.", intent="спит", mood="sleepy", aloud="Спокойной ночи.")
+            with state_lock:
+                S["outfit"] = {"type": "pajamas", "color": None}
+            act([{"do": "sleep"}], thought="Всё, на сегодня хватит. Переоденусь в пижаму — и спать.", intent="спит", mood="sleepy", aloud="Спокойной ночи.")
         with state_lock:
             S["until"] = next_wake(t).timestamp()
         if S["leak"] or int(time.time()) % 60 < TICK:
