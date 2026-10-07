@@ -50,6 +50,7 @@ canvas{display:block}
 .msg{max-width:min(82%,600px);padding:8px 12px;border-radius:14px;min-width:0;overflow-wrap:anywhere}
 .msg.me{align-self:flex-end;background:var(--me);border-bottom-right-radius:4px}
 .msg.him{align-self:flex-start;background:var(--him);border-bottom-left-radius:4px}
+.msg.init{border-left:3px solid #e86a92}
 .msg.aloud{background:transparent;border:1px dashed var(--line);font-style:italic}
 .msg .who{font-family:var(--f-mono);font-size:11px;color:var(--muted);display:block;letter-spacing:.04em}
 .msg .acts{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);margin-top:3px}
@@ -181,6 +182,7 @@ dialog#settings::backdrop{background:rgba(10,14,20,.45)}
   <div class="controls" id="gifts" role="group" aria-label="Подарить"><span class="lbl">Подарить</span>
     <form id="giftForm" class="giftForm"><input id="giftName" maxlength="80" placeholder="свой подарок…" aria-label="Свой подарок"><button type="submit">Подарить</button></form>
   </div>
+  <div class="controls" id="togetherRow" role="group" aria-label="Вместе"><span class="lbl">Вместе</span></div>
   <div class="wishes" id="wishes" hidden><span class="lbl">Её желания</span><ul id="wishList"></ul><button type="button" id="wishClear" class="linkBtn">Очистить список</button></div>
 
   <section class="chat" aria-label="Разговор с жильцом">
@@ -202,7 +204,7 @@ dialog#settings::backdrop{background:rgba(10,14,20,.45)}
 
   <section class="life" aria-label="Что у жильца в голове">
     <div class="card"><h2 id="mindTitle">Мысли</h2><p class="thought" id="thought">…</p><p class="intent" id="intent"></p></div>
-    <div class="card"><h2>Самочувствие</h2><p class="legend">100 — всё хорошо, 0 — сильно не хватает. Стрелка — куда меняется прямо сейчас; наведите, чтобы узнать почему.</p><div class="bars" id="needs"></div><h2 class="sub2">Эмоции · по Экману</h2><div class="bars" id="emotions"></div></div>
+    <div class="card"><h2>Самочувствие</h2><p class="legend">100 — всё хорошо, 0 — сильно не хватает. Стрелка — куда меняется прямо сейчас; наведите, чтобы узнать почему.</p><div class="bars" id="needs"></div><h2 class="sub2">Эмоции · по Экману и чувства</h2><div class="bars" id="emotions"></div></div>
     <div class="card"><h2>План на сегодня</h2><ul class="plan" id="plan"></ul></div>
   </section>
 
@@ -314,7 +316,7 @@ const S = {
   walking:false, walkPhase:0, pending:false, lastUser:-999,
   speech:null, blinkT:2.5, blink:0, lookX:0.4, lookY:0, lookT:0, lookTX:0.4, lookTY:0,
   pose:Object.assign({}, ZERO), fog:0,
-  emoT:{joy:0.3, sadness:0, fear:0, anger:0, surprise:0, disgust:0, contempt:0}, emoS:{joy:0.3, sadness:0, fear:0, anger:0, surprise:0, disgust:0, contempt:0}, head:{x:0,y:0}, particles:[], lastRoutine:null, mouthLaugh:false
+  emoT:{joy:0.3, sadness:0, fear:0, anger:0, surprise:0, disgust:0, contempt:0, shyness:0, jealousy:0, longing:0}, emoS:{joy:0.3, sadness:0, fear:0, anger:0, surprise:0, disgust:0, contempt:0, shyness:0, jealousy:0, longing:0}, head:{x:0,y:0}, particles:[], lastRoutine:null, mouthLaugh:false
 };
 
 /* ---------- identity: gender + name ---------- */
@@ -365,6 +367,8 @@ function basePose(loop, t){
     case 'workout': { const c = (Math.sin(t*3.4) + 1)/2; return P({hipL:1.1*c, kneeL:-1.6*c, hipR:1.05*c, kneeR:-1.55*c, dy:17*c, lean:0.3*c, shL:1.55, elL:0.05, shR:1.6, elR:0.05}); }
     case 'toilet': return P(Object.assign({}, sit, {lean:0.18, head:0.12 + 0.04*Math.sin(t*0.6), shL:0.95, elL:0.6, shR:1.0, elR:0.7}));
     case 'shower': { const c = Math.sin(t*6); return P({shL:2.7, elL:1.5 + 0.3*c, shR:2.6, elR:1.6 - 0.3*c, head:-0.2 + 0.05*c, dy:Math.sin(t*2)*0.6}); }
+    case 'date': return P(Object.assign({}, sit, {lean:0.12 + 0.03*Math.sin(t*0.9), head:-0.08 + 0.06*Math.sin(t*1.3), shL:0.7, elL:1.1, shR:0.9 + 0.15*Math.max(0, Math.sin(t*0.7)), elR:1.3 + 0.4*Math.max(0, Math.sin(t*0.7))}));
+    case 'dancing': { const pp = P({}); GEST.dance.f(pp, t, {face0:1}); return pp; }
     case 'mop': { const sw = Math.sin(t*3.6); return P({lean:0.2, head:0.25, shR:0.75 + 0.35*sw, elR:0.35, shL:0.55 + 0.35*sw, elL:0.5, dx:12*Math.sin(t*0.7), hipR:0.1*sw, hipL:-0.1*sw}); }
     case 'daydream': return P({head:-0.22 + 0.05*Math.sin(t*0.6), shL:-0.35, elL:0.4, shR:-0.35, elR:0.4, dy:Math.sin(t*1.5)*0.5});
     case 'sleep': return P({dy:-8, rot:-PI/2, shL:0.15, shR:0.1, elL:0.25, elR:0.25, hipL:0.04, hipR:-0.03, head:-0.15});
@@ -425,6 +429,7 @@ const ACT_RU = {
   eat:'ест', drink:'пьёт', sleep:'ложится спать', wake_up:'просыпается', change_clothes:'переодевается', light_on:'включает свет',
   light_off:'выключает свет', look_window:'смотрит в окно', open_fridge:'заглядывает в холодильник', read_book:'читает', write_diary:'пишет в блокнот',
   phone_call:'звонит по телефону', workout:'делает зарядку', tidy_up:'прибирается', console_off:'выключает приставку',
+  date:'ужинает с вами при свечах', dance_together:'танцует с вами', together:'проводит время с вами',
   open_gift:'открывает подарок', eat_treat:'ест вкусняшку', use_item:'радуется подарку',
   close_valve:'перекрывает воду', mop_floor:'вытирает пол', use_toilet:'идёт в туалет', shower:'принимает душ',
   brush_teeth:'чистит зубы', wash_face:'умывается', comb_hair:'причёсывается'
@@ -446,6 +451,8 @@ function expand(a, plan){
     case 'eat_treat': return [walk('sofa'), loop('sit'), fx(() => { S.hold.L = 'treat:' + (a.name || ''); S.hold.R = null; }), gest('eat', {end:() => { S.hold.L = null; }})];
     case 'use_item': return a.kind === 'toy' ? [fx(() => { S.hold.R = 'thing:toy'; }), gest('selfhug', {end:() => { S.hold.R = null; }})]
                                              : [fx(() => { S.hold.R = 'thing:' + (a.kind || 'other'); }), gest('admire', {end:() => { S.hold.R = null; }})];
+    case 'date': return [walk('sofa'), loop('date')];
+    case 'dance_together': return [walk('center'), loop('dancing')];
     case 'use_toilet': return [walk('toilet'), loop('toilet')];
     case 'shower': return [walk('shower'), loop('shower')];
     case 'brush_teeth': return [walk('sink'), fx(() => { S.hold.R = 'toothbrush'; S.hold.L = null; }), gest('brush', {end:() => { S.hold.R = null; }})];
@@ -568,6 +575,8 @@ function activity(){
     case 'phone': return ['болтает по телефону', ''];
     case 'workout': return ['делает зарядку', ''];
     case 'mop': return ['вытирает пол', ''];
+    case 'date': return ['на свидании с вами', ''];
+    case 'dancing': return ['танцует с вами', ''];
     case 'toilet': return ['в туалете', ''];
     case 'shower': return ['принимает душ', ''];
     case 'daydream': return ['смотрит в окно', ''];
@@ -612,7 +621,8 @@ function update(dt){
   else tgt = basePose(S.loop, S.t);
   if (S.cur && S.cur.k === 'gest') GEST[S.cur.g].f(tgt, S.cur.t, S.cur);
   else if (S.pending && S.loop !== 'sleep' && !S.walking && S.loop !== 'game') GEST.think.f(tgt, S.t, {});
-  for (const e in S.emoS) S.emoS[e] += ((S.emoT[e] || 0) - S.emoS[e]) * Math.min(1, dt*3);
+  for (const e of new Set([...Object.keys(S.emoS), ...Object.keys(S.emoT)])) S.emoS[e] = (S.emoS[e] || 0) + ((S.emoT[e] || 0) - (S.emoS[e] || 0)) * Math.min(1, dt*3);
+  if (S.emoS.shyness > 0.35 && !(S.speech && !S.speech.think)){ S.lookTX = -0.6; S.lookTY = 0.8; }
   emoPosture(tgt, !S.walking && !(S.cur && S.cur.k === 'gest') && !S.loop);
   const k = 1 - Math.exp(-dt*16), kr = 1 - Math.exp(-dt*6);
   for (const key in ZERO){
@@ -652,6 +662,7 @@ function update(dt){
 }
 
 /* ---------- emotions in the body ---------- */
+const EMO_ZERO = {joy:0, sadness:0, fear:0, anger:0, surprise:0, disgust:0, contempt:0, shyness:0, jealousy:0, longing:0};
 function emoPosture(p, standing){
   if (S.loop === 'sleep') return;
   const E = S.emoS, t = S.t;
@@ -660,7 +671,12 @@ function emoPosture(p, standing){
   p.sq += 2*E.sadness - 3*E.fear - 1*E.anger;
   p.turn += -0.6*E.disgust;
   p.dx += Math.sin(t*40)*0.7*Math.max(0, E.fear - 0.3);
+  p.head += 0.15*(E.shyness || 0) + 0.1*(E.longing || 0) - 0.05*(E.jealousy || 0);
+  p.sq -= 1.5*(E.shyness || 0);
+  p.turn += -0.4*(E.shyness || 0) - 0.4*(E.jealousy || 0);
   if (!standing) return;
+  const jc = Math.min(1, (E.jealousy || 0)*1.6);   // arms crossed
+  if (jc > 0.05){ p.shL = p.shL*(1-jc) + 1.15*jc; p.elL = p.elL*(1-jc) + 1.9*jc; p.shR = p.shR*(1-jc) + 1.2*jc; p.elR = p.elR*(1-jc) + 1.95*jc; }
   p.shL *= 1 - 0.6*E.sadness; p.shR *= 1 - 0.6*E.sadness;
   p.elL += 0.6*E.fear + 0.9*E.anger; p.elR += 0.6*E.fear + 0.9*E.anger + 1.2*E.disgust;
   p.shR += 0.6*E.disgust;
@@ -1018,6 +1034,9 @@ const FACS = {
   surprise: {bIn:0.8, bOut:1, lidUp:1, open:1, round:1},
   disgust:  {bLow:0.6, nose:1, lipUp:1, lidTight:0.4, cheek:0.4, curve:-0.3},
   contempt: {smirk:1, lidTight:0.2, bOut:0.2},
+  shyness:  {blush:1.2, cheek:0.3, curve:0.35, lidUp:-0.15},
+  jealousy: {lidTight:0.5, bLow:0.45, press:0.5, curve:-0.35},
+  longing:  {bIn:0.6, lidUp:-0.25, curve:-0.15},
 };
 const FACS_KEYS = ['bIn','bOut','bLow','lidUp','lidTight','cheek','curve','open','stretch','press','lipUp','smirk','nose','blush','pale','round'];
 function faceParams(){
@@ -1154,6 +1173,27 @@ function drawPerson(){
   S.head = {x:hipX + lx*c - ly*s, y:hipY + lx*s + ly*c};
   const hx = nearH.hd.x*f, hy = nearH.hd.y;
   S.handW = {x:hipX + hx*c - hy*s, y:hipY + hx*s + hy*c};
+}
+function ghost(x, y, standing, faceLeft, t){
+  ctx.save(); ctx.globalAlpha = 0.38; ctx.shadowColor = 'rgba(160,190,255,0.9)'; ctx.shadowBlur = 14;
+  const col = '#cfe0ff', d = faceLeft ? -1 : 1, sway = standing ? Math.sin(t*3.5)*4 : 0;
+  if (standing){ line(x - 4, y, x - 5, y + 48, 9, col); line(x + 4, y, x + 5 + sway*0.5, y + 48, 9, col); line(x, y, x + sway, y - 38, 17, col); circle(x + sway + 2*d, y - 54, 12, col);
+    line(x + sway, y - 32, x + sway + 14*d, y - 18 - Math.abs(sway)*2, 7, col); }
+  else { line(x, y, x + 22*d, y, 9.5, col); line(x + 22*d, y, x + 24*d, y + 22, 8.5, col); line(x, y, x - 2*d, y - 36, 17, col); circle(x, y - 52, 12, col); line(x - 2*d, y - 30, x + 12*d, y - 16, 7, col); }
+  ctx.restore();
+  if (Math.random() < 0.02) spark(x + rand(-8, 8), y - 70, 'heart');
+}
+function drawTogether(){
+  const T = LIFE && LIFE.state.together; if (!T) return;
+  const t = S.t;
+  if (T.kind === 'date' || T.kind === 'cook'){
+    ellipse(512, FLOOR - 18, 7, 1.6, '#ffffff'); ellipse(498, FLOOR - 18, 7, 1.6, '#ffffff');
+    [[486, 0], [528, 1]].forEach(([cx, i]) => { rect(cx - 1.5, FLOOR - 30, 3, 12, '#f3e9d2'); ellipse(cx, FLOOR - 33 + Math.sin(t*9 + i)*0.4, 1.6, 2.8, '#f2a93b'); ctx.save(); ctx.globalCompositeOperation = 'lighter'; const g = ctx.createRadialGradient(cx, FLOOR - 33, 0, cx, FLOOR - 33, 26); g.addColorStop(0, 'rgba(255,190,110,0.35)'); g.addColorStop(1, 'rgba(255,190,110,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, FLOOR - 33, 26, 0, PI*2); ctx.fill(); ctx.restore(); });
+  }
+  if (T.kind === 'movie'){ ctx.fillStyle = '#d2493f'; ctx.beginPath(); ctx.moveTo(500, FLOOR - 18); ctx.lineTo(516, FLOOR - 18); ctx.lineTo(514, FLOOR - 30); ctx.lineTo(502, FLOOR - 30); ctx.fill(); for (let i = 0; i < 6; i++) circle(503 + i*2.2, FLOOR - 31 - (i % 2)*2, 2, '#fff6dc'); }
+  if (T.kind === 'dance') ghost(S.x + S.pose.dx + 30, GROUND - 50, true, true, t);
+  else if (T.kind === 'cook' && S.loop !== 'date') ghost(924, GROUND - 50, true, true, t);
+  else ghost(500, GROUND - 28, false, true, t);
 }
 function drawGifts(){
   const boxes = S.items.filter(it => it.state === 'wrapped').slice(-5);
@@ -1321,7 +1361,7 @@ function draw(){
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   const ph = phase();
   drawOutside(ph); drawShell(); drawBedroom(ph); drawLiving(); drawKitchen(); drawBathroom();
-  drawGifts(); drawPerson(); drawBlanketOver(); drawBathFront(); drawTouch(1/60); drawWater();
+  drawGifts(); drawTogether(); drawPerson(); drawBlanketOver(); drawBathFront(); drawTouch(1/60); drawWater();
   drawLighting(ph); drawParticles(); drawBubble();
 }
 let last = performance.now(), lastStatus = '';
@@ -1370,18 +1410,18 @@ function placeFromServer(st){
   syncDevices(st); S.water = S.waterTarget = st.water || 0; S.outfit = normOutfit(st.outfit); S.mood = st.mood;
   S.hold = Object.assign({L:null, R:null}, HOLD_FOR[S.loop] || {});
   S.pose = Object.assign({}, basePose(S.loop, 0));
-  if (st.emo){ S.emoT = Object.assign({}, st.emo); S.emoS = Object.assign({}, st.emo); }
+  if (st.emo){ S.emoT = Object.assign({}, EMO_ZERO, st.emo); S.emoS = Object.assign({}, EMO_ZERO, st.emo); }
 }
 function applyState(st){
   LIFE.state = st; S.waterTarget = st.water || 0;
   if (st.emo){
     const jump = (st.emo.surprise - (S.emoT.surprise || 0)) > 0.3 || (st.emo.fear - (S.emoT.fear || 0)) > 0.3;
-    S.emoT = Object.assign({}, st.emo);
+    S.emoT = Object.assign({}, EMO_ZERO, st.emo);
     if (jump && !S.cur && !S.queue.length && S.loop !== 'sleep') S.queue.push(gest('startle'));
     renderEmotions(st.emo);
   }
   if (ID.male !== st.male || ID.name !== st.name){ ID.male = st.male; ID.name = st.name; renderId(); }
-  renderMind(); renderNeeds(st.needs, st.needs_view); setBrain(); renderControls(); renderWishes();
+  renderMind(); renderNeeds(st.needs, st.needs_view); setBrain(); renderControls(); renderWishes(); renderTogether();
 }
 function renderMind(){
   const st = LIFE.state;
@@ -1412,7 +1452,8 @@ function renderNeeds(n, view){
     row.append(l, tr, num); box.append(row);
   }
 }
-const EMO_RU = {joy:['радость','#e0a821'], sadness:['грусть','#3e6fd8'], fear:['страх','#7d55c7'], anger:['злость','#d2493f'], surprise:['удивление','#ec8a3c'], disgust:['отвращение','#3f9a5c'], contempt:['презрение','#8a7d66']};
+const EMO_RU = {joy:['радость','#e0a821'], sadness:['грусть','#3e6fd8'], fear:['страх','#7d55c7'], anger:['злость','#d2493f'], surprise:['удивление','#ec8a3c'], disgust:['отвращение','#3f9a5c'], contempt:['презрение','#8a7d66'],
+  shyness:['смущение','#e86a92'], jealousy:['ревность','#6f8f2e'], longing:['скучание','#5aa0c8']};
 function renderEmotions(E){
   const box = document.getElementById('emotions'); box.replaceChildren();
   for (const k of Object.keys(EMO_RU)){
@@ -1455,14 +1496,14 @@ function handle(msg){
   } else if (msg.type === 'event'){
     const ev = msg.ev;
     if (ev.kind === 'chat_user') addMsg('me', ev.text);
-    else if (ev.kind === 'chat_reply'){ addMsg('him', ev.text, actsText(ev.data.actions)); say(ev.text); S.lastUser = S.t; }
+    else if (ev.kind === 'chat_reply'){ addMsg(ev.data.initiated ? 'init' : 'him', ev.text, actsText(ev.data.actions)); say(ev.text); S.lastUser = S.t; }
     else if (ev.kind === 'aloud'){ addMsg('aloud', ev.text); document.getElementById('feed').prepend(feedItem(ev)); }
     else if (ev.kind === 'wish'){ addSys(ID.name + ' хочет в подарок: ' + ev.data.wish.name + ' — добавлено в «Её желания».'); document.getElementById('feed').prepend(feedItem(ev)); }
     else { document.getElementById('feed').prepend(feedItem(ev)); if (ev.kind === 'diary') api('/api/state').then(s => renderNotes(s.notes, s.diary)).catch(() => {}); }
   } else if (msg.type === 'busy'){
     if (LIFE){ LIFE.state.busy = msg.what; setBrain(); }
     S.pending = msg.what === 'chat';
-  } else if (msg.type === 'needs'){ if (LIFE){ LIFE.state.needs = msg.needs; if (msg.needs_view) LIFE.state.needs_view = msg.needs_view; renderNeeds(msg.needs, LIFE.state.needs_view); if ('water' in msg){ LIFE.state.water = msg.water; LIFE.state.leak = msg.leak; S.waterTarget = msg.water; } if (msg.emo){ LIFE.state.emo = msg.emo; S.emoT = Object.assign({}, msg.emo); renderEmotions(msg.emo); } } }
+  } else if (msg.type === 'needs'){ if (LIFE){ LIFE.state.needs = msg.needs; if (msg.needs_view) LIFE.state.needs_view = msg.needs_view; renderNeeds(msg.needs, LIFE.state.needs_view); if ('water' in msg){ LIFE.state.water = msg.water; LIFE.state.leak = msg.leak; S.waterTarget = msg.water; } if (msg.emo){ LIFE.state.emo = msg.emo; S.emoT = Object.assign({}, EMO_ZERO, msg.emo); renderEmotions(msg.emo); } } }
   else if (msg.type === 'world'){ applyState(msg.state); syncDevices(msg.state); if (TOUCH_DUR[msg.what]) startTouch(msg.what); if (msg.what === 'gift') for (let i = 0; i < 14; i++) spark(rand(606, 700), GROUND - rand(0, 30), 'star'); if (msg.state.loop !== S.loop && !S.cur && !S.queue.length) S.loop = msg.state.loop; renderControls(); addSys('Вы ' + msg.guest + '.'); }
   else if (msg.type === 'usage') renderUsage(msg.usage);
   else if (msg.type === 'notes') renderNotes(msg.notes, msg.diary);
@@ -1487,7 +1528,7 @@ async function resync(){
     if (first){
       ID.male = snap.state.male; ID.name = snap.state.name;
       log.replaceChildren();
-      for (const ev of snap.chat) log.append(ev.kind === 'chat_user' ? msgEl('me', ev.text) : ev.kind === 'aloud' ? msgEl('aloud', ev.text) : msgEl('him', ev.text, actsText(ev.data.actions)));
+      for (const ev of snap.chat) log.append(ev.kind === 'chat_user' ? msgEl('me', ev.text) : ev.kind === 'aloud' ? msgEl('aloud', ev.text) : msgEl(ev.data.initiated ? 'init' : 'him', ev.text, actsText(ev.data.actions)));
       if (!snap.chat.length) log.append(sysEl('Напишите что-нибудь — ' + snap.state.name + ' ответит, если не спит.'));
       log.scrollTop = log.scrollHeight;
     }
@@ -1498,8 +1539,8 @@ async function resync(){
 /* ---------- chat UI ---------- */
 const log = document.getElementById('log'), form = document.getElementById('form'), msgInput = document.getElementById('msg');
 function msgEl(who, text, acts){
-  const el = document.createElement('div'); el.className = 'msg ' + (who === 'aloud' ? 'him aloud' : who);
-  const w = document.createElement('span'); w.className = 'who'; w.textContent = who === 'me' ? 'вы' : who === 'aloud' ? ID.name + ' · вслух' : ID.name;
+  const el = document.createElement('div'); el.className = 'msg ' + (who === 'aloud' ? 'him aloud' : who === 'init' ? 'him init' : who);
+  const w = document.createElement('span'); w.className = 'who'; w.textContent = who === 'me' ? 'вы' : who === 'aloud' ? ID.name + ' · вслух' : who === 'init' ? ID.name + ' · ' + gx('пишет первым', 'пишет первой') : ID.name;
   const b = document.createElement('div'); b.textContent = text;
   el.append(w, b);
   if (acts){ const a = document.createElement('div'); a.className = 'acts'; a.textContent = '→ ' + acts; el.append(a); }
@@ -1608,6 +1649,16 @@ function renderWishes(){
   }
 }
 document.getElementById('wishClear').addEventListener('click', () => api('/api/wish/delete', {all:true}).catch(e => addSys('Не получилось: ' + e.message)));
+const TOGETHER_UI = [['date','Пригласить на свидание'], ['movie','Посмотреть кино вместе'], ['dance','Потанцевать вместе'], ['cook','Приготовить ужин вместе']];
+const togetherRow = document.getElementById('togetherRow'), togetherBtns = [];
+for (const [kind, label] of TOGETHER_UI){ const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.className = 'tenderBtn'; b.addEventListener('click', () => api('/api/invite', {kind}).catch(e => addSys('Не получилось: ' + e.message))); togetherRow.append(b); togetherBtns.push(b); }
+const endBtn = document.createElement('button'); endBtn.type = 'button'; endBtn.textContent = 'Закончить'; endBtn.hidden = true;
+endBtn.addEventListener('click', () => api('/api/invite', {kind:'end'}).catch(e => addSys('Не получилось: ' + e.message))); togetherRow.append(endBtn);
+function renderTogether(){
+  const T = LIFE && LIFE.state.together;
+  endBtn.hidden = !T;
+  togetherBtns.forEach((b, i) => { b.setAttribute('aria-pressed', String(!!T && T.kind === TOGETHER_UI[i][0])); });
+}
 const TOUCHES = [['pat','Погладить по голове'], ['kiss','Чмокнуть в щёчку'], ['hand','Взять за руку'], ['hug','Обнять'], ['flowers','Подарить цветы']];
 const tender = document.getElementById('tender');
 for (const [what, label] of TOUCHES){ const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.className = 'tenderBtn'; b.addEventListener('click', () => poke(what)); tender.append(b); }

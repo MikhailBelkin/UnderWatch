@@ -73,7 +73,8 @@ ACTIONS = {
     "bow": (None, "", "кланяется"), "stretch": (None, None, "потягивается"), "sit": ("sofa", "sit", "сидит на диване"),
     "stand": (None, None, "встаёт"), "watch_tv": ("sofa", "watch", "смотрит телевизор"),
     "open_gift": ("center", None, "открывает подарок"), "eat_treat": ("sofa", "sit", "ест вкусняшку"),
-    "use_item": (None, "", "радуется подарку"),
+    "use_item": (None, "", "радуется подарку"), "together": (None, None, "проводит время с гостем"),
+    "date": ("sofa", "date", "ужинает с гостем при свечах"), "dance_together": ("center", "dancing", "танцует с гостем"),
     "tv_off": (None, "", "выключает телевизор"), "play_game": ("sofa", "game", "играет в приставку"),
     "music_on": ("music", "listen", "слушает пластинку"), "music_off": ("music", None, "выключает музыку"),
     "cook": ("stove", None, "готовит"), "eat": (None, "", "ест"), "drink": ("fridge", None, "пьёт"),
@@ -93,6 +94,7 @@ sit — сесть на диван; stand — встать; watch_tv — сес�
 play_game — играть в приставку; music_on — поставить пластинку и слушать; music_off — выключить музыку;
 cook — приготовить еду на плите; eat — поесть (после cook или из холодильника); drink — попить из холодильника; open_fridge — заглянуть в холодильник;
 change_clothes{outfit, color} — переодеться (outfit: casual — футболка и брюки, pajamas — пижама, dress — романтичное платье, shorts — шорты и футболка, warm — джинсы и свитер, mini — миниюбка и топ, swimsuit — купальник, underwear — нижнее бельё, bathrobe — халат, towel — полотенце; color — по желанию); light_on{room} / light_off{room} — свет (room: bedroom, living, kitchen, bathroom, all; без room — там, где ты); look_window — смотреть в окно, мечтать;
+together{kind} — провести время вместе с гостем (kind: date — свидание, ужин при свечах; movie — кино вдвоём; dance — танцевать вместе; cook — приготовить ужин вместе); соглашайся, только если правда хочется; предлагать можно и самому — первым;
 open_gift{id} — открыть подарок в обёртке; eat_treat{id} — съесть вкусняшку из подарков; use_item{id} — воспользоваться подаренной вещью (книгу — читать, пластинку — слушать, игрушку — обнять, одежду — примерить);
 use_toilet — сходить в туалет; shower — принять душ; brush_teeth — почистить зубы; wash_face — умыться; comb_hair — причесаться у зеркала;
 console_off — выключить приставку; close_valve — перекрыть воду под мойкой (если течёт); mop_floor — вытирать воду с пола шваброй (имеет смысл, только когда вода уже не течёт);
@@ -100,17 +102,21 @@ read_book — читать книгу на диване; phone_call — позв
 tidy_up — прибраться; write_diary — записать мысли в блокнот; sleep — лечь спать. Днём спать можно, только если бодрость ниже 30 (тогда это короткий сон) или до отбоя меньше 15 минут; если просто хочется передохнуть — sit или look_window."""
 LOOP_LABEL = {"sit": "сидит на диване", "watch": "смотрит телевизор", "game": "играет в приставку", "listen": "слушает пластинку",
               "sleep": "спит", "daydream": "смотрит в окно", "read": "читает книгу", "phone": "болтает по телефону",
-              "workout": "делает зарядку", "write": "пишет в блокнот", "mop": "вытирает пол", "toilet": "сидит в туалете", "shower": "принимает душ"}
+              "workout": "делает зарядку", "write": "пишет в блокнот", "mop": "вытирает пол", "toilet": "сидит в туалете", "shower": "принимает душ",
+              "date": "на свидании с гостем", "dancing": "танцует с гостем"}
 MOODS = {"happy", "neutral", "sad", "surprised", "angry", "sleepy", "love"}
 # Ekman's basic emotions. Each fades on its own clock (minutes); opposites damp each other.
 EMOTIONS = {"joy": "радость", "sadness": "грусть", "fear": "страх", "anger": "злость", "surprise": "удивление",
-            "disgust": "отвращение", "contempt": "презрение"}
-EMO_TAU = {"joy": 25, "sadness": 40, "fear": 8, "anger": 12, "surprise": 1.5, "disgust": 6, "contempt": 12}
-EMO_OPPOSE = {"joy": ("sadness", "anger", "fear"), "sadness": ("joy",), "anger": ("joy",), "fear": ("joy",),
-              "disgust": ("joy",), "contempt": (), "surprise": ()}
+            "disgust": "отвращение", "contempt": "презрение",
+            # social feelings on top of Ekman's basic set
+            "shyness": "смущение", "jealousy": "ревность", "longing": "скучание"}
+EMO_TAU = {"joy": 25, "sadness": 40, "fear": 8, "anger": 12, "surprise": 1.5, "disgust": 6, "contempt": 12,
+           "shyness": 4, "jealousy": 15, "longing": 100000}  # longing is driven by absence, not by a clock
+EMO_OPPOSE = {"joy": ("sadness", "anger", "fear", "longing"), "sadness": ("joy",), "anger": ("joy",), "fear": ("joy",),
+              "disgust": ("joy",), "contempt": (), "surprise": (), "shyness": (), "jealousy": ("joy",), "longing": ()}
 MOOD_COMPAT = {"happy": ("joy", 0.6), "love": ("joy", 0.8), "sad": ("sadness", 0.6), "angry": ("anger", 0.6),
                "surprised": ("surprise", 0.7), "neutral": ("neutral", 0.5), "sleepy": ("neutral", 0.5)}
-EMO_LIST = "joy|sadness|fear|anger|surprise|disgust|contempt|neutral"
+EMO_LIST = "joy|sadness|fear|anger|surprise|disgust|contempt|shyness|jealousy|longing|neutral"
 INSTANT = {  # need changes applied when the action happens
     "eat": {"hunger": 55, "fun": 4, "bladder": -12}, "drink": {"hunger": 6, "energy": 4, "bladder": -30}, "dance": {"fun": 10, "energy": -3, "hygiene": -5},
     "workout": {"energy": -4}, "change_clothes": {"fun": 3}, "laugh": {"fun": 3},
@@ -122,6 +128,7 @@ PER_MIN = {  # need drift per awake minute, by loop
     "listen": {"fun": 0.6}, "read": {"fun": 0.5}, "write": {"fun": 0.35}, "daydream": {"fun": 0.25, "energy": 0.05},
     "phone": {"social": 1.0, "fun": 0.25}, "workout": {"fun": 0.3, "energy": -0.15, "hygiene": -0.4}, "mop": {"fun": -0.3, "energy": -0.12, "hygiene": -0.3},
     "shower": {"hygiene": 9, "fun": 0.3, "energy": 0.2},
+    "date": {"social": 1.2, "fun": 0.5}, "dancing": {"social": 1.0, "fun": 1.0, "energy": -0.1, "hygiene": -0.1},
 }
 ROOMS = {"bedroom": ("bed", "night"), "living": ("liv", "floor"), "kitchen": ("kit",), "bathroom": ("bath",),
          "all": ("bed", "night", "liv", "floor", "kit", "bath")}
@@ -424,7 +431,9 @@ def llm(purpose, model, system, prompt, timeout=240):
 DEFAULT_STATE = {
     "name": "Лёва", "male": True, "location": "sofa", "loop": "sit", "label": "сидит на диване",
     "until": 0, "tv": "off", "console": False, "music": False, "outfit": "blue", "mood": "joy",
-    "emo": {"joy": 0.35, "sadness": 0, "fear": 0, "anger": 0, "surprise": 0, "disgust": 0, "contempt": 0},
+    "emo": {"joy": 0.35, "sadness": 0, "fear": 0, "anger": 0, "surprise": 0, "disgust": 0, "contempt": 0,
+            "shyness": 0, "jealousy": 0, "longing": 0},
+    "last_guest_ts": 0, "last_initiative": 0, "together": None, "invite": None,
     "lights": {"bed": True, "night": False, "liv": True, "floor": False, "kit": True, "bath": False}, "water": 0.0, "leak": False,
     "react_at": 0, "react_reasons": [], "last_react": 0, "touch_log": [], "flowers_ts": 0,
     "items": [], "wishes": [], "next_id": 1,
@@ -449,7 +458,7 @@ def save_state():
 
 def public_state():
     with state_lock:
-        s = {k: S[k] for k in ("name", "male", "location", "loop", "label", "until", "tv", "console", "music", "lights", "water", "leak", "flowers_ts", "items", "wishes",
+        s = {k: S[k] for k in ("name", "male", "location", "loop", "label", "until", "tv", "console", "music", "lights", "water", "leak", "flowers_ts", "items", "wishes", "together", "invite",
                                "outfit", "mood", "emo", "needs", "thought", "intent", "plan", "act_seq", "last_act")}
     t = now()
     s["awake_time"] = is_awake_time(t)
@@ -483,6 +492,16 @@ def feel(name, intensity):
         S["mood"] = dominant()[0]
 
 
+def guest_here():
+    """The guest just did something: longing turns into joy."""
+    with state_lock:
+        L = S["emo"].get("longing", 0)
+        if L > 0.1:
+            feel("joy", min(1.0, S["emo"]["joy"] + L * 0.6))
+            S["emo"]["longing"] = round(L * 0.15, 3)
+        S["last_guest_ts"] = time.time()
+
+
 def appraise(name, x):
     """Immediate reaction to what happens in the world, coloured by character."""
     P, Sn = trait("positivity"), trait("sensitivity")
@@ -514,7 +533,7 @@ def emo_line():
     felt = sorted(((v, k) for k, v in E.items() if v >= 0.1), reverse=True)
     if not felt:
         return "Эмоции: спокойствие, ничего особенного не чувствуешь."
-    return "Эмоции сейчас (базовые по Экману, 0–1): " + ", ".join(f"{EMOTIONS[k]} {v:.1f}" for v, k in felt) + "."
+    return "Эмоции и чувства сейчас (0–1): " + ", ".join(f"{EMOTIONS[k]} {v:.1f}" for v, k in felt) + "."
 
 
 NEED_WORDS = {  # (threshold, masculine, feminine), checked from the top
@@ -582,6 +601,13 @@ def update_needs():
         for k in S["emo"]:
             tau = EMO_TAU[k] * (0.5 if S["loop"] == "sleep" else 1)
             S["emo"][k] = round(S["emo"][k] * math.exp(-dt_min / tau), 3)
+        if is_awake_time() and S["loop"] != "sleep":
+            away = (t - (S.get("last_guest_ts") or t)) / 60
+            target = max(0.0, min(1.0, (away - 20) / 180)) * (0.35 + 0.65 * (trait("romance") + trait("extraversion")) / 2)
+            if S.get("together"):
+                target = 0.0
+            L = S["emo"]["longing"]
+            S["emo"]["longing"] = round(min(target, L + 0.012 * dt_min) if L < target else max(target, L - 0.02 * dt_min), 3)
         S["mood"] = dominant()[0]
         if S["leak"]:
             S["water"] = min(WATER_MAX, S["water"] + WATER_RISE * dt_min)
@@ -615,6 +641,8 @@ def clean_actions(raw):
                 a.setdefault("place", arg)
             elif arg in ROOMS:
                 a.setdefault("room", arg)
+            elif arg in ("date", "movie", "dance", "cook"):
+                a.setdefault("kind", arg)
             elif arg in COLORS:
                 a.setdefault("color", arg)
             elif arg.split(",")[0].strip() in OUTFIT_TYPES:
@@ -629,6 +657,8 @@ def clean_actions(raw):
             if a.get("place") not in PLACES:
                 continue
             x["place"] = a["place"]
+        if d == "together" and a.get("kind") in ("date", "movie", "dance", "cook"):
+            x["kind"] = a["kind"]
         if d in ("open_gift", "eat_treat", "use_item") and a.get("id") is not None:
             try:
                 x["id"] = int(a["id"])
@@ -659,6 +689,35 @@ def complete_chain(actions):
         out.append(a)
     if out and out[-1]["do"] == "walk_to" and out[-1]["place"] in NATURAL:
         out[-1] = {"do": NATURAL[out[-1]["place"]]}
+    return out
+
+
+TOGETHER = {"date": "свидание: ужин при свечах", "movie": "кино вдвоём", "dance": "танцы вместе", "cook": "приготовить ужин вместе"}
+TOGETHER_LOOPS = {"date": ("date",), "movie": ("watch", "sit"), "dance": ("dancing", "listen"), "cook": ("date",)}
+
+
+def resolve_together(actions):
+    """together{kind} becomes concrete actions; she dresses up for a date."""
+    out = []
+    for a in actions:
+        if a["do"] != "together":
+            out.append(a)
+            continue
+        kind = a.get("kind") or (S.get("invite") or {}).get("kind") or "date"
+        if kind not in TOGETHER:
+            continue
+        mark = {"together": kind}
+        if kind == "date":
+            dressed = any(x["do"] == "change_clothes" and x.get("outfit") in ("dress", "mini") for x in out)
+            if outfit_of()["type"] not in ("dress", "mini") and not dressed:
+                out.append({"do": "change_clothes", "outfit": "dress"})
+            out.append(dict(mark, do="date"))
+        elif kind == "movie":
+            out.append(dict(mark, do="watch_tv"))
+        elif kind == "dance":
+            out += [{"do": "music_on"}, dict(mark, do="dance_together")]
+        elif kind == "cook":
+            out += [dict(mark, do="cook"), dict(mark, do="date")]
     return out
 
 
@@ -819,6 +878,16 @@ def act(actions, minutes=None, thought=None, intent=None, mood=None, aloud=None,
             S["lights"]["bed"] = True
         if loop == "mop" and S["water"] <= 0:
             loop = None
+        started = next((a["together"] for a in actions if a.get("together")), None)
+        if started:
+            S["together"] = {"kind": started, "since": time.time()}
+            S["invite"] = None
+            S["emo"]["longing"] = 0
+            appraise("joy", 0.5)
+            if started == "date":
+                appraise("shyness", 0.3)
+        elif S.get("together") and actions and loop not in TOGETHER_LOOPS[S["together"]["kind"]] and not any(a["do"] in ("cook", "music_on", "change_clothes") for a in actions):
+            S["together"] = None
         S["loop"], S["location"] = loop, loc
         S["label"] = LOOP_LABEL[loop] if loop else "стоит: " + PLACES[loc]
         if loop == "mop":
@@ -887,9 +956,11 @@ def persona():
 Иногда с тобой разговаривает гость — человек, который смотрит на твою квартиру «через стекло». Ты о нём знаешь и рад{g('', 'а')} поболтать, но твоя жизнь не крутится вокруг него.
 Иногда в квартире что-то происходит само: гаснет свет, включается телевизор, прорывает трубу. Возможно, это проделки гостя — он, кажется, умеет влиять на твой мир. Реагируй на такое как живой человек: заметь, исправь, если мешает, удивись, поворчи или спроси гостя.
 В шкафу у тебя разная одежда: обычная (футболка и брюки), пижама, романтичное платье, шорты с футболкой, джинсы со свитером, миниюбка с топом, купальник, нижнее бельё, халат. Одевайся по ситуации и настроению: дома утром можно в пижаме или халате, после душа ты в полотенце, перед сном — пижама.
+Романтика у вас — в чувствах и поступках: смущение и румянец, радость, ревность, скучание, подарки, свидания и совместные занятия. Без пошлости.
+Обиды не копи: поссорились — позлись немного, а потом отпусти, как обычный человек; через какое-то время остаётся лишь лёгкий осадок.
 Гость может дарить подарки — вкусняшки и вещи. Если тебе чего-то по-настоящему хочется, можешь попросить его (поле wish), но не выпрашивай постоянно: он сам решает, дарить ли и когда.
 Гость может и прикоснуться к тебе: погладить по голове, поцеловать в щёку, взять за руку, обнять, подарить цветы. Отвечай по-своему, исходя из того, как ты к нему сейчас относишься: это может быть приятно, трогательно, смущать или раздражать, если ты на него сердишься или он перебарщивает.
-У тебя живые эмоции — базовые по Экману: радость, грусть, страх, злость, удивление, отвращение, презрение. Они видны на лице и в позе и влияют на твои решения и слова. Каждый раз честно называй, что чувствуешь сейчас, и с какой силой; не каждое событие вызывает сильную эмоцию, а спокойствие — это neutral.
+У тебя живые эмоции — базовые по Экману (радость, грусть, страх, злость, удивление, отвращение, презрение) и социальные чувства: смущение, ревность, скучание. Они видны на лице и в позе и влияют на твои решения и слова. Каждый раз честно называй, что чувствуешь сейчас, и с какой силой; не каждое событие вызывает сильную эмоцию, а спокойствие — это neutral.
 Твой характер (это главное в тебе, важнее старых заметок о себе — если заметки противоречат характеру, верь характеру): {character_text()}.
 Говори о себе в {g('мужском', 'женском')} роде. Пиши по-русски, живо и естественно, без пафоса и без канцелярита. Ты бодрствуешь с {wake_h()}:00 до {sleep_h()}:00, потом спишь.
 
@@ -940,6 +1011,19 @@ def world_line():
             + lights + dark + water + flowers)
 
 
+def guest_line():
+    last = S.get("last_guest_ts") or 0
+    parts = []
+    if S.get("together"):
+        parts.append(f"Сейчас вы с гостем вместе: {TOGETHER[S['together']['kind']]} (уже {int((time.time() - S['together']['since']) / 60)} мин).")
+    elif S.get("invite") and time.time() - S["invite"]["ts"] < 30 * 60:
+        parts.append(f"Гость недавно пригласил тебя: {TOGETHER[S['invite']['kind']]} — ты ещё не ответил{g('', 'а')} делом.")
+    if last:
+        m = int((time.time() - last) / 60)
+        parts.append("Гость был рядом только что." if m < 3 else f"Гость не появлялся уже {m // 60} ч {m % 60} мин." if m >= 60 else f"Гость не появлялся {m} мин.")
+    return " ".join(parts) or "Гость сегодня ещё не появлялся."
+
+
 def situation():
     t = now()
     with state_lock:
@@ -958,6 +1042,7 @@ def situation():
             world_line() + f" На тебе: {outfit_text()}.",
             "Самочувствие (0 — плохо, 100 — отлично): " + ", ".join(f"{NEED_RU[k]} {int(v)} ({need_word(k, v)})" for k, v in n.items()) + (". " + "; ".join(hints).capitalize() + "." if hints else "."),
             emo_line(),
+            guest_line(),
         ]
         if S["plan"]:
             lines.append("Твой план на сегодня:\n" + "\n".join("- " + p for p in S["plan"]))
@@ -997,9 +1082,9 @@ def decide(reason="next", happened=None):
 
 {reason_text} Реши, чем заняться дальше. Твой характер: {character_text()} — пусть он определяет, чем тебе хочется заняться. Это твоя жизнь: следуй своим желаниям, плану и самочувствию, не повторяй одно и то же без причины, иногда делай что-то неожиданное.
 Ответ JSON:
-{{"thought": "внутренний монолог, 1–3 предложения", "intent": "коротко, что сейчас делаешь", "actions": [{{"do": "..."}}], "minutes": сколько минут продлится последнее долгое занятие (1–90), "emotion": "{EMO_LIST}", "intensity": сила эмоции 0.1–1, "aloud": "что говоришь вслух сам{g('', 'а')} себе, или пусто", "diary": "короткая заметка в блокнот, если случилось важное, иначе пусто", "wish": "ОБЯЗАТЕЛЬНО заполни, если в этом ответе ты говоришь, что хотел{g('', 'а')} бы получить что-то в подарок или просишь что-то подарить: что именно, коротко (например «круассан», «книга Бунина в твёрдом переплёте»); иначе пусто"}}"""
+{{"thought": "внутренний монолог, 1–3 предложения", "intent": "коротко, что сейчас делаешь", "actions": [{{"do": "..."}}], "minutes": сколько минут продлится последнее долгое занятие (1–90), "emotion": "{EMO_LIST}", "intensity": сила эмоции 0.1–1, "aloud": "что говоришь вслух сам{g('', 'а')} себе, или пусто", "diary": "короткая заметка в блокнот, если случилось важное, иначе пусто", "to_guest": "если скучаешь или хочешь что-то сказать гостю сам{g('', 'а')}, первым — короткое сообщение ему; иначе пусто", "wish": "ОБЯЗАТЕЛЬНО заполни, если в этом ответе ты говоришь, что хотел{g('', 'а')} бы получить что-то в подарок или просишь что-то подарить: что именно, коротко (например «круассан», «книга Бунина в твёрдом переплёте»); иначе пусто"}}"""
     r = llm("decide", MODEL_FAST, persona(), prompt)
-    actions = resolve_gifts(body_allows(complete_chain(clean_actions(r.get("actions")))))
+    actions = resolve_together(resolve_gifts(body_allows(complete_chain(clean_actions(r.get("actions"))))))
     if json.dumps(r.get("actions"), ensure_ascii=False, sort_keys=True) != json.dumps(actions, ensure_ascii=False, sort_keys=True):
         log("actions:", json.dumps(r.get("actions"), ensure_ascii=False)[:300], "->", json.dumps(actions, ensure_ascii=False)[:300])
     minutes = max(1, min(90, int(r.get("minutes") or 20)))
@@ -1017,6 +1102,11 @@ def decide(reason="next", happened=None):
         emit_event("note", str(r["diary"]).strip())
     if r.get("wish"):
         add_wish(r["wish"])
+    note = str(r.get("to_guest") or "").strip()
+    if note and time.time() - (S.get("last_initiative") or 0) > 30 * 60:
+        with state_lock:
+            S["last_initiative"] = time.time()
+        emit_event("chat_reply", note, {"initiated": True})
     act(actions, minutes=minutes, thought=thought, intent=str(r.get("intent") or "").strip(), emotion=parse_emotion(r), aloud=aloud)
 
 
@@ -1069,7 +1159,7 @@ def reflect():
 Ответ JSON:
 {{"diary": "запись в дневник за сегодня от первого лица, 4–8 предложений: что делал{g('', 'а')}, что чувствовал{g('', 'а')}, что запомнилось",
  "self_notes": "обновлённые заметки о себе (до 1500 символов, короткие пункты «- »): характер, привычки, увлечения, текущие проекты и цели, отношения с друзьями и родными, важные события. Сохрани важное из старых заметок, обнови устаревшее, добавь новое",
- "guest_notes": "обновлённые заметки о госте (до 1000 символов, пункты «- »): как зовут, что о нём известно, о чём говорили, о чём договорились. Если гость не появлялся — верни прежние заметки как есть или пусто"}}"""
+ "guest_notes": "обновлённые заметки о госте (до 1000 символов, пункты «- »): как зовут, что о нём известно, о чём говорили, о чём договорились. Ссоры записывай коротко как факт и чем кончилось, без выводов на будущее и без обид — ты отходчив{g('', 'а')}. Если гость не появлялся — верни прежние заметки как есть или пусто"}}"""
     r = llm("reflect", MODEL_DEEP, persona(), prompt, timeout=300)
     if str(r.get("diary") or "").strip():
         emit_event("diary", str(r["diary"]).strip())
@@ -1095,6 +1185,7 @@ DOING_WORDS = re.compile(r"\b(открыва|откро|пойд|пошл|иду
 
 def chat(text):
     emit_event("chat_user", text)
+    guest_here()
     with state_lock:
         S["needs"]["social"] = clampn(S["needs"]["social"] + 4 + 8 * trait("extraversion"))
         S["needs"]["energy"] = clampn(S["needs"]["energy"] - 1.5 * (1 - trait("extraversion")))  # talking tires an introvert
@@ -1123,7 +1214,7 @@ def chat(text):
 Ответ JSON: {{"say": "реплика гостю", "thought": "что ты при этом подумал{g('', 'а')}, 1 предложение", "emotion": "{EMO_LIST}", "intensity": сила эмоции 0.1–1, "actions": [], "minutes": сколько минут займёт новое занятие, если actions не пустой, "wish": "ОБЯЗАТЕЛЬНО заполни, если в этом ответе ты говоришь, что хотел{g('', 'а')} бы получить что-то в подарок или просишь что-то подарить: что именно, коротко (например «круассан», «книга Бунина в твёрдом переплёте»); иначе пусто"}}"""
             r = llm("chat", MODEL_FAST, persona(), prompt)
             say = str(r.get("say") or "").strip() or "…"
-            actions = resolve_gifts(body_allows(complete_chain(clean_actions(r.get("actions")))))
+            actions = resolve_together(resolve_gifts(body_allows(complete_chain(clean_actions(r.get("actions"))))))
             thought = str(r.get("thought") or "").strip()
             emit_event("chat_reply", say, {"actions": actions})
             if r.get("wish"):
@@ -1159,6 +1250,7 @@ TOUCHES = {
 
 def poke(what):
     """The guest changes the world. The resident perceives it as something that just happened."""
+    guest_here()
     with state_lock:
         was = S["loop"]
         on = False
@@ -1172,6 +1264,8 @@ def poke(what):
             S["touch_log"] = recent + [now_ts]
             f = (0.65 ** len(recent)) * (1 - 0.5 * S["emo"]["anger"])  # habituation; resentment dulls tenderness
             appraise("joy", joy * f * (0.5 + trait("romance")) * (0.7 + 0.6 * trait("friendliness")))
+            shy = {"kiss": 0.5, "hug": 0.4, "hand": 0.35, "pat": 0.25, "flowers": 0.3}[what]
+            appraise("shyness", shy * (1.1 - 0.6 * trait("extraversion")) * (0.7 ** len(recent)))
             appraise("surprise", surprise * (0.7 ** len(recent)))
             S["needs"]["social"] = clampn(S["needs"]["social"] + 8 * f)
             if what == "flowers":
@@ -1233,6 +1327,7 @@ def poke(what):
 
 
 def give_gift(key=None, name=None, kind=None, wish_id=None):
+    guest_here()
     with state_lock:
         wish = None
         if wish_id is not None:
@@ -1269,6 +1364,30 @@ def give_gift(key=None, name=None, kind=None, wish_id=None):
     emit_event("world", text, {"by": "guest", "what": "gift", "guest": f"подарили: {name}", "item": it})
     hub.publish({"type": "world", "what": "gift", "text": text, "guest": f"подарили: {name}", "state": st})
     return st, None
+
+
+def invite(kind):
+    guest_here()
+    with state_lock:
+        if kind == "end":
+            was = S.get("together")
+            S["together"], S["invite"] = None, None
+            text = "Гость говорит, что ему пора — ваше совместное время закончилось." if was else None
+            if not was:
+                return public_state()
+            guest = "закончили совместное время"
+        else:
+            S["invite"] = {"kind": kind, "ts": time.time()}
+            text = f"Гость приглашает тебя: {TOGETHER[kind]}. Если хочешь — соглашайся действием together{{{kind}}}; если нет — откажи словами, можно мягко."
+            guest = "пригласили: " + TOGETHER[kind]
+        if is_awake_time():
+            S["react_reasons"] = (S.get("react_reasons") or [])[-5:] + [text]
+            S["react_at"] = time.time() + 2
+        save_state()
+        st = public_state()
+    emit_event("world", text, {"by": "guest", "what": "invite", "guest": guest})
+    hub.publish({"type": "world", "what": "invite", "text": text, "guest": guest, "state": st})
+    return st
 
 
 def drop_wishes(wish_id=None):
@@ -1514,6 +1633,11 @@ class Handler(BaseHTTPRequestHandler):
             if err:
                 return self.send_json({"error": err}, 400)
             self.send_json({"ok": True, "state": st})
+        elif path == "/api/invite":
+            kind = str(body.get("kind") or "")
+            if kind not in TOGETHER and kind != "end":
+                return self.send_json({"error": "неизвестное приглашение"}, 400)
+            self.send_json({"ok": True, "state": invite(kind)})
         elif path == "/api/wish/delete":
             wid = body.get("id")
             st = drop_wishes(None if body.get("all") else int(wid) if str(wid or "").isdigit() else -1)
