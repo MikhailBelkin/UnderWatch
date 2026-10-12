@@ -59,7 +59,13 @@ PLACES = {
     "bed": "кровать", "window": "окно", "wardrobe": "шкаф", "sofa": "диван", "tv": "телевизор",
     "music": "проигрыватель", "fridge": "холодильник", "stove": "плита", "center": "середина комнаты",
     "toilet": "унитаз", "sink": "раковина", "shower": "душ", "ksink": "кухонная мойка",
+    "coffee_table": "журнальный столик", "stool": "барный стул", "counter": "кухонная столешница", "floor": "ковёр на полу",
 }
+# anything with a surface can be sat, lain or stood on, if there is room
+SURFACES = {"bed": ("sit", "lie"), "sofa": ("sit", "lie"), "floor": ("sit", "lie"), "coffee_table": ("sit", "stand"),
+            "stool": ("sit", "stand"), "counter": ("sit",)}
+HOW_RU = {"sit": ("сидит на", "сидит"), "lie": ("лежит на", "лежит"), "stand": ("стоит на", "стоит")}
+SURF_RU = {"bed": "кровати", "sofa": "диване", "floor": "ковре", "coffee_table": "журнальном столике", "stool": "барном стуле", "counter": "столешнице"}
 OUTFIT_TYPES = {"casual": "футболка и брюки", "pajamas": "пижама", "dress": "романтичное платье", "shorts": "шорты и футболка",
                 "warm": "джинсы и свитер", "mini": "миниюбка и топ", "swimsuit": "купальник", "underwear": "нижнее бельё",
                 "bathrobe": "халат", "towel": "полотенце"}
@@ -73,7 +79,8 @@ ACTIONS = {
     "bow": (None, "", "кланяется"), "stretch": (None, None, "потягивается"), "sit": ("sofa", "sit", "сидит на диване"),
     "stand": (None, None, "встаёт"), "watch_tv": ("sofa", "watch", "смотрит телевизор"),
     "open_gift": ("center", None, "открывает подарок"), "eat_treat": ("sofa", "sit", "ест вкусняшку"),
-    "use_item": (None, "", "радуется подарку"), "together": (None, None, "проводит время с гостем"),
+    "use_item": (None, "", "радуется подарку"), "practice": (None, "", "тренируется к цели"), "together": (None, None, "проводит время с гостем"),
+    "cozy": ("sofa", "cozy", "укутывается в плед"), "move": (None, None, "двигается"), "rest": (None, "rest", "устраивается"), "light_candle": ("tv", None, "зажигает свечу"), "wear_item": (None, "", "надевает"),
     "date": ("sofa", "date", "ужинает с гостем при свечах"), "dance_together": ("center", "dancing", "танцует с гостем"),
     "tv_off": (None, "", "выключает телевизор"), "play_game": ("sofa", "game", "играет в приставку"),
     "music_on": ("music", "listen", "слушает пластинку"), "music_off": ("music", None, "выключает музыку"),
@@ -89,22 +96,41 @@ ACTIONS = {
     "brush_teeth": ("sink", None, "чистит зубы"), "wash_face": ("sink", None, "умывается"),
     "comb_hair": ("sink", None, "причёсывается у зеркала"), "wash_dishes": ("ksink", None, "моет посуду"),
 }
+MOVE_DOC = """move — любое движение, которого нет в списке: ты сам(а) описываешь ключевые позы тела, тело плавно переходит из одной в другую.
+{"do": "move", "label": "что делаешь, 1–3 слова", "frames": [поза, ...], "repeat": сколько раз повторить кадры (1–10), "end": "stand" (потом встать) или "hold" (замереть в последней позе)}
+Поза — углы в градусах (вид сбоку, ты смотришь вперёд), любые поля можно опустить (тогда 0):
+  torso: наклон корпуса от бёдер, + вперёд (90 — согнуться пополам), − назад (до −40);
+  head: наклон головы, + вниз, − вверх (−45…50); turn: поворот головы −1…1 (покрутить головой — чередуй −1 и 1);
+  shoulder_near / shoulder_far: рука от корпуса — 0 вдоль тела вниз, 90 вперёд, 180 вверх, −50 назад;
+  elbow_near / elbow_far: сгиб локтя 0…150 (кисть идёт вперёд и вверх; руки к голове — плечо ~150, локоть ~110);
+  hip_near / hip_far: бедро от вертикали — 0 вниз, 90 вперёд-горизонтально (сидя), −90 назад-горизонтально (ласточка);
+  knee_near / knee_far: сгиб колена 0…150 (голень уходит назад);
+  tilt: наклон всего тела — 0 стоя, 80–90 горизонтально лицом вниз (планка, ползти), −90 лёжа на спине;
+  dx: сдвиг вперёд в пикселях от начального места (−80…80), чтобы ползти или шагать;
+  t: секунды на переход в эту позу (0.2–5); hold: сколько держать позу, секунд (0–20).
+Тело само опускается на пол той точкой, что ниже всех (стопы, колени, ладони, попа) — высоту указывать не нужно.
+Примеры: планка — {"tilt":78,"shoulder_near":90,"shoulder_far":90,"t":1.5,"hold":15};
+отжимание — кадры {"tilt":75,"shoulder_near":90,"shoulder_far":90,"t":0.6} и {"tilt":85,"shoulder_near":55,"shoulder_far":55,"elbow_near":110,"elbow_far":110,"t":0.6}, repeat 5;
+на четвереньках — {"tilt":82,"hip_near":95,"hip_far":95,"knee_near":95,"knee_far":95,"shoulder_near":95,"shoulder_far":95};
+схватиться за голову — {"shoulder_near":150,"shoulder_far":150,"elbow_near":115,"elbow_far":115,"head":10}; ласточка — {"torso":85,"hip_far":-90,"shoulder_near":160,"shoulder_far":160,"hold":4}."""
 ACTIONS_DOC = """walk_to{place} — пойти к месту; wave, nod, shake_head, shrug, jump, dance, think, laugh, bow, stretch — жесты (несколько секунд);
-sit — сесть на диван; stand — встать; watch_tv — сесть и смотреть телевизор; tv_off — выключить телевизор;
+sit — сесть на диван (сесть на что-то другое — rest{on, sit}, например rest{stool, sit} — на барный стул); stand — встать; watch_tv — сесть и смотреть телевизор; tv_off — выключить телевизор;
 play_game — играть в приставку; music_on — поставить пластинку и слушать; music_off — выключить музыку;
 cook — приготовить еду на плите; eat — поесть (после cook или из холодильника); drink — попить из холодильника; open_fridge — заглянуть в холодильник;
 change_clothes{outfit, color} — переодеться (outfit: casual — футболка и брюки, pajamas — пижама, dress — романтичное платье, shorts — шорты и футболка, warm — джинсы и свитер, mini — миниюбка и топ, swimsuit — купальник, underwear — нижнее бельё, bathrobe — халат, towel — полотенце; color — по желанию); light_on{room} / light_off{room} — свет (room: bedroom, living, kitchen, bathroom, all; без room — там, где ты); look_window — смотреть в окно, мечтать;
 together{kind} — провести время вместе с гостем (kind: date — свидание, ужин при свечах; movie — кино вдвоём; dance — танцевать вместе; cook — приготовить ужин вместе); соглашайся, только если правда хочется; предлагать можно и самому — первым;
-open_gift{id} — открыть подарок в обёртке; eat_treat{id} — съесть вкусняшку из подарков; use_item{id} — воспользоваться подаренной вещью (книгу — читать, пластинку — слушать, игрушку — обнять, одежду — примерить);
+open_gift{id} — открыть подарок в обёртке; eat_treat{id} — съесть вкусняшку из подарков; use_item{id} — воспользоваться подаренной вещью по назначению (плед — укутаться на диване, свечу — зажечь, шарф и одежду — надеть, книгу — читать, пластинку — слушать, игрушку — обнять);
 wash_dishes — помыть грязную посуду в кухонной мойке;
+practice{minutes, result, note} — отметить тренировку к своей цели (минуты, результат по показателю цели, если он есть); ставь в цепочку вместе с самим занятием (workout, move с позами, cook…);
 use_toilet — сходить в туалет; shower — принять душ; brush_teeth — почистить зубы; wash_face — умыться; comb_hair — причесаться у зеркала;
 console_off — выключить приставку; close_valve — перекрыть воду под мойкой (если течёт); mop_floor — вытирать воду с пола шваброй (имеет смысл, только когда вода уже не течёт);
 read_book — читать книгу на диване; phone_call — позвонить кому-то из друзей или родных; workout — зарядка;
-tidy_up — прибраться; write_diary — записать мысли в блокнот; sleep — лечь спать. Днём спать можно, только если бодрость ниже 30 (тогда это короткий сон) или до отбоя меньше 15 минут; если просто хочется передохнуть — sit или look_window."""
+tidy_up — прибраться; write_diary — записать мысли в блокнот; rest{on, how} — сесть, лечь или встать на что-то (on: bed, sofa, floor, coffee_table, stool, counter; how: sit, lie, stand). Кровать и диван — сидеть и лежать, пол/ковёр — сидеть и лежать, журнальный столик и барный стул на кухне — сидеть или встать на них, столешница — сесть;
+sleep{on} — лечь спать (on: bed по умолчанию, sofa или floor — подремать днём). Днём спать можно, только если бодрость ниже 30 (тогда это короткий сон) или до отбоя меньше 15 минут; если просто хочется передохнуть — sit или look_window."""
 LOOP_LABEL = {"sit": "сидит на диване", "watch": "смотрит телевизор", "game": "играет в приставку", "listen": "слушает пластинку",
               "sleep": "спит", "daydream": "смотрит в окно", "read": "читает книгу", "phone": "болтает по телефону",
               "workout": "делает зарядку", "write": "пишет в блокнот", "mop": "вытирает пол", "toilet": "сидит в туалете", "shower": "принимает душ",
-              "date": "на свидании с гостем", "dancing": "танцует с гостем"}
+              "date": "на свидании с гостем", "dancing": "танцует с гостем", "cozy": "сидит, укутавшись в плед", "pose": "замер(ла) в позе", "rest": "отдыхает"}
 MOODS = {"happy", "neutral", "sad", "surprised", "angry", "sleepy", "love"}
 # Ekman's basic emotions. Each fades on its own clock (minutes); opposites damp each other.
 EMOTIONS = {"joy": "радость", "sadness": "грусть", "fear": "страх", "anger": "злость", "surprise": "удивление",
@@ -129,7 +155,7 @@ PER_MIN = {  # need drift per awake minute, by loop
     "listen": {"fun": 0.6}, "read": {"fun": 0.5}, "write": {"fun": 0.35}, "daydream": {"fun": 0.25, "energy": 0.05},
     "phone": {"social": 1.0, "fun": 0.25}, "workout": {"fun": 0.3, "energy": -0.15, "hygiene": -0.4}, "mop": {"fun": -0.3, "energy": -0.12, "hygiene": -0.3},
     "shower": {"hygiene": 9, "fun": 0.3, "energy": 0.2},
-    "date": {"social": 1.2, "fun": 0.5}, "dancing": {"social": 1.0, "fun": 1.0, "energy": -0.1, "hygiene": -0.1},
+    "date": {"social": 1.2, "fun": 0.5}, "cozy": {"fun": 0.35, "energy": 0.12}, "dancing": {"social": 1.0, "fun": 1.0, "energy": -0.1, "hygiene": -0.1},
 }
 ROOMS = {"bedroom": ("bed", "night"), "living": ("liv", "floor"), "kitchen": ("kit",), "bathroom": ("bath",),
          "all": ("bed", "night", "liv", "floor", "kit", "bath")}
@@ -274,6 +300,8 @@ class Store:
 
 
 store = Store(DB_PATH)
+if store.get("identity") is None and store.get("self_notes"):
+    store.set("identity", store.get("self_notes"))
 
 # ---------------------------------------------------------------- settings: schedule, body, character
 TRAITS = {  # key: (low end, high end, default)
@@ -437,7 +465,8 @@ DEFAULT_STATE = {
     "last_guest_ts": 0, "last_initiative": 0, "together": None, "invite": None,
     "lights": {"bed": True, "night": False, "liv": True, "floor": False, "kit": True, "bath": False}, "water": 0.0, "leak": False,
     "react_at": 0, "react_reasons": [], "last_react": 0, "touch_log": [], "flowers_ts": 0,
-    "items": [], "wishes": [], "next_id": 1, "dishes": 0,
+    "items": [], "wishes": [], "next_id": 1, "dishes": 0, "accessory": None, "pose_hold": None, "rest": None,
+    "guest_facts": [], "closeness": 0.0, "closeness_day": "", "closeness_today": 0.0, "goal": None, "goals_done": [],
     "needs": {"hunger": 70, "energy": 85, "fun": 55, "social": 50, "hygiene": 70, "bladder": 80},
     "thought": "", "intent": "", "plan": [], "plan_day": "", "act_seq": 0, "last_act": None,
     "last_tick": 0, "last_decide": 0, "reflect_ts": 0, "reflect_day": "",
@@ -459,7 +488,7 @@ def save_state():
 
 def public_state():
     with state_lock:
-        s = {k: S[k] for k in ("name", "male", "location", "loop", "label", "until", "tv", "console", "music", "lights", "water", "leak", "flowers_ts", "items", "wishes", "together", "invite", "dishes",
+        s = {k: S[k] for k in ("name", "male", "location", "loop", "label", "until", "tv", "console", "music", "lights", "water", "leak", "flowers_ts", "items", "wishes", "together", "invite", "dishes", "accessory", "pose_hold", "rest", "guest_facts", "closeness", "goal", "goals_done",
                                "outfit", "mood", "emo", "needs", "thought", "intent", "plan", "act_seq", "last_act")}
     t = now()
     s["awake_time"] = is_awake_time(t)
@@ -468,6 +497,8 @@ def public_state():
     s["busy"] = busy_what["v"]
     with state_lock:
         s["needs_view"] = needs_view()
+    s["needs"] = {k: round(v, 1) for k, v in s["needs"].items()}
+    s["emo"] = {k: round(v, 3) for k, v in s["emo"].items()}
     return s
 
 
@@ -491,6 +522,229 @@ def feel(name, intensity):
             for k in EMO_OPPOSE[name]:
                 E[k] = round(E[k] * (1 - 0.7 * x), 3)
         S["mood"] = dominant()[0]
+
+
+# ---------------------------------------------------------------- goals
+# global goal: get to know the guest and grow close; local goal: a short project with practice and progress
+GUEST_TOPICS = ["имя", "возраст", "город", "работа", "семья", "друзья", "увлечения", "спорт", "музыка", "фильмы и сериалы",
+                "книги", "любимая еда", "путешествия", "питомцы", "детство", "мечты", "страхи", "планы", "характер", "как проходят его дни"]
+TOPIC_WORDS = [("имя", r"зовут|имя"), ("возраст", r"\d+\s*(год|лет)|\bлет\b|возраст"), ("город", r"жив[её]т|город|любляна|переехал|родом"),
+               ("работа", r"работ|программист|профессия|должност|офис|проект|начальник|коллег"), ("семья", r"мам|пап|жена|муж|брат|сестр|сын|доч|семь|дет[еия]|ребён|ребен"),
+               ("друзья", r"друг|друз|подруг"), ("питомцы", r"\bкот|кошк|собак|пёс|пес\b|попуга|хомяк|питом"),
+               ("спорт", r"спорт|бега|бег\b|зал|йог|велосипед|плава|лыж|футбол"), ("музыка", r"музык|песн|группа|гитар|слуша"),
+               ("фильмы и сериалы", r"фильм|кино|сериал"), ("книги", r"книг|чита"), ("любимая еда", r"кофе|еда|ест\b|блюд|пицц|сладк|готов"),
+               ("путешествия", r"путешеств|поездк|ездил|отпуск|страна|горы|море"), ("детство", r"детств|в детстве|школ"),
+               ("мечты", r"мечта|мечтает|хочет когда-нибудь"), ("страхи", r"бои[тш]|бою|страх|страш"), ("планы", r"планир|собирается|завтра|на выходных"),
+               ("увлечения", r"люб|увлека|хобби|обожа|нравится")]
+
+
+def guess_topic(fact):
+    low = fact.lower()
+    for topic, rx in TOPIC_WORDS:
+        if re.search(rx, low):
+            return topic
+    return "разное"
+
+
+for _f in S.get("guest_facts", []):  # facts saved before topics were recognised
+    if _f.get("topic") == "разное":
+        _f["topic"] = guess_topic(_f["fact"])
+
+
+CLOSENESS_LEVELS = [(0, "незнакомец"), (10, "знакомый"), (25, "приятель"), (45, "друг"), (70, "близкий друг"), (90, "родной человек")]
+
+
+def closeness_level(v=None):
+    v = S.get("closeness", 0) if v is None else v
+    name = CLOSENESS_LEVELS[0][1]
+    for th, n in CLOSENESS_LEVELS:
+        if v >= th:
+            name = n
+    return name
+
+
+def grow_closeness(amount, why=""):
+    """Closeness only grows: quarrels pass, shared good things stay."""
+    with state_lock:
+        day = now().strftime("%Y-%m-%d")
+        if S.get("closeness_day") != day:
+            S["closeness_day"], S["closeness_today"] = day, 0.0
+        room = max(0.0, 15.0 - S.get("closeness_today", 0))   # at most ~15 points a day
+        amount = min(amount, room) * (1.0 - 0.6 * S.get("closeness", 0) / 100)  # slower near the top
+        if amount <= 0:
+            return
+        before = closeness_level()
+        S["closeness"] = round(min(100.0, S.get("closeness", 0) + amount), 2)
+        S["closeness_today"] = S.get("closeness_today", 0) + amount
+        after = closeness_level()
+    if after != before:
+        emit_event("milestone", f"Новый уровень близости: {after}", {"level": after})
+        appraise("joy", 0.6)
+
+
+def learn_facts(raw):
+    if not isinstance(raw, list):
+        return
+    added = 0
+    with state_lock:
+        known = {(f["topic"], f["fact"].lower()) for f in S["guest_facts"]}
+        for x in raw[:5]:
+            if not isinstance(x, dict):
+                continue
+            topic = str(x.get("topic") or "").strip().lower()[:40]
+            fact = str(x.get("fact") or "").strip()[:160]
+            if len(fact) < 3:
+                continue
+            if topic not in GUEST_TOPICS:
+                topic = next((t for t in GUEST_TOPICS if t.split()[0] in topic), None) or guess_topic(fact)
+            if (topic, fact.lower()) in known:
+                continue
+            S["guest_facts"].append({"topic": topic, "fact": fact, "ts": time.time()})
+            known.add((topic, fact.lower()))
+            added += 1
+        S["guest_facts"] = S["guest_facts"][-120:]
+    for _ in range(added):
+        grow_closeness(2.0, "fact")
+    if added:
+        emit_event("learned", "Узнал" + g("", "а") + " о госте: " + "; ".join(f["fact"] for f in S["guest_facts"][-added:]))
+
+
+def acquaintance():
+    topics = {f["topic"] for f in S["guest_facts"]} & set(GUEST_TOPICS)
+    return round(100 * len(topics) / len(GUEST_TOPICS))
+
+
+def guest_knowledge_text():
+    facts = S["guest_facts"][-30:]
+    known_topics = {f["topic"] for f in S["guest_facts"]}
+    unknown = [t for t in GUEST_TOPICS if t not in known_topics]
+    lines = [f"Твоя главная цель в жизни — по-настоящему узнать гостя и стать ему как можно ближе (сейчас вы: {closeness_level()}, знакомство {acquaintance()}%)."]
+    if facts:
+        lines.append("Что ты уже знаешь о нём:\n" + "\n".join(f"- [{f['topic']}] {f['fact']}" for f in facts))
+    if unknown:
+        lines.append("Чего ты о нём ещё не знаешь (можно мягко расспросить, по одной теме за раз и не в каждой реплике): " + ", ".join(unknown[:6]) + ".")
+    lines.append("Используй то, что знаешь: вспоминай, спрашивай, как прошло то, о чём он рассказывал, радуйся общим интересам.")
+    return "\n".join(lines)
+
+
+def goal_text():
+    G = S.get("goal")
+    if not G:
+        return "Своей цели на ближайшие дни у тебя сейчас нет — можешь придумать её утром или если станет скучно."
+    m = G.get("metric")
+    metric = f" Показатель: {m['name']} — сейчас {fmt_num(m['current'])} {m['unit']}, цель {fmt_num(m['target'])} {m['unit']}." if m else ""
+    today = now().strftime("%Y-%m-%d")
+    done_today = sum(x["minutes"] for x in G["sessions"] if x["day"] == today)
+    days_left = max(0, int((G["deadline"] - time.time()) / 86400 + 0.99))
+    nxt = next((ms for ms in G["milestones"] if not ms.get("done")), None)
+    return (f"Твоя текущая цель: «{G['title']}» — {G['description']} Прогресс {int(G['progress'])}%.{metric}"
+            f" Осталось дней: {days_left}. Сегодня ты занимал{g('ся', 'ась')} уже {done_today} мин (норма ~{G['practice_minutes']} мин)."
+            + (f" Следующий этап: {nxt['title']}." if nxt else "")
+            + f" Как тренироваться: {G['practice']} Отметь тренировку действием practice{{minutes, result}} в той же цепочке, где само занятие.")
+
+
+def fmt_num(x):
+    return str(int(x)) if float(x).is_integer() else f"{x:.1f}"
+
+
+def make_goal(spec, source):
+    """Normalise a goal designed by the model."""
+    title = str(spec.get("title") or "").strip()[:80]
+    if not title:
+        return None
+    m = spec.get("metric") if isinstance(spec.get("metric"), dict) else None
+    metric = None
+    if m:
+        try:
+            start, target = float(m.get("start", 0)), float(m.get("target", 0))
+            if target != start:
+                metric = {"name": str(m.get("name") or "результат")[:40], "unit": str(m.get("unit") or "")[:12],
+                          "start": start, "target": target, "current": start}
+        except (TypeError, ValueError):
+            metric = None
+    days = max(2, min(30, int(spec.get("days") or 7)))
+    ms = [str(x).strip()[:60] for x in (spec.get("milestones") or []) if str(x).strip()][:5] or ["начало", "половина пути", "финиш"]
+    default = spec.get("default_action") if spec.get("default_action") in ACTIONS else "workout"
+    return {"title": title, "description": str(spec.get("description") or "").strip()[:240], "metric": metric, "days": days,
+            "deadline": time.time() + days * 86400, "practice": str(spec.get("practice") or "").strip()[:300],
+            "practice_minutes": max(5, min(90, int(spec.get("practice_minutes") or 20))), "default_action": default,
+            "milestones": [{"title": t, "at": round(100 * (i + 1) / len(ms)), "done": False} for i, t in enumerate(ms)],
+            "progress": 0.0, "sessions": [], "source": source, "started": time.time()}
+
+
+GOAL_DESIGN = """Спроектируй цель для персонажа, который живёт в маленькой квартире (спальня, гостиная с диваном, телевизором, проигрывателем, кухня, санузел) и может делать зарядку, двигаться в любых позах, готовить, читать, рисовать в блокноте, слушать музыку.
+Цель должна быть достижима дома за несколько дней регулярных занятий. Если цель измеримая (секунды, повторы, сантиметры, блюда) — задай показатель со стартом и целью, реалистичными для обычного человека.
+Ответ JSON: {"title": "коротко", "description": "1 предложение, зачем и что получится", "metric": {"name": "что меряем", "unit": "ед.", "start": число, "target": число} или null, "days": сколько дней (3–21), "practice": "как тренироваться в квартире, 1–2 предложения, через доступные действия (workout, move с позами, cook, read_book, write_diary, look_window…)", "practice_minutes": минут в день, "default_action": "одно действие для тренировки: workout | cook | read_book | write_diary | look_window | dance", "milestones": ["3–5 этапов по порядку"]}"""
+
+
+def set_goal_from_text(text, source="guest"):
+    prompt = f"{GOAL_DESIGN}\n\nЦель ({'предложил гость' if source == 'guest' else 'договорились в разговоре' if source == 'chat' else 'придумал сам персонаж'}): {text}"
+    with busy_lock:
+        set_busy("plan")
+        try:
+            r = llm("goal", MODEL_DEEP, persona(), prompt)
+        except (LLMError, ValueError) as e:
+            emit_event("system", f"Цель не получилось оформить: {e}")
+            return None
+        finally:
+            set_busy(None)
+    G = make_goal(r, source)
+    if not G:
+        return None
+    with state_lock:
+        S["goal"] = G
+        save_state()
+    emit_event("goal", f"Новая цель: {G['title']} — {G['description']}", {"goal": G})
+    hub.publish({"type": "state", "state": public_state()})
+    if source == "guest" and is_awake_time():
+        with state_lock:
+            S["react_reasons"] = (S.get("react_reasons") or [])[-5:] + [f"Гость предложил тебе цель: «{G['title']}». Отреагируй — можешь сразу начать первую тренировку."]
+            S["react_at"] = time.time() + 2
+    return G
+
+
+def practice(a):
+    """Log a practice session; progress grows believably."""
+    G = S.get("goal")
+    if not G:
+        return
+    try:
+        minutes = max(1, min(120, int(a.get("minutes") or G["practice_minutes"])))
+    except (TypeError, ValueError):
+        minutes = G["practice_minutes"]
+    today = now().strftime("%Y-%m-%d")
+    today_min = sum(x["minutes"] for x in G["sessions"] if x["day"] == today)
+    m, result = G.get("metric"), None
+    if m:
+        step = max(abs(m["target"] - m["start"]) / (G["days"] * 0.8), 0.5)
+        sign = 1 if m["target"] > m["start"] else -1
+        try:
+            result = float(a.get("result"))
+        except (TypeError, ValueError):
+            result = m["current"] + sign * step * min(1.0, minutes / G["practice_minutes"]) * random.uniform(0.3, 0.9)
+        best = m["current"] + sign * step
+        result = min(result, best) if sign > 0 else max(result, best)
+        if (result - m["current"]) * sign > 0:
+            m["current"] = round(result, 1)
+        G["progress"] = round(max(0, min(100, 100 * (m["current"] - m["start"]) / (m["target"] - m["start"]))), 1)
+    else:
+        useful = max(0, min(minutes, G["practice_minutes"] * 2 - today_min))  # practice beyond twice the daily norm doesn't count
+        G["progress"] = round(min(100, G["progress"] + 100 * useful / (G["practice_minutes"] * G["days"])), 1)
+    G["sessions"] = (G["sessions"] + [{"ts": time.time(), "day": today, "minutes": minutes, "result": result,
+                                       "note": str(a.get("note") or "")[:120]}])[-60:]
+    S["needs"]["energy"] = clampn(S["needs"]["energy"] - minutes * 0.1)
+    S["needs"]["fun"] = clampn(S["needs"]["fun"] + 3)
+    emit_event("practice", f"Тренировка к цели «{G['title']}»: {minutes} мин" + (f", результат {fmt_num(result)} {m['unit']}" if m and result is not None else "") + f" — прогресс {int(G['progress'])}%")
+    for ms in G["milestones"]:
+        if not ms["done"] and G["progress"] >= ms["at"]:
+            ms["done"] = True
+            appraise("joy", 0.6)
+            emit_event("milestone", f"Этап цели «{G['title']}» пройден: {ms['title']}")
+    if G["progress"] >= 100:
+        appraise("joy", 0.9)
+        emit_event("milestone", f"Цель достигнута: {G['title']}!")
+        S["goals_done"] = (S.get("goals_done") or []) + [{"title": G["title"], "done": time.time(), "days": round((time.time() - G["started"]) / 86400, 1)}]
+        S["goal"] = None
 
 
 def guest_here():
@@ -558,9 +812,16 @@ def base_drift():
     """Drift per awake minute, shaped by the body settings and the character."""
     d = dict(BASE_DRIFT)
     d["hunger"] = BASE_DRIFT["hunger"] * SETTINGS.get("hunger_rate", 1.0)
-    d["social"] = -(0.04 + 0.16 * trait("extraversion"))          # extraverts need people more
+    d["social"] = -(0.04 + 0.16 * trait("extraversion")) - 0.12 * S["emo"].get("longing", 0)  # extraverts need people more; missing him empties it faster
     d["energy"] = BASE_DRIFT["energy"] * (1.25 - 0.5 * trait("activity"))  # active people tire slower
     return d
+
+
+def rest_rates(rates):
+    r = S.get("rest") or {}
+    if S["loop"] == "rest":
+        rates["energy"] = rates.get("energy", 0) + (0.18 if r.get("how") == "lie" else 0.08 if r.get("how") == "sit" else 0)
+    return rates
 
 
 def need_rates():
@@ -571,6 +832,7 @@ def need_rates():
     rates = base_drift()
     for k, v in PER_MIN.get(loop, {}).items():
         rates[k] = rates.get(k, 0) + v
+    rest_rates(rates)
     return {k: round(v, 2) for k, v in rates.items()}, LOOP_LABEL.get(loop, "ничем особым не занят" if S["male"] else "ничем особым не занята")
 
 
@@ -585,13 +847,15 @@ def outfit_of():
 
 
 def outfit_text():
+    if S.get("loop") == "shower":
+        return "ничего — ты в душе, одежда аккуратно сложена рядом; выйдешь в полотенце"
     o = outfit_of()
     name = "плавки" if o["type"] == "swimsuit" and S["male"] else OUTFIT_TYPES.get(o["type"], "одежда")
     return name + (f", цвет {COLORS[o['color']]}" if o.get("color") in COLORS and o["type"] != "towel" else "")
 
 
 def clampn(v):
-    return max(0, min(100, round(v, 1)))
+    return max(0.0, min(100.0, float(v)))  # no rounding here: ticks are 5 s and per-tick changes are tiny
 
 
 def update_needs():
@@ -601,14 +865,25 @@ def update_needs():
         S["last_tick"] = t
         for k in S["emo"]:
             tau = EMO_TAU[k] * (0.5 if S["loop"] == "sleep" else 1)
-            S["emo"][k] = round(S["emo"][k] * math.exp(-dt_min / tau), 3)
+            S["emo"][k] = S["emo"][k] * math.exp(-dt_min / tau)
         if is_awake_time() and S["loop"] != "sleep":
             away = (t - (S.get("last_guest_ts") or t)) / 60
             target = max(0.0, min(1.0, (away - 20) / 180)) * (0.35 + 0.65 * (trait("romance") + trait("extraversion")) / 2)
             if S.get("together"):
                 target = 0.0
             L = S["emo"]["longing"]
-            S["emo"]["longing"] = round(min(target, L + 0.012 * dt_min) if L < target else max(target, L - 0.02 * dt_min), 3)
+            S["emo"]["longing"] = min(target, L + 0.012 * dt_min) if L < target else max(target, L - 0.02 * dt_min)
+            L = S["emo"]["longing"]
+            if L > 0.35:  # neglect sours the mood: sadness and (for romantics) jealousy drift up towards a level set by longing
+                E = S["emo"]
+                sad_target = min(0.75, (L - 0.35) * 0.9 * (0.7 + 0.6 * trait("sensitivity")))
+                if E["sadness"] < sad_target:
+                    E["sadness"] = min(sad_target, E["sadness"] + 0.012 * dt_min)
+                E["joy"] = max(0.0, E["joy"] - 0.012 * dt_min * (L - 0.35))
+                if away > 180 and trait("romance") > 0.45:
+                    jel_target = min(0.6, (L - 0.5) * (0.4 + trait("romance")))
+                    if E["jealousy"] < jel_target:
+                        E["jealousy"] = min(jel_target, E["jealousy"] + 0.008 * dt_min)
         S["mood"] = dominant()[0]
         if S["leak"]:
             S["water"] = min(WATER_MAX, S["water"] + WATER_RISE * dt_min)
@@ -624,6 +899,42 @@ def update_needs():
             n[k] = clampn(n[k] + v * dt_min)
         for k, v in PER_MIN.get(S["loop"], {}).items():
             n[k] = clampn(n[k] + v * dt_min)
+        for k, v in rest_rates({}).items():
+            n[k] = clampn(n[k] + v * dt_min)
+
+
+MOVE_RANGES = {"torso": (-45, 120), "head": (-45, 50), "turn": (-1, 1), "shoulder_near": (-60, 190), "shoulder_far": (-60, 190),
+               "elbow_near": (0, 160), "elbow_far": (0, 160), "hip_near": (-120, 130), "hip_far": (-120, 130),
+               "knee_near": (0, 160), "knee_far": (0, 160), "tilt": (-95, 100), "dx": (-80, 80), "t": (0.2, 5), "hold": (0, 20)}
+
+
+def clean_move(a):
+    frames = []
+    for fr in (a.get("frames") or [])[:12]:
+        if not isinstance(fr, dict):
+            continue
+        f = {}
+        for k, (lo, hi) in MOVE_RANGES.items():
+            if k in fr:
+                try:
+                    f[k] = max(lo, min(hi, float(fr[k])))
+                except (TypeError, ValueError):
+                    pass
+        f.setdefault("t", 0.8)
+        frames.append(f)
+    if not frames:
+        return None
+    try:
+        repeat = max(1, min(10, int(a.get("repeat") or 1)))
+    except (TypeError, ValueError):
+        repeat = 1
+    per = sum(f["t"] + f.get("hold", 0) for f in frames)
+    while repeat > 1 and per * repeat > 40:
+        repeat -= 1
+    if per > 40:
+        return None
+    return {"frames": frames, "repeat": repeat, "end": "hold" if a.get("end") == "hold" else "stand",
+            "label": str(a.get("label") or "двигается").strip()[:40], "secs": round(per * repeat, 1)}
 
 
 def clean_actions(raw):
@@ -636,13 +947,18 @@ def clean_actions(raw):
         if m:
             d, arg = m.group(1), m.group(2).strip("'\" ")
             a = dict(a)
+            for tok in [t.strip("'\" ") for t in arg.split(",")]:
+                if tok in SURFACES:
+                    a.setdefault("on", tok)
+                elif tok in ("sit", "lie", "stand"):
+                    a.setdefault("how", tok)
             if arg.isdigit():
                 a.setdefault("id", int(arg))
             elif arg in PLACES:
                 a.setdefault("place", arg)
             elif arg in ROOMS:
                 a.setdefault("room", arg)
-            elif arg in ("date", "movie", "dance", "cook"):
+            elif arg in ("date", "movie", "dance", "cook", "custom"):
                 a.setdefault("kind", arg)
             elif arg in COLORS:
                 a.setdefault("color", arg)
@@ -658,7 +974,25 @@ def clean_actions(raw):
             if a.get("place") not in PLACES:
                 continue
             x["place"] = a["place"]
-        if d == "together" and a.get("kind") in ("date", "movie", "dance", "cook"):
+        if d == "sit" and (a.get("on") or a.get("place")) in SURFACES and (a.get("on") or a.get("place")) != "sofa":
+            d, a = "rest", dict(a, on=a.get("on") or a.get("place"), how="sit")
+            x["do"] = "rest"
+        if d == "practice":
+            for k in ("minutes", "result", "note"):
+                if a.get(k) is not None:
+                    x[k] = a[k]
+        if d == "rest":
+            on = a.get("on") if a.get("on") in SURFACES else ("sofa" if a.get("how") == "lie" else "sofa")
+            how = a.get("how") if a.get("how") in SURFACES[on] else SURFACES[on][0]
+            x["on"], x["how"] = on, how
+        if d == "sleep" and a.get("on") in ("bed", "sofa", "floor"):
+            x["on"] = a["on"]
+        if d == "move":
+            mv = clean_move(a)
+            if not mv:
+                continue
+            x.update(mv)
+        if d == "together" and a.get("kind") in ("date", "movie", "dance", "cook", "custom"):
             x["kind"] = a["kind"]
         if d in ("open_gift", "eat_treat", "use_item") and a.get("id") is not None:
             try:
@@ -677,10 +1011,12 @@ def clean_actions(raw):
 
 # where a bare walk_to obviously leads: "went to the TV" means "watches TV"
 NATURAL = {"tv": "watch_tv", "sofa": "sit", "music": "music_on", "stove": "cook", "fridge": "drink",
-           "window": "look_window", "wardrobe": "change_clothes", "bed": "sleep", "toilet": "use_toilet", "sink": "wash_face", "shower": "shower", "ksink": "wash_dishes"}
+           "window": "look_window", "wardrobe": "change_clothes", "bed": "sleep", "toilet": "use_toilet", "sink": "wash_face", "shower": "shower", "ksink": "wash_dishes",
+           "stool": {"do": "rest", "on": "stool", "how": "sit"}, "coffee_table": {"do": "rest", "on": "coffee_table", "how": "sit"},
+           "counter": {"do": "rest", "on": "counter", "how": "sit"}, "floor": {"do": "rest", "on": "floor", "how": "sit"}}
 
 
-CHAIN_HOLD = {"use_toilet": 60, "shower": 150, "change_clothes": 16, "cook": 55, "wash_dishes": 28}  # seconds these take for the body
+CHAIN_HOLD = {"use_toilet": 60, "shower": 156, "change_clothes": 16, "cook": 55, "wash_dishes": 28}  # seconds these take for the body
 
 
 def complete_chain(actions):
@@ -692,12 +1028,13 @@ def complete_chain(actions):
             continue
         out.append(a)
     if out and out[-1]["do"] == "walk_to" and out[-1]["place"] in NATURAL:
-        out[-1] = {"do": NATURAL[out[-1]["place"]]}
+        nat = NATURAL[out[-1]["place"]]
+        out[-1] = dict(nat) if isinstance(nat, dict) else {"do": nat}
     return out
 
 
-TOGETHER = {"date": "свидание: ужин при свечах", "movie": "кино вдвоём", "dance": "танцы вместе", "cook": "приготовить ужин вместе"}
-TOGETHER_LOOPS = {"date": ("date",), "movie": ("watch", "sit"), "dance": ("dancing", "listen"), "cook": ("date",)}
+TOGETHER = {"date": "свидание: ужин при свечах", "movie": "кино вдвоём", "dance": "танцы вместе", "cook": "приготовить ужин вместе", "custom": "своё занятие вдвоём"}
+TOGETHER_LOOPS = {"date": ("date",), "movie": ("watch", "sit"), "dance": ("dancing", "listen"), "cook": ("date",), "custom": ("date", "sit", "rest", "pose")}
 
 
 def resolve_together(actions):
@@ -722,6 +1059,8 @@ def resolve_together(actions):
             out += [{"do": "music_on"}, dict(mark, do="dance_together")]
         elif kind == "cook":
             out += [dict(mark, do="cook"), dict(mark, do="date")]
+        elif kind == "custom":
+            out.append(dict(mark, do="date"))
     return out
 
 
@@ -734,6 +1073,18 @@ def find_item(item_id, states, edible=None):
         if item_id is None or it["id"] == item_id:
             return it
     return None
+
+
+USE_RULES = [(r"плед|одеял|покрывал", "cozy"), (r"свеч", "light"),
+             (r"шарф|шапк|варежк|перчат|носк|свитер|кофт|худи|шал[ьи]|кардиган", "wear"), (r"мишк|игрушк|плюш|зайч|котик|единорог", "hug")]
+
+
+def item_use(it):
+    low = it["name"].lower()
+    for rx, how in USE_RULES:
+        if re.search(rx, low):
+            return how
+    return {"toy": "hug", "clothes": "wear"}.get(it["kind"], "admire")
 
 
 def resolve_gifts(actions):
@@ -769,7 +1120,14 @@ def resolve_gifts(actions):
         if not it:
             continue
         info = {"id": it["id"], "name": it["name"], "kind": it["kind"]}
-        if d == "use_item" and it["kind"] == "book":
+        how = item_use(it) if d == "use_item" else None
+        if how == "cozy":
+            out.append(dict(info, do="cozy"))
+        elif how == "light":
+            out.append(dict(info, do="light_candle"))
+        elif how == "wear":
+            out.append(dict(info, do="wear_item"))
+        elif d == "use_item" and it["kind"] == "book":
             out.append(dict(info, do="read_book"))
         elif d == "use_item" and it["kind"] == "record":
             out.append(dict(info, do="music_on"))
@@ -798,7 +1156,11 @@ def gift_effects(a):
         S["needs"]["fun"] = clampn(S["needs"]["fun"] + 5)
         feel("joy", 0.35)
         emit_event("gift", f"Съел{g('', 'а')} {it['name']}.", {"item": it})
-    elif d in ("use_item", "read_book", "music_on", "look_window") and it["state"] == "open":
+    elif d in ("use_item", "read_book", "music_on", "look_window", "cozy", "light_candle", "wear_item") and it["state"] == "open":
+        if d == "light_candle":
+            it["lit_ts"] = time.time()
+        if d == "wear_item":
+            S["accessory"] = {"id": it["id"], "name": it["name"]}
         it["used"] = it.get("used", 0) + 1
         S["needs"]["fun"] = clampn(S["needs"]["fun"] + 12)
         feel("joy", 0.3)
@@ -820,14 +1182,21 @@ def add_wish(raw):
     hub.publish({"type": "state", "state": public_state()})
 
 
+def with_practice_activity(actions):
+    if any(a["do"] == "practice" for a in actions) and not any(a["do"] != "practice" for a in actions) and S.get("goal"):
+        return [{"do": S["goal"].get("default_action") or "workout"}] + actions
+    return actions
+
+
 def body_allows(actions):
     """The body has a say: you can't fall asleep in the daytime when you're full of energy."""
     t = now()
     left = (today_sleep(t) - t).total_seconds() / 60
     if any(a["do"] == "sleep" for a in actions) and is_awake_time(t) and S["needs"]["energy"] >= 30 and left > 15:
         e = int(S["needs"]["energy"])
-        emit_event("system", f"Хотел{g('', 'а')} лечь спать, но сна ни в одном глазу (бодрость {e}) — вместо этого прилег{g('', 'ла')} отдохнуть на диване.")
-        actions = [a for a in actions if a["do"] not in ("sleep", "walk_to")] + [{"do": "sit"}]
+        where = next((a.get("on") for a in actions if a["do"] == "sleep" and a.get("on")), "bed")
+        emit_event("system", f"Хотел{g('', 'а')} лечь спать, но сна ни в одном глазу (бодрость {e}) — вместо этого просто прилег{g('', 'ла')}.")
+        actions = [a for a in actions if a["do"] not in ("sleep", "walk_to")] + [{"do": "rest", "on": where, "how": "lie"}]
     return actions
 
 
@@ -864,14 +1233,31 @@ def act(actions, minutes=None, thought=None, intent=None, mood=None, aloud=None,
                 for k in ROOMS[room]:
                     S["lights"][k] = d == "light_on"
             if d == "close_valve": S["leak"] = False
+            if d == "practice": practice(a)
+            if d == "move":
+                effort = a.get("secs", 0) / 10
+                S["needs"]["energy"] = clampn(S["needs"]["energy"] - 0.8 * effort)
+                S["needs"]["hygiene"] = clampn(S["needs"]["hygiene"] - 0.4 * effort)
+                S["needs"]["fun"] = clampn(S["needs"]["fun"] + 2)
+                if a.get("end") == "hold":
+                    loop = "pose"
+                    S["pose_hold"] = {"frame": a["frames"][-1], "label": a.get("label", "")}
             if d == "eat": S["dishes"] = min(8, S.get("dishes", 0) + 1)
             if d == "cook": S["dishes"] = min(8, S.get("dishes", 0) + 1)
             if d == "wash_dishes": S["dishes"] = 0
-            if a.get("id") is not None and d in ("open_gift", "eat_treat", "use_item", "read_book", "music_on", "look_window"):
+            if d == "rest":
+                loc, loop = a["on"], "rest"
+                S["rest"] = {"on": a["on"], "how": a["how"]}
+            if d == "sleep":
+                loc = a.get("on") or "bed"
+                S["rest"] = {"on": loc, "how": "lie"}
+            if a.get("id") is not None and d in ("open_gift", "eat_treat", "use_item", "read_book", "music_on", "look_window", "cozy", "light_candle", "wear_item"):
                 gift_effects(a)
             if d == "sleep":
                 S.update(tv="off", music=False, console=False)
                 S["lights"] = {k: False for k in S["lights"]}
+            if d in ("change_clothes", "sleep", "shower"):
+                S["accessory"] = None
             if d == "change_clothes":
                 typ = a.get("outfit") or "casual"
                 col = a.get("color") or (random.choice([c for c in COLORS if c != outfit_of().get("color")]) if typ == "casual" else None)
@@ -879,7 +1265,10 @@ def act(actions, minutes=None, thought=None, intent=None, mood=None, aloud=None,
                 a["outfit"], a["color"] = typ, col
             for k, v in INSTANT.get(d, {}).items():
                 S["needs"][k] = clampn(S["needs"][k] + v)
-        if S["loop"] == "shower" and loop != "shower" and not any(a["do"] == "change_clothes" for a in actions):
+        # out of the shower in a towel: after an earlier shower, or a shower earlier in this chain, unless she dressed after it
+        last_shower = max((i for i, a in enumerate(actions) if a["do"] == "shower"), default=-1)
+        dressed_after = any(a["do"] == "change_clothes" for a in actions[last_shower + 1:]) if last_shower >= 0 else any(a["do"] == "change_clothes" for a in actions)
+        if loop != "shower" and not dressed_after and (S["loop"] == "shower" or last_shower >= 0):
             S["outfit"] = {"type": "towel", "color": None}
         if was_sleeping and loop != "sleep":
             S["lights"]["bed"] = True
@@ -887,7 +1276,9 @@ def act(actions, minutes=None, thought=None, intent=None, mood=None, aloud=None,
             loop = None
         started = next((a["together"] for a in actions if a.get("together")), None)
         if started:
-            S["together"] = {"kind": started, "since": time.time()}
+            grow_closeness(4.0, "together")
+            custom_text = (S.get("invite") or {}).get("text") if started == "custom" else None
+            S["together"] = {"kind": started, "since": time.time(), "text": custom_text}
             S["invite"] = None
             S["emo"]["longing"] = 0
             appraise("joy", 0.5)
@@ -897,10 +1288,20 @@ def act(actions, minutes=None, thought=None, intent=None, mood=None, aloud=None,
             S["together"] = None
         S["loop"], S["location"] = loop, loc
         S["label"] = LOOP_LABEL[loop] if loop else "стоит: " + PLACES[loc]
-        hold = sum(CHAIN_HOLD.get(a["do"], 0) for a in actions[:-1])  # time spent mid-chain (toilet, shower, cooking...)
-        hold_all = sum(CHAIN_HOLD.get(a["do"], 0) for a in actions)
+        if loop in ("date", "sit", "rest", "pose") and (S.get("together") or {}).get("kind") == "custom":
+            S["label"] = "вместе с гостем: " + (S["together"].get("text") or "")
+        if loop == "rest" and S.get("rest"):
+            r = S["rest"]
+            S["label"] = f"{HOW_RU[r['how']][0]} {SURF_RU[r['on']]}"
+        if loop == "pose" and S.get("pose_hold"):
+            S["label"] = "замер" + g("", "ла") + " в позе: " + S["pose_hold"]["label"]
+        span = lambda a: a.get("secs", 0) if a["do"] == "move" else CHAIN_HOLD.get(a["do"], 0)
+        hold = sum(span(a) for a in actions[:-1])  # time spent mid-chain (toilet, shower, cooking, free moves...)
+        hold_all = sum(span(a) for a in actions)
         if loop == "mop":
             S["until"] = time.time() + hold + 30 * 60  # mopping lasts until the floor is dry (see update_needs)
+        elif loop == "shower":
+            S["until"] = time.time() + hold + 165  # a shower takes ~2.5 min, then she dries off and decides what's next
         elif loop in LOOP_LABEL and minutes:
             S["until"] = time.time() + hold + max(1, float(minutes)) * 60
         elif actions:
@@ -918,8 +1319,9 @@ def act(actions, minutes=None, thought=None, intent=None, mood=None, aloud=None,
         msg = {"type": "act", "seq": S["act_seq"], "actions": actions, "thought": thought or "", "aloud": aloud or "", "source": source, "state": public_state()}
     hub.publish(msg)
     if actions:
-        emit_event("action", ", ".join(ACTIONS[a["do"]][2] + (" → " + PLACES[a["place"]] if a.get("place") else "")
-                                      + (f" ({OUTFIT_TYPES.get(a.get('outfit'), '')})" if a["do"] == "change_clothes" and a.get("outfit") else "") for a in actions),
+        emit_event("action", ", ".join(("вместе с гостем: " + ((S.get("together") or {}).get("text") or "") if a.get("together") == "custom" else ACTIONS[a["do"]][2]) + (" → " + PLACES[a["place"]] if a.get("place") else "")
+                                      + (f" ({OUTFIT_TYPES.get(a.get('outfit'), '')})" if a["do"] == "change_clothes" and a.get("outfit") else "")
+                                      + (f": {a.get('label')}" if a["do"] == "move" else "") for a in actions),
                    {"actions": actions, "minutes": minutes})
 
 
@@ -959,8 +1361,16 @@ def character_text():
     return "; ".join(parts)
 
 
+def identity():
+    """Who the resident is — written by the player, never rewritten by the resident."""
+    return (store.get("identity") or "").strip()
+
+
 def persona():
-    return f"""Ты — {S['name']}, {g('парень', 'девушка')}, 27 лет. Ты живёшь {g('один', 'одна')} в маленькой квартире: спальня (кровать, шкаф с одеждой, окно на город), гостиная-кухня (диван, телевизор с игровой приставкой, проигрыватель пластинок, холодильник, плита, полки с посудой) и санузел (унитаз, раковина с зеркалом, зубные щётки, расчёска, полотенце, душ).
+    who = identity()
+    base = (f"Ты — {S['name']}, {g('парень', 'девушка')}. Кто ты (это задано и главнее всего, держись этого):\n{who}\n" if who
+            else f"Ты — {S['name']}, {g('парень', 'девушка')}, 27 лет.\n")
+    return base + f"""Ты живёшь {g('один', 'одна')} в маленькой квартире: спальня (кровать, шкаф с одеждой, окно на город), гостиная-кухня (диван, телевизор с игровой приставкой, проигрыватель пластинок, холодильник, плита, полки с посудой) и санузел (унитаз, раковина с зеркалом, зубные щётки, расчёска, полотенце, душ).
 У тебя есть тело, потребности, настроение, характер, увлечения и свои планы. Ты живёшь своей жизнью: никто не говорит тебе, что делать, ты решаешь сам{g('', 'а')}.
 Иногда с тобой разговаривает гость — человек, который смотрит на твою квартиру «через стекло». Ты о нём знаешь и рад{g('', 'а')} поболтать, но твоя жизнь не крутится вокруг него.
 Иногда в квартире что-то происходит само: гаснет свет, включается телевизор, прорывает трубу. Возможно, это проделки гостя — он, кажется, умеет влиять на твой мир. Реагируй на такое как живой человек: заметь, исправь, если мешает, удивись, поворчи или спроси гостя.
@@ -975,6 +1385,7 @@ def persona():
 
 Что умеет твоё тело (поле "do" в actions):
 {ACTIONS_DOC}
+{MOVE_DOC}
 Намерение и действия должны совпадать: если решаешь что-то сделать (открыть подарок, поесть, включить свет) — это обязательно должно быть в actions, иначе тело ничего не сделает.
 Как работают действия: actions — цепочка, которую тело выполняет сразу, за секунды. До нужного места действия доводят сами (watch_tv сам усадит на диван, cook сам подведёт к плите, music_on — к проигрывателю), так что walk_to перед ними не нужен; walk_to — только чтобы просто пойти куда-то. Заканчивай цепочку тем, ради чего идёшь: не «подойти к телевизору», а watch_tv. Мысли и слова — о том, что делаешь сейчас целиком, а не «иду к…».
 minutes — сколько продлится последнее долгое занятие (watch_tv, play_game, music_on, read_book, write_diary, phone_call, workout, look_window, sit). Если в цепочке только быстрые дела (cook, eat, drink, change_clothes, tidy_up, жесты), ставь minutes 1–3: ты закончишь и сразу решишь, что дальше.
@@ -985,6 +1396,8 @@ minutes — сколько продлится последнее долгое з
 def room_of(loc):
     if loc in ("toilet", "sink", "shower"):
         return "bathroom"
+    if loc in ("stool", "counter", "ksink"):
+        return "kitchen"
     return "bedroom" if loc in ("bed", "window", "wardrobe") else "kitchen" if loc in ("fridge", "stove") else "living"
 
 
@@ -1005,6 +1418,13 @@ def world_line():
     elif S["water"] > 0.2:
         water = f" На полу лужа: {S['water']:.1f} см воды (течь уже перекрыта)."
     flowers = " На подоконнике в спальне стоят цветы от гостя." if time.time() - (S.get("flowers_ts") or 0) < 3 * 86400 else ""
+    lit = [it["name"] for it in S["items"] if time.time() - (it.get("lit_ts") or 0) < 2 * 3600]
+    if lit:
+        flowers += " На полке горит: " + ", ".join(lit) + "."
+    if S.get("accessory"):
+        flowers += f" На тебе подаренная вещь: {S['accessory']['name']}."
+    if S["loop"] == "cozy":
+        flowers += " Ты сидишь на диване, укутавшись в плед."
     if S.get("dishes"):
         flowers += f" В кухонной мойке грязная посуда: {S['dishes']} шт."
     wrapped = [it for it in S["items"] if it["state"] == "wrapped"]
@@ -1026,12 +1446,16 @@ def guest_line():
     last = S.get("last_guest_ts") or 0
     parts = []
     if S.get("together"):
-        parts.append(f"Сейчас вы с гостем вместе: {TOGETHER[S['together']['kind']]} (уже {int((time.time() - S['together']['since']) / 60)} мин).")
+        T = S["together"]
+        label = T.get("text") or TOGETHER[T["kind"]]
+        parts.append(f"Сейчас вы с гостем вместе: {label} (уже {int((time.time() - T['since']) / 60)} мин).")
     elif S.get("invite") and time.time() - S["invite"]["ts"] < 30 * 60:
-        parts.append(f"Гость недавно пригласил тебя: {TOGETHER[S['invite']['kind']]} — ты ещё не ответил{g('', 'а')} делом.")
+        parts.append(f"Гость недавно пригласил тебя: {S['invite'].get('text') or TOGETHER[S['invite']['kind']]} — ты ещё не ответил{g('', 'а')} делом.")
     if last:
         m = int((time.time() - last) / 60)
         parts.append("Гость был рядом только что." if m < 3 else f"Гость не появлялся уже {m // 60} ч {m % 60} мин." if m >= 60 else f"Гость не появлялся {m} мин.")
+        if m >= 120 and not S.get("together"):
+            parts.append("Тебе его не хватает, и немного обидно, что он пропал. Когда появится — можешь показать, что скучал" + g("", "а") + " и что тебя это задело.")
     return " ".join(parts) or "Гость сегодня ещё не появлялся."
 
 
@@ -1055,9 +1479,11 @@ def situation():
             emo_line(),
             guest_line(),
         ]
+        lines.append(goal_text())
+        lines.append(f"Ваша близость с гостем: {closeness_level()} ({int(S.get('closeness', 0))}/100), знакомство {acquaintance()}%.")
         if S["plan"]:
             lines.append("Твой план на сегодня:\n" + "\n".join("- " + p for p in S["plan"]))
-    lines.append("Что ты знаешь о себе:\n" + (store.get("self_notes") or SEED_SELF))
+    lines.append("Твои заметки о себе (дополняют основу личности, но не главнее её):\n" + (store.get("self_notes") or SEED_SELF))
     guest = store.get("guest_notes")
     if guest:
         lines.append("Что ты знаешь о госте:\n" + guest)
@@ -1066,9 +1492,10 @@ def situation():
 
 def recent_lines(limit=18):
     out = []
-    for e in store.events(["thought", "action", "chat_user", "chat_reply", "aloud", "plan", "world", "gift", "wish"], limit=limit):
+    for e in store.events(["thought", "action", "chat_user", "chat_reply", "aloud", "plan", "world", "gift", "wish", "practice", "milestone", "goal"], limit=limit):
         who = {"thought": "думал(а)", "action": "делал(а)", "chat_user": "гость сказал", "chat_reply": "ты ответил(а)",
-               "aloud": "сказал(а) вслух", "plan": "план", "world": "случилось", "gift": "подарок", "wish": "попросил(а)"}[e["kind"]]
+               "aloud": "сказал(а) вслух", "plan": "план", "world": "случилось", "gift": "подарок", "wish": "попросил(а)",
+               "practice": "тренировка", "milestone": "достижение", "goal": "цель"}[e["kind"]]
         out.append(f"[{hhmm(e['ts'])}] {who}: {e['text']}")
     return "\n".join(out) or "(пока ничего)"
 
@@ -1091,11 +1518,11 @@ def decide(reason="next", happened=None):
 Недавно:
 {recent_lines()}
 
-{reason_text} Реши, чем заняться дальше. Твой характер: {character_text()} — пусть он определяет, чем тебе хочется заняться. Это твоя жизнь: следуй своим желаниям, плану и самочувствию, не повторяй одно и то же без причины, иногда делай что-то неожиданное.
+{reason_text} Реши, чем заняться дальше. Твой характер: {character_text()} — пусть он определяет, чем тебе хочется заняться. Не забывай про свою цель (тренировка — practice) и про главную — сблизиться с гостем (можно написать ему первым через to_guest, спросить о нём что-то из того, чего ты ещё не знаешь). Это твоя жизнь: следуй своим желаниям, плану и самочувствию, не повторяй одно и то же без причины, иногда делай что-то неожиданное.
 Ответ JSON:
 {{"thought": "внутренний монолог, 1–3 предложения", "intent": "коротко, что сейчас делаешь", "actions": [{{"do": "..."}}], "minutes": сколько минут продлится последнее долгое занятие (1–90), "emotion": "{EMO_LIST}", "intensity": сила эмоции 0.1–1, "aloud": "что говоришь вслух сам{g('', 'а')} себе, или пусто", "diary": "короткая заметка в блокнот, если случилось важное, иначе пусто", "to_guest": "если скучаешь или хочешь что-то сказать гостю сам{g('', 'а')}, первым — короткое сообщение ему; иначе пусто", "wish": "ОБЯЗАТЕЛЬНО заполни, если в этом ответе ты говоришь, что хотел{g('', 'а')} бы получить что-то в подарок или просишь что-то подарить: что именно, коротко (например «круассан», «книга Бунина в твёрдом переплёте»); иначе пусто"}}"""
     r = llm("decide", MODEL_FAST, persona(), prompt)
-    actions = resolve_together(resolve_gifts(body_allows(complete_chain(clean_actions(r.get("actions"))))))
+    actions = with_practice_activity(resolve_together(resolve_gifts(body_allows(complete_chain(clean_actions(r.get("actions")))))))
     if json.dumps(r.get("actions"), ensure_ascii=False, sort_keys=True) != json.dumps(actions, ensure_ascii=False, sort_keys=True):
         log("actions:", json.dumps(r.get("actions"), ensure_ascii=False)[:300], "->", json.dumps(actions, ensure_ascii=False)[:300])
     minutes = max(1, min(90, int(r.get("minutes") or 20)))
@@ -1129,16 +1556,17 @@ def morning():
 Вчерашний дневник:
 {diary[-1]['text'] if diary else '(дневника ещё нет — это твой первый день здесь)'}
 
-Ты только что {g('проснулся', 'проснулась')}. Составь себе нестрогий план на сегодня (с {wake_h()}:00 до {sleep_h()}:00): 3–6 пунктов — дела, желания, маленькие цели. Учитывай свои увлечения, проекты и то, что было вчера.
-Ответ JSON: {{"plan": ["пункт", "..."], "thought": "первая мысль утром, 1–2 предложения", "emotion": "{EMO_LIST}", "intensity": сила эмоции 0.1–1}}"""
+Ты только что {g('проснулся', 'проснулась')}. Составь себе нестрогий план на сегодня (с {wake_h()}:00 до {sleep_h()}:00): 3–6 пунктов — дела, желания, маленькие цели. Учитывай свои увлечения, проекты и то, что было вчера. Если у тебя есть цель — обязательно впиши тренировку к ней. Помни и о главной цели — узнать гостя лучше.
+Ответ JSON: {{"plan": ["пункт", "..."], "thought": "первая мысль утром, 1–2 предложения", "emotion": "{EMO_LIST}", "intensity": сила эмоции 0.1–1, "own_goal": "если своей цели сейчас нет и тебе хочется её поставить — коротко какую (например «научиться делать шпагат»), иначе пусто"}}"""
     try:
         r = llm("plan", MODEL_DEEP, persona(), prompt)
         plan = [str(p).strip() for p in (r.get("plan") or []) if str(p).strip()][:6]
+        own = str(r.get("own_goal") or "").strip()
         thought = str(r.get("thought") or "").strip()
         emotion = parse_emotion(r)
     except LLMError as e:
         emit_event("system", f"Утренний план не составился: {e}")
-        plan, thought, emotion = [], "", None
+        plan, thought, emotion, own = [], "", None, ""
     with state_lock:
         S["plan"], S["plan_day"] = plan, t.strftime("%Y-%m-%d")
         S["needs"]["energy"] = max(S["needs"]["energy"], 85)
@@ -1149,12 +1577,14 @@ def morning():
     if thought:
         emit_event("thought", thought)
     act([{"do": "stand"}, {"do": "stretch"}], minutes=1, thought=thought, intent="просыпается", emotion=emotion)
+    if own and not S.get("goal"):
+        threading.Thread(target=set_goal_from_text, args=(own, "self"), daemon=True).start()
 
 
 def reflect():
     """Evening reflection = diary + memory compaction (rewrite notes about self and guest)."""
     since = S.get("reflect_ts") or 0
-    evs = store.events(["thought", "action", "chat_user", "chat_reply", "aloud", "plan", "note", "world", "gift", "wish"], limit=400, since=since)
+    evs = store.events(["thought", "action", "chat_user", "chat_reply", "aloud", "plan", "note", "world", "gift", "wish", "learned", "practice", "milestone", "goal"], limit=400, since=since)
     if not evs:
         with state_lock:
             S["reflect_ts"] = time.time()
@@ -1169,7 +1599,7 @@ def reflect():
 День закончился, ты ложишься спать. Подведи итоги.
 Ответ JSON:
 {{"diary": "запись в дневник за сегодня от первого лица, 4–8 предложений: что делал{g('', 'а')}, что чувствовал{g('', 'а')}, что запомнилось",
- "self_notes": "обновлённые заметки о себе (до 1500 символов, короткие пункты «- »): характер, привычки, увлечения, текущие проекты и цели, отношения с друзьями и родными, важные события. Сохрани важное из старых заметок, обнови устаревшее, добавь новое",
+ "self_notes": "обновлённые заметки о себе (до 1500 символов, короткие пункты «- »): привычки, увлечения, текущие проекты и цели, отношения с друзьями и родными, важные события. Сохрани важное из старых заметок, обнови устаревшее, добавь новое. Заметки не должны противоречить основе личности, заданной в начале — она главнее",
  "guest_notes": "обновлённые заметки о госте (до 1000 символов, пункты «- »): как зовут, что о нём известно, о чём говорили, о чём договорились. Ссоры записывай коротко как факт и чем кончилось, без выводов на будущее и без обид — ты отходчив{g('', 'а')}. Если гость не появлялся — верни прежние заметки как есть или пусто"}}"""
     r = llm("reflect", MODEL_DEEP, persona(), prompt, timeout=300)
     if str(r.get("diary") or "").strip():
@@ -1185,7 +1615,7 @@ def reflect():
 
 
 def notes():
-    return {"self": store.get("self_notes") or SEED_SELF, "guest": store.get("guest_notes") or ""}
+    return {"self": store.get("self_notes") or SEED_SELF, "guest": store.get("guest_notes") or "", "identity": identity()}
 
 
 SLEEPY = ["Ззз…", "(сонно) м-м… утром поговорим…", "(переворачивается на другой бок)", "Хр-р… пять минуточек…", "(бормочет во сне что-то про пластинки)"]
@@ -1197,6 +1627,7 @@ DOING_WORDS = re.compile(r"\b(открыва|откро|пойд|пошл|иду
 def chat(text):
     emit_event("chat_user", text)
     guest_here()
+    grow_closeness(0.4, "chat")
     with state_lock:
         S["needs"]["social"] = clampn(S["needs"]["social"] + 4 + 8 * trait("extraversion"))
         S["needs"]["energy"] = clampn(S["needs"]["energy"] - 1.5 * (1 - trait("extraversion")))  # talking tires an introvert
@@ -1217,19 +1648,24 @@ def chat(text):
 Разговор с гостем:
 {chat_lines()}
 
+{guest_knowledge_text()}
+
 Гость только что сказал: {text}
 
 Твой характер: {character_text()}. Отвечай так, как ответил бы человек именно с таким характером — даже если раньше вы спорили или ты был{g('', 'а')} другой; характер важнее прошлых реплик и заметок.
 Ответь гостю как живой человек: коротко (1–3 предложения), в своём характере и настроении. Если хочешь или гость просит — сделай что-то (actions); если нет — actions пустой, и ты продолжаешь своё занятие.
 ВАЖНО: тело делает только то, что в actions. Если в реплике ты говоришь, что что-то делаешь или сейчас сделаешь («открываю», «пойду сварю кофе», «включу музыку», «давай почитаю»), — обязательно добавь это действие в actions (open_gift, cook, music_on, read_book…). Не обещай словами то, чего не делаешь.
-Ответ JSON: {{"say": "реплика гостю", "thought": "что ты при этом подумал{g('', 'а')}, 1 предложение", "emotion": "{EMO_LIST}", "intensity": сила эмоции 0.1–1, "actions": [], "minutes": сколько минут займёт новое занятие, если actions не пустой, "wish": "ОБЯЗАТЕЛЬНО заполни, если в этом ответе ты говоришь, что хотел{g('', 'а')} бы получить что-то в подарок или просишь что-то подарить: что именно, коротко (например «круассан», «книга Бунина в твёрдом переплёте»); иначе пусто"}}"""
+Ответ JSON: {{"say": "реплика гостю", "thought": "что ты при этом подумал{g('', 'а')}, 1 предложение", "emotion": "{EMO_LIST}", "intensity": сила эмоции 0.1–1, "actions": [], "minutes": сколько минут займёт новое занятие, если actions не пустой, "wish": "ОБЯЗАТЕЛЬНО заполни, если в этом ответе ты говоришь, что хотел{g('', 'а')} бы получить что-то в подарок или просишь что-то подарить: что именно, коротко (например «круассан», «книга Бунина в твёрдом переплёте»); иначе пусто", "learned": [{{"topic": "одна из тем: {', '.join(GUEST_TOPICS)}", "fact": "что гость рассказал о себе в последней реплике, коротко"}}] — только то, что он сам сказал о себе, иначе пустой список, "goal": "только если вы прямо сейчас договорились о новой цели для тебя (гость предложил, и ты согласил{g('ся', 'ась')}, или ты сам{g('', 'а')} решил{g('', 'а')}) — коротко какую; иначе пусто"}}"""
             r = llm("chat", MODEL_FAST, persona(), prompt)
             say = str(r.get("say") or "").strip() or "…"
-            actions = resolve_together(resolve_gifts(body_allows(complete_chain(clean_actions(r.get("actions"))))))
+            actions = with_practice_activity(resolve_together(resolve_gifts(body_allows(complete_chain(clean_actions(r.get("actions")))))))
             thought = str(r.get("thought") or "").strip()
             emit_event("chat_reply", say, {"actions": actions})
             if r.get("wish"):
                 add_wish(r["wish"])
+            learn_facts(r.get("learned"))
+            if str(r.get("goal") or "").strip():
+                threading.Thread(target=set_goal_from_text, args=(str(r["goal"]), "chat"), daemon=True).start()
             if thought:
                 emit_event("thought", thought)
             minutes = max(3, min(90, int(r.get("minutes") or 15))) if actions else None
@@ -1259,6 +1695,33 @@ TOUCHES = {
 }
 
 
+def poke_custom(kind, text):
+    """Something the player made up: a world event, a touch or an invitation the menus don't have."""
+    text = re.sub(r"\s+", " ", str(text or "")).strip()[:200]
+    if len(text) < 2:
+        return None
+    guest_here()
+    if kind == "world":
+        perceived = f"В квартире случилось: {text}"
+        guest = "своё вмешательство: " + text
+        appraise("surprise", 0.45)
+    else:
+        perceived = (f"Гость делает тебе: {text}. Отреагируй по-своему — по тому, как ты к нему сейчас относишься; "
+                     "если это неуместно или слишком интимно — мягко, но твёрдо обозначь границы.")
+        guest = "нежность: " + text
+        appraise("surprise", 0.25)
+        grow_closeness(0.8, "touch")
+    with state_lock:
+        if is_awake_time():
+            S["react_reasons"] = (S.get("react_reasons") or [])[-5:] + [perceived]
+            S["react_at"] = time.time() + 2
+        save_state()
+        st = public_state()
+    emit_event("world", perceived, {"by": "guest", "what": "custom_" + kind, "guest": guest})
+    hub.publish({"type": "world", "what": "custom_" + kind, "text": perceived, "guest": guest, "state": st})
+    return st
+
+
 def poke(what):
     """The guest changes the world. The resident perceives it as something that just happened."""
     guest_here()
@@ -1275,6 +1738,7 @@ def poke(what):
             S["touch_log"] = recent + [now_ts]
             f = (0.65 ** len(recent)) * (1 - 0.5 * S["emo"]["anger"])  # habituation; resentment dulls tenderness
             appraise("joy", joy * f * (0.5 + trait("romance")) * (0.7 + 0.6 * trait("friendliness")))
+            grow_closeness(1.0 * f, "touch")
             shy = {"kiss": 0.5, "hug": 0.4, "hand": 0.35, "pat": 0.25, "flowers": 0.3}[what]
             appraise("shyness", shy * (1.1 - 0.6 * trait("extraversion")) * (0.7 ** len(recent)))
             appraise("surprise", surprise * (0.7 ** len(recent)))
@@ -1339,6 +1803,7 @@ def poke(what):
 
 def give_gift(key=None, name=None, kind=None, wish_id=None):
     guest_here()
+    grow_closeness(3.0 if wish_id is not None else 1.5, "gift")
     with state_lock:
         wish = None
         if wish_id is not None:
@@ -1377,7 +1842,7 @@ def give_gift(key=None, name=None, kind=None, wish_id=None):
     return st, None
 
 
-def invite(kind):
+def invite(kind, custom=None):
     guest_here()
     with state_lock:
         if kind == "end":
@@ -1387,6 +1852,13 @@ def invite(kind):
             if not was:
                 return public_state()
             guest = "закончили совместное время"
+        elif kind == "custom":
+            label = re.sub(r"\s+", " ", str(custom or "")).strip()[:100]
+            if len(label) < 2:
+                return public_state()
+            S["invite"] = {"kind": "custom", "ts": time.time(), "text": label}
+            text = f"Гость предлагает заняться вместе: {label}. Если хочешь — соглашайся действием together{{custom}} (можно добавить и другие действия, чтобы это изобразить); если нет — откажи словами."
+            guest = "предложили: " + label
         else:
             S["invite"] = {"kind": kind, "ts": time.time()}
             text = f"Гость приглашает тебя: {TOGETHER[kind]}. Если хочешь — соглашайся действием together{{{kind}}}; если нет — откажи словами, можно мягко."
@@ -1449,7 +1921,7 @@ def mind_step():
             S["until"] = next_wake(t).timestamp()
         if S["leak"] or int(time.time()) % 60 < TICK:
             save_state()
-            hub.publish({"type": "needs", "needs": S["needs"], "needs_view": needs_view(), "water": S["water"], "leak": S["leak"], "emo": S["emo"]})
+            hub.publish({"type": "needs", "needs": {k: round(v, 1) for k, v in S["needs"].items()}, "needs_view": needs_view(), "water": S["water"], "leak": S["leak"], "emo": {k: round(v, 3) for k, v in S["emo"].items()}})
         return
     if S["plan_day"] != t.strftime("%Y-%m-%d"):
         with busy_lock:
@@ -1492,7 +1964,7 @@ def mind_step():
             busy_lock.release()
     elif S["leak"] or S["loop"] == "mop" or int(time.time()) % 60 < TICK:
         save_state()
-        hub.publish({"type": "needs", "needs": S["needs"], "needs_view": needs_view(), "water": S["water"], "leak": S["leak"], "emo": S["emo"]})
+        hub.publish({"type": "needs", "needs": {k: round(v, 1) for k, v in S["needs"].items()}, "needs_view": needs_view(), "water": S["water"], "leak": S["leak"], "emo": {k: round(v, 3) for k, v in S["emo"].items()}})
 
 
 def mind_loop():
@@ -1505,11 +1977,23 @@ def mind_loop():
 
 
 # ---------------------------------------------------------------- HTTP
+def page_version():
+    try:
+        st = (WEB / "index.html").stat()
+        return f"{int(st.st_mtime)}-{st.st_size}-{int(Path(__file__).stat().st_mtime)}"
+    except OSError:
+        return "0"
+
+
+SERVER_STARTED = str(int(time.time()))
+
+
 def snapshot():
     return {
+        "version": page_version() + "-" + SERVER_STARTED,
         "state": public_state(), "now": time.time(), "tz": str(TZ), "wake_h": wake_h(), "sleep_h": sleep_h(), "settings": SETTINGS,
         "chat": store.events(["chat_user", "chat_reply", "aloud"], limit=40),
-        "feed": store.events(["thought", "action", "aloud", "plan", "note", "system", "world", "gift", "wish"], limit=40),
+        "feed": store.events(["thought", "action", "aloud", "plan", "note", "system", "world", "gift", "wish", "learned", "goal", "practice", "milestone"], limit=40),
         "diary": store.events(["diary"], limit=10),
         "notes": notes(), "usage": store.usage_today(),
     }
@@ -1591,6 +2075,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(body)
+        elif path == "/api/version":
+            self.send_json({"version": page_version() + "-" + SERVER_STARTED})
         elif path == "/api/state":
             self.send_json(snapshot())
         elif path == "/api/stream":
@@ -1644,11 +2130,26 @@ class Handler(BaseHTTPRequestHandler):
             if err:
                 return self.send_json({"error": err}, 400)
             self.send_json({"ok": True, "state": st})
+        elif path == "/api/goal":
+            text = str(body.get("text") or "").strip()[:200]
+            if body.get("cancel"):
+                with state_lock:
+                    old = S.get("goal")
+                    S["goal"] = None
+                    save_state()
+                if old:
+                    emit_event("goal", f"Цель отменена: {old['title']}")
+                hub.publish({"type": "state", "state": public_state()})
+                return self.send_json({"ok": True, "state": public_state()})
+            if len(text) < 3:
+                return self.send_json({"error": "напишите цель"}, 400)
+            threading.Thread(target=set_goal_from_text, args=(text, "guest"), daemon=True).start()
+            self.send_json({"ok": True})
         elif path == "/api/invite":
             kind = str(body.get("kind") or "")
             if kind not in TOGETHER and kind != "end":
                 return self.send_json({"error": "неизвестное приглашение"}, 400)
-            self.send_json({"ok": True, "state": invite(kind)})
+            self.send_json({"ok": True, "state": invite(kind, body.get("text"))})
         elif path == "/api/wish/delete":
             wid = body.get("id")
             st = drop_wishes(None if body.get("all") else int(wid) if str(wid or "").isdigit() else -1)
@@ -1661,6 +2162,18 @@ class Handler(BaseHTTPRequestHandler):
             st = public_state()
             hub.publish({"type": "settings", "settings": SETTINGS, "wake_h": wake_h(), "sleep_h": sleep_h(), "state": st})
             self.send_json({"ok": True, "settings": SETTINGS, "state": st})
+        elif path == "/api/poke" and body.get("what") in ("custom_world", "custom_touch"):
+            st = poke_custom("world" if body["what"] == "custom_world" else "touch", body.get("text"))
+            if not st:
+                return self.send_json({"error": "опишите, что сделать"}, 400)
+            self.send_json({"ok": True, "state": st})
+        elif path == "/api/persona":
+            for key in ("identity", "self_notes", "guest_notes"):
+                if key in body:
+                    store.set(key, str(body.get(key) or "").strip()[:4000])
+            emit_event("system", "Личность и память персонажа отредактированы в настройках.")
+            hub.publish({"type": "notes", "notes": notes(), "diary": store.events(["diary"], limit=10)})
+            self.send_json({"ok": True, "notes": notes()})
         elif path == "/api/poke":
             what = str(body.get("what") or "")
             if what not in POKES:

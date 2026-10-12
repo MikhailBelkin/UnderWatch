@@ -99,6 +99,31 @@ canvas{display:block}
 .plan{margin:0;padding-left:1.1em;font-size:14px;display:grid;gap:3px}
 .plan:empty::before{content:"плана пока нет — появится утром";color:var(--muted);margin-left:-1.1em}
 .journal{display:grid;gap:10px}
+.goals{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media (max-width:820px){.goals{grid-template-columns:1fr}}
+.closeness{display:flex;align-items:baseline;gap:10px}
+.closeness .level{font-family:var(--f-display);font-size:20px;font-weight:600}
+.ladder{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;margin:8px 0 6px}
+.ladder span{height:8px;border-radius:3px;background:var(--line);position:relative}
+.ladder span.on{background:#e86a92}
+.ladder span.part{background:linear-gradient(90deg,#e86a92 var(--p),var(--line) var(--p))}
+.facts ul{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px;font-size:13.5px;max-height:220px;overflow-y:auto}
+.facts li b{font-family:var(--f-mono);font-size:11.5px;font-weight:500;color:var(--muted);margin-right:6px}
+.facts summary{cursor:pointer;font-size:13.5px;color:var(--muted)}
+.goalTitle{font-size:16px;font-weight:600;margin:0}
+.goalDesc{font-size:13.5px;color:var(--muted);margin:2px 0 8px}
+.gbar{height:9px;border-radius:99px;background:var(--line);overflow:hidden}
+.gbar div{height:100%;background:var(--accent);transition:width .6s}
+.gmeta{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted);margin:6px 0;font-family:var(--f-mono)}
+.mstones{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 10px}
+.mstones span{font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.mstones span.done{border-color:var(--ok);color:var(--ok)}
+.goalForm{display:flex;gap:6px;margin-top:6px}
+.goalForm input{flex:1;min-width:0;font:inherit;font-size:13.5px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
+.goalForm button{font:inherit;font-size:13px;font-weight:600;padding:7px 12px;border-radius:8px;border:0;background:var(--accent);color:var(--accent-fg);cursor:pointer}
+.feed .k-learned span{color:#e86a92}
+.feed .k-milestone span{font-weight:600}
+.feed .k-practice span::before{content:"цель: ";color:var(--muted)}
 .journal details{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:10px 14px}
 .journal summary{cursor:pointer;font-family:var(--f-mono);font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
 .feed{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px;max-height:320px;overflow-y:auto}
@@ -114,6 +139,39 @@ canvas{display:block}
 .diary article time{display:block;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .chip.off .dot{background:var(--danger)}
 .chip.gear{display:inline-flex;align-items:center;gap:5px}
+.top{align-items:center}
+.topmenu{position:relative}
+.menuBtn{display:grid;gap:4px;padding:10px 9px;border:1px solid var(--line);border-radius:10px;background:var(--panel);cursor:pointer}
+.menuBtn span{display:block;width:18px;height:2px;border-radius:2px;background:var(--fg)}
+.menuPanel{position:absolute;right:0;top:calc(100% + 6px);z-index:20;min-width:260px;max-width:calc(100vw - 32px);background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.15);padding:8px;display:grid;gap:4px}
+.menuPanel details.sub summary{cursor:pointer;padding:8px 10px;border-radius:8px;font-weight:600;font-size:14px}
+.menuPanel details.sub summary:hover,.menuItem:hover{background:var(--bg)}
+.statusList{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:4px 10px 10px}
+.menuItem{display:flex;align-items:center;gap:8px;font:inherit;font-size:14px;font-weight:600;text-align:left;padding:8px 10px;border:0;border-radius:8px;background:transparent;color:var(--fg);cursor:pointer}
+.liveStatus{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:-6px;padding:8px 14px;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;background:var(--panel);font-size:14px}
+.liveStatus .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.liveStatus.asleep .dot{background:var(--muted)} .liveStatus.busy .dot{background:var(--warn)}
+.liveStatus #lsExtra{color:var(--accent);font-weight:600}
+.liveStatus #lsExtra:empty{display:none}
+.stage{border-radius:12px 12px 0 0}
+.actbar{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;margin-top:-4px}
+.dd{position:relative}
+.dd > summary{list-style:none;cursor:pointer;font-size:14px;font-weight:600;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}
+.dd > summary::-webkit-details-marker{display:none}
+.dd > summary::after{content:" \25BE";color:var(--muted)}
+.dd[open] > summary{border-color:var(--accent);color:var(--accent)}
+.dd .menu{position:absolute;left:0;top:calc(100% + 6px);z-index:15;min-width:250px;max-width:calc(100vw - 32px);max-height:60vh;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.15);padding:6px;display:flex;flex-direction:column;gap:2px}
+.dd .menu > button{font:inherit;font-size:14px;text-align:left;padding:7px 10px;border:0;border-radius:8px;background:transparent;color:var(--fg);cursor:pointer;display:flex;justify-content:space-between;gap:12px}
+.dd .menu > button:hover{background:var(--bg)}
+.dd .menu > button[aria-pressed="true"]::after{content:"вкл";font-family:var(--f-mono);font-size:11.5px;color:var(--accent)}
+.dd .menu > button[aria-pressed="false"]::after{content:"выкл";font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
+.dd .menu > button:disabled{opacity:.55;cursor:default}
+.customForm{display:flex;gap:4px;padding:6px 4px 2px;border-top:1px solid var(--line);margin-top:4px;order:99}
+.customForm input{flex:1;min-width:0;font:inherit;font-size:13px;padding:6px 9px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
+.customForm button{font:inherit;font-size:13px;font-weight:600;padding:6px 10px;border-radius:8px;border:0;background:var(--accent);color:var(--accent-fg);cursor:pointer}
+label.check{display:flex;align-items:center;gap:8px;font-size:14px;margin-top:8px}
+label.area{display:grid;gap:4px;font-size:12.5px;color:var(--muted);margin-bottom:8px}
+label.area textarea{font:inherit;font-size:13.5px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;min-height:70px}
 dialog#settings{border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--fg);padding:0;width:min(560px, calc(100vw - 32px));max-height:calc(100vh - 40px)}
 dialog#settings::backdrop{background:rgba(10,14,20,.45)}
 #setForm{display:grid;gap:4px;padding:18px 20px}
@@ -162,39 +220,43 @@ dialog#settings::backdrop{background:rgba(10,14,20,.45)}
 <body>
 <div class="wrap">
   <header class="top">
-    <div>
-      <h1 id="title">Квартира Лёвы</h1>
-      <p class="sub" id="sub">Лёва тут живёт: смотрит телек, готовит, спит. Напишите ему — он ответит и что-нибудь сделает.</p>
-    </div>
-    <div class="chips">
-      <span class="chip" id="stAct"><span class="dot"></span>…</span>
-      <span class="chip" id="stBrain"><span class="dot"></span>мозг: подключается</span>
-      <span class="chip" id="stClock">--:--</span>
-      <span class="chip" id="stUsage" title="Вызовы модели за сегодня. Расход идёт из лимитов подписки; сумма — по прайсу API, для справки">сегодня: —</span>
-      <button class="chip" id="soundBtn" type="button" aria-pressed="false">звук: выкл</button>
-      <button class="chip gear" id="settingsBtn" type="button" aria-haspopup="dialog" aria-label="Настройки"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.3 7.3 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.3 7.3 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.3 7.3 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.3 7.3 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg> настройки</button>
+    <h1 id="title">AI человек</h1>
+    <p class="sub" id="sub" hidden></p>
+    <div class="topmenu">
+      <button type="button" id="menuBtn" class="menuBtn" aria-haspopup="true" aria-expanded="false" aria-controls="menuPanel" aria-label="Меню"><span></span><span></span><span></span></button>
+      <div class="menuPanel" id="menuPanel" hidden>
+        <details class="sub" open><summary>Статус</summary>
+          <div class="statusList">
+            <span class="chip" id="stAct"><span class="dot"></span>…</span>
+            <span class="chip" id="stBrain"><span class="dot"></span>разум: подключается</span>
+            <span class="chip" id="stClock">--:--</span>
+            <span class="chip" id="stUsage" title="Вызовы модели за сегодня. Расход идёт из лимитов подписки; сумма — по прайсу API, для справки">сегодня: —</span>
+          </div>
+        </details>
+        <button type="button" class="menuItem" id="settingsBtn" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.3 7.3 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.3 7.3 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.3 7.3 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.3 7.3 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg> Настройки…</button>
+      </div>
     </div>
   </header>
 
   <div class="stage" id="stage"><canvas id="cv" role="img" aria-label="Квартира в разрезе: спальня, гостиная и кухня"></canvas></div>
-  <div class="controls" id="controls" role="group" aria-label="Вмешаться в квартиру"><span class="lbl">Вмешаться</span></div>
-  <div class="controls" id="tender" role="group" aria-label="Нежность"><span class="lbl">Нежность</span></div>
-  <div class="controls" id="gifts" role="group" aria-label="Подарить"><span class="lbl">Подарить</span>
-    <form id="giftForm" class="giftForm"><input id="giftName" maxlength="80" placeholder="свой подарок…" aria-label="Свой подарок"><button type="submit">Подарить</button></form>
+  <div class="liveStatus" id="liveStatus" aria-live="polite"><span class="dot"></span><b id="lsWho">…</b><span id="lsWhat"></span><span id="lsExtra"></span></div>
+  <div class="actbar" id="actbar">
+    <details class="dd"><summary>Вмешаться</summary><div class="menu" id="controls" role="group" aria-label="Вмешаться в квартиру">
+      <form class="customForm" data-kind="custom_world"><input maxlength="200" placeholder="своё вмешательство: например, в окно влетела птица" aria-label="Своё вмешательство"><button type="submit">Сделать</button></form>
+    </div></details>
+    <details class="dd"><summary>Нежность</summary><div class="menu" id="tender" role="group" aria-label="Нежность">
+      <form class="customForm" data-kind="custom_touch"><input maxlength="200" placeholder="другое: например, поправить ей прядь волос" aria-label="Своя нежность"><button type="submit">Сделать</button></form>
+    </div></details>
+    <details class="dd"><summary>Подарить</summary><div class="menu" id="gifts" role="group" aria-label="Подарить">
+      <form id="giftForm" class="customForm"><input id="giftName" maxlength="80" placeholder="свой подарок…" aria-label="Свой подарок"><button type="submit">Подарить</button></form>
+    </div></details>
+    <details class="dd"><summary>Вместе</summary><div class="menu" id="togetherRow" role="group" aria-label="Вместе">
+      <form class="customForm" data-kind="custom_together"><input maxlength="100" placeholder="другое: например, собрать пазл" aria-label="Своё совместное занятие"><button type="submit">Предложить</button></form>
+    </div></details>
   </div>
-  <div class="controls" id="togetherRow" role="group" aria-label="Вместе"><span class="lbl">Вместе</span></div>
   <div class="wishes" id="wishes" hidden><span class="lbl">Её желания</span><ul id="wishList"></ul><button type="button" id="wishClear" class="linkBtn">Очистить список</button></div>
 
   <section class="chat" aria-label="Разговор с жильцом">
-    <div class="persona">
-      <span class="lbl">Жилец</span>
-      <div class="seg" role="group" aria-label="Пол">
-        <button type="button" id="gM" aria-pressed="true">Он</button>
-        <button type="button" id="gF" aria-pressed="false">Она</button>
-      </div>
-      <input id="nameInput" maxlength="20" autocomplete="off" aria-label="Имя жильца" value="Лёва">
-      <span class="hint" id="nameHint">Enter — сменить имя</span>
-    </div>
     <div class="log" id="log" aria-live="polite"></div>
     <form id="form" class="composer">
       <input id="msg" autocomplete="off" placeholder="Напишите Лёве…" aria-label="Сообщение жильцу">
@@ -209,6 +271,22 @@ dialog#settings::backdrop{background:rgba(10,14,20,.45)}
   </section>
 
 
+  <section class="goals" aria-label="Цели">
+    <div class="card">
+      <h2>Главная цель · узнать вас ближе</h2>
+      <div class="closeness"><span id="closeLevel" class="level">незнакомец</span><span id="closeNum" class="hint"></span></div>
+      <div class="ladder" id="ladder"></div>
+      <p class="hint" id="acq">Знакомство: 0%</p>
+      <details class="facts"><summary id="factsSum">Что она о вас знает</summary><ul id="facts"></ul></details>
+    </div>
+    <div class="card">
+      <h2>Цель на эти дни</h2>
+      <div id="goalBox"></div>
+      <form id="goalForm" class="goalForm"><input id="goalText" maxlength="200" placeholder="например: научиться делать шпагат" aria-label="Новая цель"><button type="submit">Поставить цель</button></form>
+      <p class="hint" id="goalHint">Можно не ставить — она придумает себе цель сама.</p>
+    </div>
+  </section>
+
   <section class="journal" aria-label="Дневник и память">
     <details open><summary>Лента жизни</summary><ul class="feed" id="feed"></ul></details>
     <details class="diary"><summary>Дневник</summary><div id="diary"><p class="hint">Записи появляются каждый вечер, когда жилец ложится спать.</p></div></details>
@@ -220,6 +298,22 @@ dialog#settings::backdrop{background:rgba(10,14,20,.45)}
 <dialog id="settings" aria-labelledby="setTitle">
   <form id="setForm" method="dialog">
     <header class="setHead"><h2 id="setTitle">Настройки</h2><button type="button" class="x" id="setClose" aria-label="Закрыть">×</button></header>
+    <section><h3>Жилец</h3>
+      <div class="persona">
+        <div class="seg" role="group" aria-label="Пол">
+          <button type="button" id="gM" aria-pressed="true">Он</button>
+          <button type="button" id="gF" aria-pressed="false">Она</button>
+        </div>
+        <input id="nameInput" maxlength="20" autocomplete="off" aria-label="Имя" value="Лёва">
+        <span class="hint" id="nameHint">Enter — сменить имя</span>
+      </div>
+      <label class="check"><input type="checkbox" id="soundBtn"> Звук пластинки</label>
+    </section>
+    <section><h3>Личность и память</h3>
+      <label class="area"><span>Кто <b class="gx">она</b>: основа личности — возраст, работа, характер, вкусы, история. Это главное в каждом запросе; сама она это не переписывает.</span><textarea id="setIdentity" rows="6"></textarea></label>
+      <label class="area"><span>Что <b class="gx">она</b> думает о себе — заметки, которые обновляются каждый вечер (не противоречат основе).</span><textarea id="setSelf" rows="5"></textarea></label>
+      <label class="area"><span>Что <b class="gx">она</b> помнит о вас.</span><textarea id="setGuest" rows="4"></textarea></label>
+    </section>
     <section><h3>Распорядок <small>по Любляне</small></h3>
       <div class="row2"><label>Встаёт в <select id="setWake"></select></label><label>Ложится в <select id="setSleep"></select></label></div>
     </section>
@@ -300,13 +394,14 @@ const PL = {
   bed:{x:131,face:1,ru:'кровать'}, window:{x:118,face:1,ru:'окно'}, wardrobe:{x:288,face:1,ru:'шкаф'},
   sofa:{x:458,face:1,ru:'диван'}, tv:{x:582,face:1,ru:'телевизор'}, music:{x:720,face:1,ru:'проигрыватель'},
   fridge:{x:792,face:1,ru:'холодильник'}, stove:{x:878,face:1,ru:'плита'}, center:{x:640,face:-1,ru:'середина комнаты'},
-  toilet:{x:1020,face:1,ru:'унитаз'}, ksink:{x:866,face:1,ru:'кухонная мойка'}, sink:{x:1078,face:1,ru:'раковина'}, shower:{x:1146,face:-1,ru:'душ'},
+  toilet:{x:1020,face:1,ru:'унитаз'}, ksink:{x:866,face:1,ru:'кухонная мойка'},
+  coffee_table:{x:506,face:1,ru:'журнальный столик'}, stool:{x:948,face:1,ru:'барный стул'}, counter:{x:924,face:1,ru:'столешница'}, floor:{x:640,face:1,ru:'ковёр'}, sink:{x:1078,face:1,ru:'раковина'}, shower:{x:1146,face:-1,ru:'душ'},
   door:{x:338,face:1,ru:'дверной проём'}
 };
 function roomAt(x){ return x < 338 ? 'спальня' : x < 800 ? 'гостиная' : 'кухня'; }
 
 /* ---------- state ---------- */
-const ZERO = {lean:0,head:0,hipL:0,kneeL:0,hipR:0,kneeR:0,shL:0.1,elL:0.15,shR:-0.05,elR:0.15,dy:0,rot:0,dx:0,jy:0,sq:0,turn:0};
+const ZERO = {lean:0,head:0,hipL:0,kneeL:0,hipR:0,kneeR:0,shL:0.1,elL:0.15,shR:-0.05,elR:0.15,dy:0,rot:0,dx:0,jy:0,sq:0,turn:0,tilt:0};
 const S = {
   t:0, x:PL.sofa.x, face:1, outfit:'blue', mood:'happy', moodT:0,
   hold:{L:null,R:null},
@@ -367,11 +462,15 @@ function basePose(loop, t){
     case 'workout': { const c = (Math.sin(t*3.4) + 1)/2; return P({hipL:1.1*c, kneeL:-1.6*c, hipR:1.05*c, kneeR:-1.55*c, dy:17*c, lean:0.3*c, shL:1.55, elL:0.05, shR:1.6, elR:0.05}); }
     case 'toilet': return P(Object.assign({}, sit, {lean:0.18, head:0.12 + 0.04*Math.sin(t*0.6), shL:0.95, elL:0.6, shR:1.0, elR:0.7}));
     case 'shower': { const c = Math.sin(t*6); return P({shL:2.7, elL:1.5 + 0.3*c, shR:2.6, elR:1.6 - 0.3*c, head:-0.2 + 0.05*c, dy:Math.sin(t*2)*0.6}); }
+    case 'pose': return groundPose(Object.assign({}, S.freePose || P({})));
+    case 'cozy': return P(Object.assign({}, sit, {lean:-0.05, head:0.06 + 0.03*Math.sin(t*0.5), shL:0.9, elL:1.6, shR:0.95, elR:1.7, sq:-1}));
     case 'date': return P(Object.assign({}, sit, {lean:0.12 + 0.03*Math.sin(t*0.9), head:-0.08 + 0.06*Math.sin(t*1.3), shL:0.7, elL:1.1, shR:0.9 + 0.15*Math.max(0, Math.sin(t*0.7)), elR:1.3 + 0.4*Math.max(0, Math.sin(t*0.7))}));
     case 'dancing': { const pp = P({}); GEST.dance.f(pp, t, {face0:1}); return pp; }
     case 'mop': { const sw = Math.sin(t*3.6); return P({lean:0.2, head:0.25, shR:0.75 + 0.35*sw, elR:0.35, shL:0.55 + 0.35*sw, elL:0.5, dx:12*Math.sin(t*0.7), hipR:0.1*sw, hipL:-0.1*sw}); }
     case 'daydream': return P({head:-0.22 + 0.05*Math.sin(t*0.6), shL:-0.35, elL:0.4, shR:-0.35, elR:0.4, dy:Math.sin(t*1.5)*0.5});
-    case 'sleep': return P({dy:-8, rot:-PI/2, shL:0.15, shR:0.1, elL:0.25, elR:0.25, hipL:0.04, hipR:-0.03, head:-0.15});
+    case 'rest': return restPose(S.rest, t);
+    case 'sleep': if (S.rest && S.rest.on && S.rest.on !== 'bed') return lyingPose((SURF[S.rest.on] || SURF.sofa).top, t, false);
+      return P({dy:-8, rot:-PI/2, shL:0.15, shR:0.1, elL:0.25, elR:0.25, hipL:0.04, hipR:-0.03, head:-0.15});
     case 'listen': { const b = Math.abs(Math.sin(t*5.2)); return P({head:0.14*Math.sin(t*5.2), dy:1.8*b, kneeL:-0.12*b, kneeR:-0.12*b, hipL:0.06*b, hipR:0.06*b, shL:0.15, shR:0.1, elL:0.3+0.2*b, elR:0.3+0.2*b}); }
     default: return P({dy:Math.sin(t*2)*0.6, shL:0.08+0.02*Math.sin(t*2), shR:-0.05+0.02*Math.sin(t*2+1), head:0.04*Math.sin(t*0.5)});
   }
@@ -397,6 +496,7 @@ const GEST = {
   brush:{d:7, ru:'чистит зубы', f:(p,t) => { p.shR = 1.25; p.elR = 2.35 + 0.18*Math.sin(t*22); p.head = -0.05; p.shL = 0.2; p.elL = 0.5; if (Math.random() < 0.12) spark(S.head.x + 9*S.face, S.head.y + 7, 'foam', {vx:rand(-6,6), vy:rand(-6,4), max:0.8}); }},
   wash:{d:3.5, ru:'умывается', f:(p,t) => { const c = (Math.sin(t*5) + 1)/2; p.lean = 0.35; p.head = 0.2; p.shR = 0.9 + 0.6*c; p.elR = 0.4 + 1.6*c; p.shL = 0.85 + 0.6*c; p.elL = 0.4 + 1.5*c; if (Math.random() < 0.2) spark(S.x + 16*S.face, FLOOR - 68, 'drop', {vx:rand(-20,20), vy:rand(-50,-10), max:0.4}); }},
   comb:{d:4.5, ru:'причёсывается', f:(p,t) => { p.shR = 2.3; p.elR = 1.6 + 0.35*Math.sin(t*7); p.head = -0.1 + 0.05*Math.sin(t*7); p.shL = 0.1; }},
+  towel_dry:{d:4, ru:'вытирается полотенцем', f:(p,t) => { const r = Math.sin(t*9); p.shR = 2.4 + 0.2*r; p.elR = 1.5 + 0.3*r; p.shL = 2.2 - 0.2*r; p.elL = 1.6 - 0.3*r; p.head = 0.15 + 0.05*r; p.lean = 0.08; if (Math.random() < 0.15) spark(S.head.x + rand(-8,8), S.head.y - 6, 'drop', {vx:rand(-30,30), vy:rand(-40,-10), max:0.4}); }},
   browse:{d:3.2, ru:'выбирает одежду', f:(p,t) => { p.shR = 1.45; p.elR = 0.25 + 0.2*Math.sin(t*4); p.dx = 4*Math.sin(t*2.2); p.head = -0.05; p.lean = 0.05; S.lookTX = 1; S.lookTY = -0.2; }},
   reachup:{d:1.3, ru:'достаёт с полки', f:(p,t) => { const k = Math.sin(PI*clamp(t/1.3,0,1)); p.shR = 2.6*k; p.elR = 0.2; p.head = -0.3*k; p.dy = -2*k; }},
   changing:{d:7, ru:'переодевается', f:(p,t) => { p.shL = 1.8 + 0.8*Math.sin(t*5); p.elL = 1.2; p.shR = 2.2 + 0.7*Math.sin(t*5 + 1); p.elR = 1.0; p.dx = 2*Math.sin(t*3); }},
@@ -434,6 +534,7 @@ const ACT_RU = {
   eat:'ест', drink:'пьёт', sleep:'ложится спать', wake_up:'просыпается', change_clothes:'переодевается', light_on:'включает свет',
   light_off:'выключает свет', look_window:'смотрит в окно', open_fridge:'заглядывает в холодильник', read_book:'читает', write_diary:'пишет в блокнот',
   phone_call:'звонит по телефону', workout:'делает зарядку', tidy_up:'прибирается', console_off:'выключает приставку',
+  move:'двигается', rest:'устраивается', cozy:'укутывается в плед', light_candle:'зажигает свечу', wear_item:'надевает',
   date:'ужинает с вами при свечах', dance_together:'танцует с вами', together:'проводит время с вами',
   open_gift:'открывает подарок', eat_treat:'ест вкусняшку', use_item:'радуется подарку',
   wash_dishes:'моет посуду',
@@ -458,9 +559,17 @@ function expand(a, plan){
     case 'use_item': return a.kind === 'toy' ? [fx(() => { S.hold.R = 'thing:toy'; }), gest('selfhug', {end:() => { S.hold.R = null; }})]
                                              : [fx(() => { S.hold.R = 'thing:' + (a.kind || 'other'); }), gest('admire', {end:() => { S.hold.R = null; }})];
     case 'date': return [walk('sofa'), loop('date')];
+    case 'rest': { const on = SURF[a.on] ? a.on : 'sofa', how = a.how || 'sit';
+      const go = how === 'lie' ? {k:'walk', x:SURF[on].lieX || PL[on].x, face:1, place:on} : walk(on);
+      return [go, fx(() => { S.rest = {on, how}; if (how === 'lie') S.face = 1; }), loop('rest')]; }
+    case 'move': return [{k:'move', frames:a.frames || [], repeat:a.repeat || 1, end:a.end, label:a.label || 'двигается'}];
+    case 'cozy': return [walk('sofa'), fx(() => { S.hold.L = S.hold.R = null; }), loop('cozy')];
+    case 'light_candle': return [walk('tv'), gest('reachup', {end:() => { S.candleLit = a.id; }})];
+    case 'wear_item': return [fx(() => { S.hold.R = 'thing:clothes'; }), gest('admire', {end:() => { S.hold.R = null; S.accessory = {id:a.id, name:a.name}; }})];
     case 'dance_together': return [walk('center'), loop('dancing')];
     case 'use_toilet': return [walk('toilet'), loop('toilet'), wait(60)];
-    case 'shower': return [walk('shower'), loop('shower'), wait(150)];
+    case 'shower': return [walk('shower'), fx(() => { S.showerClothes = normOutfit(S.outfit); S.accessory = null; }), loop('shower'), wait(150),
+      loop(null), fx(() => { S.outfit = {type:'towel', color:null}; S.showerClothes = null; }), gest('towel_dry')];
     case 'brush_teeth': return [walk('sink'), fx(() => { S.hold.R = 'toothbrush'; S.hold.L = null; }), gest('brush', {end:() => { S.hold.R = null; }})];
     case 'wash_face': return [walk('sink'), gest('wash')];
     case 'comb_hair': return [walk('sink'), fx(() => { S.hold.R = 'comb'; }), gest('comb', {end:() => { S.hold.R = null; }})];
@@ -481,7 +590,8 @@ function expand(a, plan){
     }
     case 'drink': return [walk('fridge'), gest('reach', {start:() => { S.fridge = true; }, end:() => { S.fridge = false; S.hold.R = 'cup'; }}), gest('drink', {end:() => { S.hold.R = null; }})];
     case 'open_fridge': return [walk('fridge'), gest('reach', {start:() => { S.fridge = true; }}), wait(1.4), fx(() => { S.fridge = false; })];
-    case 'sleep': return [fx(() => { S.tv = 'off'; S.music = false; S.hold.L = S.hold.R = null; }), walk('bed'), loop('sleep')];
+    case 'sleep': { const on = ['sofa', 'floor'].includes(a.on) ? a.on : 'bed';
+      return [fx(() => { S.tv = 'off'; S.music = false; S.hold.L = S.hold.R = null; }), {k:'walk', x:SURF[on].lieX, face:1, place:on}, fx(() => { S.rest = {on, how:'lie'}; S.face = 1; }), loop('sleep')]; }
     case 'change_clothes': {
       const col = OUTFITS[a.color] ? a.color : null, typ = OUTFIT_TYPES[a.outfit] ? a.outfit : null;
       const next = {type:typ || 'casual', color:col || (typ ? null : nextOutfit())};
@@ -513,6 +623,8 @@ function clearQueue(){
   S.wardrobe = false;
   S.queue = []; S.cur = null;
   if (S.loop !== 'game' && S.hold.R === 'pad') S.hold.R = null;
+  for (const h of ['L', 'R']){ const k = S.hold[h]; if (k && /^(thing|treat|garment):|^groceries$|^toothbrush$|^comb$/.test(k)) S.hold[h] = null; }
+  S.changing = false; S.taken = null;
   if (S.hold.R === 'spoon' || S.hold.R === 'cup') S.hold.R = null;
   if (S.hold.L === 'plate') S.hold.L = null;
 }
@@ -554,6 +666,16 @@ function stepUpdate(dt){
     if (c.k === 'fx'){ c.fn(); S.cur = null; continue; }
     if (c.k === 'loop'){ S.loop = c.g; S.loopT = 0; S.loopDur = c.dur || rand(28, 50); S.cur = null; continue; }
     if (c.k === 'wait'){ c.t += dt; if (c.t >= c.d) { S.cur = null; continue; } return; }
+    if (c.k === 'move'){
+      S.loop = null;
+      if (moveStep(c, dt)){
+        const last = c.frames[c.frames.length - 1];
+        if (c.end === 'hold'){ S.freePose = frameToPose(last); S.freeLabel = c.label; S.loop = 'pose'; }
+        else if (last.dx){ S.x += last.dx*S.face; S.pose.dx -= last.dx; }
+        S.moveTgt = null; S.cur = null; continue;
+      }
+      return;
+    }
     if (c.k === 'gest'){
       c.t += dt;
       const G = GEST[c.g];
@@ -567,6 +689,7 @@ function onLoopChange(prev, next){
   if (next === 'sleep'){ setRoomLights('all', false); S.tv = 'off'; S.music = false; S.console = false; S.mood = 'sleepy'; }
   if (prev === 'sleep'){ S.lights.bed = true; if (S.mood === 'sleepy') S.mood = 'neutral'; S.moodT = 0; }
   if (prev === 'mop' && next !== 'mop' && S.hold.R === 'mop') S.hold.R = null;
+  if (prev === 'shower' && next !== 'shower'){ S.outfit = {type:'towel', color:null}; S.showerClothes = null; }
   if (['read','write','phone'].includes(prev) && prev !== next){ S.hold.R = null; S.hold.L = null; }
   if (prev === 'game' && next !== 'game'){ if (S.hold.R === 'pad') S.hold.R = null; if (S.tv === 'game') S.tv = 'show'; }
 }
@@ -577,6 +700,9 @@ function activity(){
   if (S.pending && S.loop !== 'sleep') return ['думает над ответом', 'думаешь над ответом'];
   if (c && c.k === 'walk') return ['идёт: ' + PL[c.place].ru, 'идёшь к месту «' + PL[c.place].ru + '»'];
   if (c && c.k === 'gest') { const r = GEST[c.g].ru; return [r, r]; }
+  if (c && c.k === 'move') return [c.label, ''];
+  if (S.loop === 'pose') return ['в позе: ' + (S.freeLabel || ''), ''];
+  if (S.loop === 'rest' && S.rest) return [({sit:'сидит', lie:'лежит', stand:'стоит'}[S.rest.how] || '') + ': ' + ((PL[S.rest.on] || {}).ru || ''), ''];
   switch (S.loop){
     case 'watch': return ['смотрит телек', 'сидишь на диване и смотришь телевизор'];
     case 'game': return ['играет в приставку', 'сидишь на диване с геймпадом и играешь в приставку'];
@@ -588,7 +714,8 @@ function activity(){
     case 'phone': return ['болтает по телефону', ''];
     case 'workout': return ['делает зарядку', ''];
     case 'mop': return ['вытирает пол', ''];
-    case 'date': return ['на свидании с вами', ''];
+    case 'date': return [(LIFE && LIFE.state.together && LIFE.state.together.kind === 'custom') ? 'вместе с вами' : 'на свидании с вами', ''];
+    case 'cozy': return ['сидит, укутавшись в плед', ''];
     case 'dancing': return ['танцует с вами', ''];
     case 'toilet': return ['в туалете', ''];
     case 'shower': return ['принимает душ', ''];
@@ -630,17 +757,19 @@ function update(dt){
 
   // target pose
   let tgt;
-  if (S.walking){ S.walkPhase += dt*9.5; tgt = walkPose(S.walkPhase); }
+  const moving = S.cur && S.cur.k === 'move' && S.moveTgt;
+  if (moving) tgt = Object.assign({}, S.moveTgt);
+  else if (S.walking){ S.walkPhase += dt*9.5; tgt = walkPose(S.walkPhase); }
   else tgt = basePose(S.loop, S.t);
   if (S.cur && S.cur.k === 'gest') GEST[S.cur.g].f(tgt, S.cur.t, S.cur);
   else if (S.pending && S.loop !== 'sleep' && !S.walking && S.loop !== 'game') GEST.think.f(tgt, S.t, {});
   for (const e of new Set([...Object.keys(S.emoS), ...Object.keys(S.emoT)])) S.emoS[e] = (S.emoS[e] || 0) + ((S.emoT[e] || 0) - (S.emoS[e] || 0)) * Math.min(1, dt*3);
   if (S.emoS.shyness > 0.35 && !(S.speech && !S.speech.think)){ S.lookTX = -0.6; S.lookTY = 0.8; }
-  emoPosture(tgt, !S.walking && !(S.cur && S.cur.k === 'gest') && !S.loop);
+  if (!moving && S.loop !== 'pose') emoPosture(tgt, !S.walking && !(S.cur && S.cur.k === 'gest') && !S.loop);
   const k = 1 - Math.exp(-dt*16), kr = 1 - Math.exp(-dt*6);
   for (const key in ZERO){
     if (key === 'jy' || key === 'turn' || key === 'dx') { S.pose[key] += (tgt[key] - S.pose[key]) * Math.min(1, k*1.6); continue; }
-    S.pose[key] += (tgt[key] - S.pose[key]) * (key === 'rot' ? kr : k);
+    S.pose[key] += (tgt[key] - S.pose[key]) * (moving ? Math.min(1, dt*25) : key === 'rot' ? kr : k);
   }
   S.lookX += (S.lookTX - S.lookX) * k; S.lookY += (S.lookTY - S.lookY) * k;
 
@@ -672,6 +801,65 @@ function update(dt){
   if (S.water > 0.8 && (S.walking || S.loop === 'mop') && Math.random() < dt*10) spark(S.x + S.pose.dx + rand(-10,10), GROUND - S.water*2.4, 'drop', {vx:rand(-40,40), vy:rand(-60,-30), max:0.5});
   if (LIFE && !S.cur && !S.queue.length) syncDevices(LIFE.state);
   S.particles = S.particles.filter(p => p.life < p.max);
+}
+
+/* ---------- free moves: the model composes poses from joint angles ---------- */
+const RAD = PI/180;
+function frameToPose(fr){
+  fr = fr || {};
+  return P({lean:(fr.torso || 0)*RAD, head:(fr.head || 0)*RAD, turn:fr.turn || 0,
+    shR:(fr.shoulder_near || 0)*RAD, elR:(fr.elbow_near || 0)*RAD, shL:(fr.shoulder_far || 0)*RAD, elL:(fr.elbow_far || 0)*RAD,
+    hipR:(fr.hip_near || 0)*RAD, kneeR:-(fr.knee_near || 0)*RAD, hipL:(fr.hip_far || 0)*RAD, kneeL:-(fr.knee_far || 0)*RAD,
+    tilt:(fr.tilt || 0)*RAD, dx:fr.dx || 0});
+}
+// rest the body on the floor with whatever part is lowest (feet, knees, hands, bottom, back)
+function groundPose(p){
+  const f = S.face, A = p.rot + p.tilt*f, ca = Math.cos(A), sa = Math.sin(A);
+  const lean = p.lean, neck = {x:Math.sin(lean)*TOR, y:-Math.cos(lean)*TOR}, shp = {x:neck.x*0.86, y:neck.y*0.86 + p.sq};
+  const pts = [[0, 0, 9], [neck.x, neck.y, 8.5], [Math.sin(lean)*5, -Math.cos(lean)*5, 8.5]];
+  for (const [h, k] of [[p.hipL, p.kneeL], [p.hipR, p.kneeR]]){
+    const kn = sg({x:0, y:0}, h, TH), an = sg(kn, h + k, SHN), ft = sg(an, h + k + PI/2, 7);
+    pts.push([kn.x, kn.y, 4.8], [an.x, an.y, 3], [ft.x, ft.y, 3]);
+  }
+  for (const [sh, el] of [[p.shL, p.elL], [p.shR, p.elR]]){
+    const a1 = lean + sh, e = sg(shp, a1, UA), hd = sg(e, a1 + el, FA);
+    pts.push([e.x, e.y, 3.8], [hd.x, hd.y, 3.4]);
+  }
+  const ha = lean + p.head; pts.push([neck.x + Math.sin(ha)*(HR + 3), neck.y - Math.cos(ha)*(HR + 3), HR]);
+  let low = -1e9;
+  for (const [x, y, r] of pts) low = Math.max(low, x*f*sa + y*ca + r);
+  p.dy = 51 - low;
+  return p;
+}
+function moveStep(c, dt){
+  if (!c.start){ c.start = Object.assign({}, S.pose); c.t = 0; c.fx0 = S.x; }
+  c.t += dt;
+  const frames = c.frames, n = frames.length, per = frames.reduce((a, fr) => a + fr.t + (fr.hold || 0), 0), total = per*(c.repeat || 1);
+  let tt = Math.min(c.t, total - 1e-6) % per, i = 0;
+  while (i < n - 1 && tt >= frames[i].t + (frames[i].hold || 0)){ tt -= frames[i].t + (frames[i].hold || 0); i++; }
+  const loopIdx = Math.floor(Math.min(c.t, total - 1e-6) / per);
+  const from = i > 0 ? groundPose(frameToPose(frames[i - 1])) : loopIdx > 0 ? groundPose(frameToPose(frames[n - 1])) : c.start;
+  const to = groundPose(frameToPose(frames[i]));
+  const u = clamp(tt / frames[i].t, 0, 1), e = u*u*(3 - 2*u);
+  const out = {};
+  for (const key in ZERO) out[key] = (from[key] ?? ZERO[key]) + ((to[key] ?? ZERO[key]) - (from[key] ?? ZERO[key]))*e;
+  S.moveTgt = out;
+  return c.t >= total;
+}
+
+/* ---------- surfaces: sit, lie or stand on anything with room ---------- */
+const SURF = {bed:{top:FLOOR - 46, soft:true, lieX:131}, sofa:{top:FLOOR - 28, soft:true, lieX:458}, floor:{top:GROUND, lieX:640},
+  coffee_table:{top:FLOOR - 18}, stool:{top:FLOOR - 40}, counter:{top:FLOOR - 66}};
+function lyingPose(top, t, awake){
+  return P({dy:top - FLOOR + 38 + (top === GROUND ? 3 : 0), rot:-PI/2, shL:0.15, shR:awake ? 0.6 + 0.2*Math.sin(t*0.4) : 0.1, elL:0.25, elR:awake ? 1.6 : 0.25, hipL:0.04, hipR:awake ? 0.25 : -0.03, kneeR:awake ? -0.5 : 0, head:awake ? -0.05 : -0.15});
+}
+function restPose(r, t){
+  const sf = SURF[r && r.on] || SURF.sofa, how = (r && r.how) || 'sit';
+  if (how === 'lie') return lyingPose(sf.top, t, true);
+  if (how === 'stand') return P({dy:sf.top - GROUND, head:0.04*Math.sin(t*0.5), shL:0.08, shR:-0.05});
+  if (r && r.on === 'floor') return groundPose(frameToPose({hip_near:90, hip_far:90, knee_near:10, shoulder_near:20, shoulder_far:-25, elbow_near:20, torso:-5}));
+  const high = sf.top < FLOOR - 35;
+  return P({hipL:1.5, kneeL:high ? -1.05 : -1.42, hipR:1.45, kneeR:high ? -1.0 : -1.38, dy:sf.top - FLOOR + 42 + (sf.soft ? 6 : 0), lean:-0.05, shL:0.3, elL:0.7, shR:0.35, elR:0.75, head:0.04*Math.sin(t*0.6)});
 }
 
 /* ---------- emotions in the body ---------- */
@@ -891,7 +1079,13 @@ function drawLiving(){
   // shelf above the TV for the guest's gifts
   rect(600, 212, 120, 4, C.woodDark); rect(606, 216, 3, 6, C.woodDark); rect(711, 216, 3, 6, C.woodDark);
   const kept = S.items.filter(it => it.state === 'open' && !['sweet','drink','flowers'].includes(it.kind)).slice(-7);
-  kept.forEach((it, i) => drawThing(it.kind, 612 + i*16, 212));
+  kept.forEach((it, i) => {
+    const plaid = /плед|одеял|покрывал/i.test(it.name), lit = /свеч/i.test(it.name) && Date.now()/1000 - (it.lit_ts || 0) < 7200;
+    if (plaid && S.loop === 'cozy') return;
+    if (plaid){ rr(605 + i*16, 202, 14, 10, 2, '#c45a4a'); rect(605 + i*16, 205, 14, 1.5, 'rgba(245,225,200,0.7)'); return; }
+    drawThing(it.kind, 612 + i*16, 212);
+    if (lit){ ellipse(612 + i*16, 196 + Math.sin(S.t*9)*0.4, 1.8, 3, '#ffb347'); ctx.save(); ctx.globalCompositeOperation = 'lighter'; const g = ctx.createRadialGradient(612 + i*16, 196, 0, 612 + i*16, 196, 40); g.addColorStop(0, 'rgba(255,190,110,0.35)'); g.addColorStop(1, 'rgba(255,190,110,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(612 + i*16, 196, 40, 0, PI*2); ctx.fill(); ctx.restore(); }
+  });
   // floor lamp
   line(566, FLOOR + 2, 566, FLOOR - 150, 3, C.dark); ellipse(566, FLOOR + 2, 12, 3, C.dark);
   ctx.fillStyle = S.lights.floor ? '#fff0c2' : '#d8cfb4'; ctx.beginPath(); ctx.moveTo(552, FLOOR - 150); ctx.lineTo(580, FLOOR - 150); ctx.lineTo(574, FLOOR - 172); ctx.lineTo(558, FLOOR - 172); ctx.closePath(); ctx.fill();
@@ -935,6 +1129,8 @@ function drawKitchen(){
   rr(904, FLOOR - 52, 66, 50, 3, '#2f3036'); rr(910, FLOOR - 44, 54, 26, 3, '#4b4f58');
   if (S.stove){ ctx.globalAlpha = 0.5 + 0.3*Math.sin(S.t*12); rr(912, FLOOR - 42, 50, 22, 3, '#ff8a3c'); ctx.globalAlpha = 1; }
   rect(862, FLOOR - 66, 116, 7, '#6e5b4f');
+  const drawStool = () => { line(942, FLOOR - 38, 938, FLOOR + 2, 2, C.metalDark); line(954, FLOOR - 38, 958, FLOOR + 2, 2, C.metalDark); line(940, FLOOR - 14, 956, FLOOR - 14, 1.5, C.metalDark); ellipse(948, FLOOR - 40, 10, 3.2, '#b5835a'); rect(938, FLOOR - 40, 20, 3, '#9a6c46'); };
+  S.drawStool = drawStool;
   rr(872, FLOOR - 68, 24, 5, 2, '#b8c0c7'); line(884, FLOOR - 68, 884, FLOOR - 78, 2, C.metalDark); line(884, FLOOR - 78, 891, FLOOR - 78, 2, C.metalDark);
   ellipse(918, FLOOR - 67, 12, 2.5, S.stove ? '#ff5a2a' : '#333'); ellipse(948, FLOOR - 67, 12, 2.5, '#333');
   // pan
@@ -1025,7 +1221,12 @@ function drawToiletScreen(){
 }
 function drawBathFront(){
   drawToiletScreen(); drawWardrobeFront();
-  S.fog += ((S.loop === 'shower' ? 0.72 : 0) - S.fog) * 0.02;
+  const inShower = S.loop === 'shower' && Math.abs(S.x - PL.shower.x) < 6;
+  S.fog += ((inShower ? 0.86 : 0) - S.fog) * (inShower ? 0.15 : 0.02);
+  if (S.showerClothes && inShower){
+    const sp = outfitSpec(S.showerClothes);
+    rr(1104, GROUND - 7, 16, 5, 2, sp.bottom || sp.skirt || '#888'); rr(1105, GROUND - 11, 14, 5, 2, sp.top || sp.skirt || '#aaa');
+  }
   ctx.fillStyle = 'rgba(205,232,240,' + (0.16 + S.fog) + ')';
   ctx.fillRect(1122, FLOOR - 164, 52, 160);
   line(1122, FLOOR - 166, 1122, FLOOR - 4, 2.2, C.metal);
@@ -1094,6 +1295,7 @@ function faceParams(){
 }
 function drawHead(hc, ang){
   const p = S.pose, F = faceParams();
+  if (S.silhouette){ circle(hc.x, hc.y, HR, '#cdb7a6'); circle(hc.x - 1, hc.y - 2, HR + 1, '#b9a08c'); return; }
   ctx.save(); ctx.translate(hc.x, hc.y); ctx.rotate(ang);
   const tr = p.turn*2.6;
   if (!ID.male){
@@ -1164,12 +1366,14 @@ function drawHead(hc, ang){
   ctx.restore();
 }
 function drawPerson(){
-  const p = S.pose, f = S.face, o = outfitSpec(S.outfit);
-  const skin = C.skin, skinD = C.skinD, topC = o.top || skin, botC = o.bottom || skin;
+  const p = S.pose, f = S.face, showering = S.loop === 'shower' && Math.abs(S.x - PL.shower.x) < 6;
+  const o = showering ? {top:null, bottom:null, sleeves:'none', legs:'none', skirt:null, shoes:null} : outfitSpec(S.outfit);
+  const skin = showering ? '#cdb7a6' : C.skin, skinD = showering ? '#c2ab99' : C.skinD, topC = o.top || skin, botC = o.bottom || skin;
+  S.silhouette = showering;
   const hipX = S.x + p.dx, hipY = GROUND - 50 + p.dy + p.jy;
   // shadow
   if (p.rot > -0.6){ ctx.globalAlpha = 0.18; ellipse(S.x + p.dx, GROUND + 1, 18 - Math.min(10, -p.jy*0.25), 3, '#000'); ctx.globalAlpha = 1; }
-  ctx.save(); ctx.translate(hipX, hipY); ctx.rotate(p.rot); ctx.scale(f, 1);
+  ctx.save(); ctx.translate(hipX, hipY); ctx.rotate(p.rot + p.tilt*f); ctx.scale(f, 1);
   const lean = p.lean;
   const neck = {x:Math.sin(lean)*TOR, y:-Math.cos(lean)*TOR};
   const shp = {x:neck.x*0.86, y:neck.y*0.86 + p.sq};
@@ -1216,7 +1420,7 @@ function drawPerson(){
   drawItem(S.hold.R, nearH);
   ctx.restore();
   // world head position for bubbles / particles
-  const lx = hc.x*f, ly = hc.y, c = Math.cos(p.rot), s = Math.sin(p.rot);
+  const lx = hc.x*f, ly = hc.y, c = Math.cos(p.rot + p.tilt*f), s = Math.sin(p.rot + p.tilt*f);
   S.head = {x:hipX + lx*c - ly*s, y:hipY + lx*s + ly*c};
   const hx = nearH.hd.x*f, hy = nearH.hd.y;
   S.handW = {x:hipX + hx*c - hy*s, y:hipY + hx*s + hy*c};
@@ -1251,8 +1455,26 @@ function drawGifts(){
     if (it.wish) circle(x + 18, y - 15, 2, '#f7e08a');
   });
 }
+function drawPlaid(){
+  if (S.loop !== 'cozy' || Math.abs(S.x - PL.sofa.x) > 4) return;
+  const x = S.x + S.pose.dx, y = GROUND - 50 + S.pose.dy;
+  ctx.save(); ctx.beginPath();
+  ctx.moveTo(x - 12, y - 30); ctx.quadraticCurveTo(x + 2, y - 38, x + 14, y - 28); ctx.lineTo(x + 30, y - 6); ctx.lineTo(x + 30, y + 22); ctx.quadraticCurveTo(x + 10, y + 26, x - 12, y + 6); ctx.closePath();
+  ctx.fillStyle = '#c45a4a'; ctx.fill(); ctx.clip();
+  ctx.strokeStyle = 'rgba(245,225,200,0.6)'; ctx.lineWidth = 2;
+  for (let i = -20; i < 50; i += 7){ ctx.beginPath(); ctx.moveTo(x + i, y - 40); ctx.lineTo(x + i, y + 30); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x - 20, y - 40 + i + 20); ctx.lineTo(x + 40, y - 40 + i + 20); ctx.stroke(); }
+  ctx.restore();
+}
+function drawScarf(){
+  if (!S.accessory || S.loop === 'sleep' || S.loop === 'shower') return;
+  const H = S.head, f = S.face;
+  if (!H || !isFinite(H.x)) return;
+  const nx = H.x - 3*f, ny = H.y + 15;
+  rr(nx - 8, ny - 3, 16, 6, 3, '#d2493f'); for (let i = 0; i < 3; i++) rect(nx - 6 + i*5, ny - 3, 1.5, 6, '#f3f2ec');
+  line(nx + 4*f, ny + 2, nx + 6*f, ny + 16, 4, '#d2493f');
+}
 function drawBlanketOver(){
-  if (S.loop !== 'sleep' || S.pose.rot > -1.1) return;
+  if (S.loop !== 'sleep' || S.pose.rot > -1.1 || (S.rest && S.rest.on && S.rest.on !== 'bed')) return;
   ctx.fillStyle = C.blanket; ctx.beginPath();
   ctx.moveTo(96, FLOOR - 32); ctx.lineTo(96, FLOOR - 56); ctx.quadraticCurveTo(130, FLOOR - 70 - Math.sin(S.t*1.6)*1.5, 206, FLOOR - 58); ctx.lineTo(206, FLOOR - 32); ctx.closePath(); ctx.fill();
   rect(96, FLOOR - 57, 6, 25, C.blanketDark);
@@ -1409,16 +1631,26 @@ function draw(){
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   const ph = phase();
   drawOutside(ph); drawShell(); drawBedroom(ph); drawLiving(); drawKitchen(); drawBathroom();
-  drawGifts(); drawTogether(); drawKitchenSinkDishes(); drawPerson(); drawBlanketOver(); drawBathFront(); drawTouch(1/60); drawWater();
+  drawGifts(); drawTogether(); drawKitchenSinkDishes(); if (S.drawStool) S.drawStool(); drawPerson(); drawPlaid(); drawScarf(); drawBlanketOver(); drawBathFront(); drawTouch(1/60); drawWater();
   drawLighting(ph); drawParticles(); drawBubble();
 }
 let last = performance.now(), lastStatus = '';
+let frameErrors = 0, lastFrameError = 0;
 function frame(ts){
   const dt = Math.min(0.05, (ts - last)/1000); last = ts;
-  update(dt); draw();
+  try { update(dt); draw(); }
+  catch (err){
+    console.error(err);
+    frameErrors++;
+    if (S.t - lastFrameError > 5){ lastFrameError = S.t; clearQueue(); S.cur = null; if (typeof resync === 'function') resync(true); }
+    requestAnimationFrame(frame); return;
+  }
+  // watchdog: a step that runs far too long means the page and the server disagree
+  if (S.cur){ S.stepAge = (S.stepRef === S.cur ? (S.stepAge || 0) : 0) + dt; S.stepRef = S.cur; if (S.stepAge > 200){ S.stepAge = 0; clearQueue(); if (typeof resync === 'function') resync(true); } }
   if (narrow && !userScrolling){ const target = S.x*cssScale - stage.clientWidth/2; stage.scrollLeft += (target - stage.scrollLeft)*0.08; }
   const st = activity()[0];
   if (st !== lastStatus){ lastStatus = st; stAct.lastChild.textContent = st; }
+  renderLiveStatus(st);
   requestAnimationFrame(frame);
 }
 let userScrolling = false, scrollTimer = 0;
@@ -1448,6 +1680,7 @@ function syncDevices(st){
   S.tv = st.tv; S.music = st.music; S.console = st.console; S.leak = st.leak;
   if (st.items) S.items = st.items;
   if ('dishes' in st) S.dishes = st.dishes;
+  if ('accessory' in st) S.accessory = st.accessory;
   if (st.outfit) S.outfit = normOutfit(st.outfit);
   for (const k in st.lights) S.lights[k] = st.lights[k];
 }
@@ -1458,6 +1691,9 @@ function placeFromServer(st){
   S.loop = st.loop || null; S.prevLoop = S.loop; S.loopT = 0;
   syncDevices(st); S.water = S.waterTarget = st.water || 0; S.outfit = normOutfit(st.outfit); S.mood = st.mood;
   S.hold = Object.assign({L:null, R:null}, HOLD_FOR[S.loop] || {});
+  S.rest = st.rest || null;
+  if ((st.loop === 'rest' && st.rest && st.rest.how === 'lie') || st.loop === 'sleep'){ S.face = 1; if (st.rest && SURF[st.rest.on] && SURF[st.rest.on].lieX) S.x = SURF[st.rest.on].lieX; }
+  if (st.loop === 'pose' && st.pose_hold){ S.freePose = frameToPose(st.pose_hold.frame); S.freeLabel = st.pose_hold.label; }
   S.pose = Object.assign({}, basePose(S.loop, 0));
   if (st.emo){ S.emoT = Object.assign({}, EMO_ZERO, st.emo); S.emoS = Object.assign({}, EMO_ZERO, st.emo); }
 }
@@ -1470,7 +1706,7 @@ function applyState(st){
     renderEmotions(st.emo);
   }
   if (ID.male !== st.male || ID.name !== st.name){ ID.male = st.male; ID.name = st.name; renderId(); }
-  renderMind(); renderNeeds(st.needs, st.needs_view); setBrain(); renderControls(); renderWishes(); renderTogether();
+  renderMind(); renderNeeds(st.needs, st.needs_view); setBrain(); renderControls(); renderWishes(); renderTogether(); renderGoals(st);
 }
 function renderMind(){
   const st = LIFE.state;
@@ -1514,6 +1750,44 @@ function renderEmotions(E){
     row.append(l, tr, num); box.append(row);
   }
 }
+const LEVELS = [[0,'незнакомец'],[10,'знакомый'],[25,'приятель'],[45,'друг'],[70,'близкий друг'],[90,'родной человек']];
+function renderGoals(st){
+  if (!st) return;
+  const c = st.closeness || 0;
+  let lvl = 0; LEVELS.forEach(([th], i) => { if (c >= th) lvl = i; });
+  document.getElementById('closeLevel').textContent = LEVELS[lvl][1];
+  document.getElementById('closeNum').textContent = Math.round(c) + ' / 100';
+  const lad = document.getElementById('ladder'); lad.replaceChildren();
+  LEVELS.forEach(([th, name], i) => { const sp = document.createElement('span'); sp.title = name; const next = (LEVELS[i + 1] || [100])[0];
+    if (c >= next) sp.className = 'on'; else if (c > th){ sp.className = 'part'; sp.style.setProperty('--p', Math.round(100*(c - th)/(next - th)) + '%'); } lad.append(sp); });
+  const facts = st.guest_facts || [], topics = new Set(facts.map(f => f.topic));
+  document.getElementById('acq').textContent = 'Знакомство: ' + Math.round(100*[...topics].filter(t => t !== 'разное').length/20) + '% · ' + facts.length + ' ' + (facts.length % 10 === 1 && facts.length % 100 !== 11 ? 'факт' : 'фактов') + ' о вас';
+  document.getElementById('factsSum').textContent = 'Что ' + gx('он', 'она') + ' о вас знает';
+  const ul = document.getElementById('facts'); ul.replaceChildren();
+  if (!facts.length){ const li = document.createElement('li'); li.className = 'hint'; li.textContent = 'Пока ничего — расскажите о себе.'; ul.append(li); }
+  for (const f of facts.slice().reverse()){ const li = document.createElement('li'); const b = document.createElement('b'); b.textContent = f.topic; li.append(b, document.createTextNode(f.fact)); ul.append(li); }
+  const G = st.goal, box = document.getElementById('goalBox'); box.replaceChildren();
+  document.getElementById('goalHint').textContent = G ? '' : 'Можно не ставить — ' + gx('он', 'она') + ' придумает себе цель сам' + gx('', 'а') + '.' + ((st.goals_done || []).length ? ' Достигнуто целей: ' + st.goals_done.length + '.' : '');
+  if (!G) return;
+  const h = document.createElement('p'); h.className = 'goalTitle'; h.textContent = G.title;
+  const d = document.createElement('p'); d.className = 'goalDesc'; d.textContent = G.description + (G.source === 'self' ? ' (' + gx('сам', 'сама') + ' придумал' + gx('', 'а') + ')' : '');
+  const bar = document.createElement('div'); bar.className = 'gbar'; const fill = document.createElement('div'); fill.style.width = Math.round(G.progress) + '%'; bar.append(fill);
+  const meta = document.createElement('div'); meta.className = 'gmeta';
+  const add = t => { const sp = document.createElement('span'); sp.textContent = t; meta.append(sp); };
+  add(Math.round(G.progress) + '%');
+  if (G.metric) add(G.metric.name + ': ' + (+G.metric.current).toFixed(G.metric.current % 1 ? 1 : 0) + ' → ' + G.metric.target + ' ' + G.metric.unit);
+  const left = Math.max(0, Math.ceil((G.deadline - Date.now()/1000)/86400)); add('осталось дней: ' + left);
+  const lastS = (G.sessions || []).slice(-1)[0]; if (lastS) add('последняя тренировка ' + hhmm(lastS.ts*1000) + ', ' + lastS.minutes + ' мин');
+  const ms = document.createElement('div'); ms.className = 'mstones';
+  for (const m of G.milestones || []){ const sp = document.createElement('span'); sp.textContent = (m.done ? '✓ ' : '') + m.title; if (m.done) sp.className = 'done'; ms.append(sp); }
+  const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'linkBtn'; cancel.textContent = 'Отменить цель';
+  cancel.addEventListener('click', () => api('/api/goal', {cancel:true}).catch(e => addSys('Не получилось: ' + e.message)));
+  box.append(h, d, bar, meta, ms, cancel);
+}
+document.getElementById('goalForm').addEventListener('submit', e => {
+  e.preventDefault(); const t = document.getElementById('goalText'), text = t.value.trim(); if (!text) return;
+  api('/api/goal', {text}).then(() => { t.value = ''; addSys('Цель «' + text + '» отправлена — ' + ID.name + ' составляет программу…'); }).catch(err => addSys('Не получилось: ' + err.message));
+});
 function renderUsage(u){
   if (!u) return;
   const tok = u.input + u.output;
@@ -1527,17 +1801,18 @@ function feedItem(ev){
 }
 function renderFeed(list){ const ul = document.getElementById('feed'); ul.replaceChildren(...list.slice().reverse().map(feedItem)); }
 function renderNotes(notes, diary){
+  if (notes && LIFE) LIFE.notes = notes;
   if (notes){ document.getElementById('selfNotes').textContent = notes.self || '—'; document.getElementById('guestNotes').textContent = notes.guest || 'Пока ничего: заметки о вас появятся после первого вечера, когда вы поболтаете.'; }
   if (diary && diary.length){
     const box = document.getElementById('diary'); box.replaceChildren();
     for (const d of diary.slice().reverse()){ const a = document.createElement('article'); const t = document.createElement('time'); const dt = new Date(d.ts*1000); t.textContent = dt.toLocaleDateString('ru-RU', {timeZone:'Europe/Ljubljana', day:'numeric', month:'long', weekday:'long'}); const p = document.createElement('p'); p.textContent = d.text; a.append(t, p); box.append(a); }
   }
 }
-function actsText(actions){ return (actions || []).map(a => (ACT_RU[a.do] || a.do) + (a.place ? ' → ' + PL[a.place].ru : '') + (a.do === 'change_clothes' && (a.outfit || a.color) ? ' (' + outfitName({type:a.outfit || 'casual', color:a.color}) + ')' : '')).join(' · '); }
+function actsText(actions){ return (actions || []).map(a => (ACT_RU[a.do] || a.do) + (a.place ? ' → ' + PL[a.place].ru : '') + (a.do === 'change_clothes' && (a.outfit || a.color) ? ' (' + outfitName({type:a.outfit || 'casual', color:a.color}) + ')' : '') + (a.do === 'move' && a.label ? ': ' + a.label : '') + (a.do === 'rest' ? ' (' + ({sit:'сесть', lie:'лечь', stand:'встать'}[a.how] || '') + ' — ' + ((PL[a.on] || {}).ru || '') + ')' : '') + (a.do === 'sleep' && a.on && a.on !== 'bed' ? ' (' + ((PL[a.on] || {}).ru || '') + ')' : '')).join(' · '); }
 function handle(msg){
   if (msg.type === 'act'){
-    if (msg.seq === lastSeq + 1 && msg.actions.length) run(msg.actions);
-    else if (msg.seq !== lastSeq) placeFromServer(msg.state);
+    if (msg.seq === lastSeq + 1){ if (msg.actions.length) run(msg.actions); }
+    else if (msg.seq > lastSeq + 1 || msg.seq < lastSeq) placeFromServer(msg.state);
     lastSeq = msg.seq;
     if (msg.aloud) say(msg.aloud);
     else if (msg.thought && msg.source !== 'chat') say(msg.thought, true);
@@ -1547,13 +1822,14 @@ function handle(msg){
     if (ev.kind === 'chat_user') addMsg('me', ev.text);
     else if (ev.kind === 'chat_reply'){ addMsg(ev.data.initiated ? 'init' : 'him', ev.text, actsText(ev.data.actions)); say(ev.text); S.lastUser = S.t; }
     else if (ev.kind === 'aloud'){ addMsg('aloud', ev.text); document.getElementById('feed').prepend(feedItem(ev)); }
+    else if (ev.kind === 'milestone' || ev.kind === 'goal'){ addSys(ev.text); document.getElementById('feed').prepend(feedItem(ev)); if (ev.kind === 'milestone') for (let i = 0; i < 16; i++) spark(S.x + rand(-20, 20), GROUND - rand(30, 110), 'star'); }
     else if (ev.kind === 'wish'){ addSys(ID.name + ' хочет в подарок: ' + ev.data.wish.name + ' — добавлено в «Её желания».'); document.getElementById('feed').prepend(feedItem(ev)); }
     else { document.getElementById('feed').prepend(feedItem(ev)); if (ev.kind === 'diary') api('/api/state').then(s => renderNotes(s.notes, s.diary)).catch(() => {}); }
   } else if (msg.type === 'busy'){
     if (LIFE){ LIFE.state.busy = msg.what; setBrain(); }
     S.pending = msg.what === 'chat';
   } else if (msg.type === 'needs'){ if (LIFE){ LIFE.state.needs = msg.needs; if (msg.needs_view) LIFE.state.needs_view = msg.needs_view; renderNeeds(msg.needs, LIFE.state.needs_view); if ('water' in msg){ LIFE.state.water = msg.water; LIFE.state.leak = msg.leak; S.waterTarget = msg.water; } if (msg.emo){ LIFE.state.emo = msg.emo; S.emoT = Object.assign({}, EMO_ZERO, msg.emo); renderEmotions(msg.emo); } } }
-  else if (msg.type === 'world'){ applyState(msg.state); syncDevices(msg.state); if (TOUCH_DUR[msg.what]) startTouch(msg.what); if (msg.what === 'gift') for (let i = 0; i < 14; i++) spark(rand(606, 700), GROUND - rand(0, 30), 'star'); if (msg.state.loop !== S.loop && !S.cur && !S.queue.length) S.loop = msg.state.loop; renderControls(); addSys('Вы ' + msg.guest + '.'); }
+  else if (msg.type === 'world'){ applyState(msg.state); syncDevices(msg.state); if (TOUCH_DUR[msg.what]) startTouch(msg.what); if (msg.what === 'gift') for (let i = 0; i < 14; i++) spark(rand(606, 700), GROUND - rand(0, 30), 'star'); if (msg.state.loop !== S.loop && !S.cur && !S.queue.length) S.loop = msg.state.loop; renderControls(); addSys(String(msg.what).startsWith('custom') ? 'Вы — ' + msg.guest.replace(/^[^:]+: /, '') : 'Вы ' + msg.guest + '.'); if (msg.what === 'custom_touch') startTouch('pat'); }
   else if (msg.type === 'usage') renderUsage(msg.usage);
   else if (msg.type === 'notes') renderNotes(msg.notes, msg.diary);
   else if (msg.type === 'settings') applySettings(msg.settings, msg.state);
@@ -1567,12 +1843,15 @@ function connect(){
   es.onmessage = e => { try { handle(JSON.parse(e.data)); } catch (err) { console.error(err); } };
   es.onerror = () => { connected = false; setBrain(); };
 }
-async function resync(){
+let PAGE_VERSION = null;
+async function resync(force){
   try {
     const snap = await api('/api/state');
+    if (PAGE_VERSION && snap.version && snap.version !== PAGE_VERSION){ location.reload(); return; }
+    if (!PAGE_VERSION) PAGE_VERSION = snap.version;
     const first = !LIFE;
     LIFE = snap;
-    if (first || snap.state.act_seq !== lastSeq) placeFromServer(snap.state);
+    if (first || force || snap.state.act_seq !== lastSeq) placeFromServer(snap.state);
     lastSeq = snap.state.act_seq;
     if (first){
       ID.male = snap.state.male; ID.name = snap.state.name;
@@ -1615,10 +1894,7 @@ function ensureAudio(){
   if (!AC){ try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } }
   if (AC && AC.state === 'suspended') AC.resume();
 }
-soundBtn.addEventListener('click', () => {
-  soundOn = !soundOn; soundBtn.setAttribute('aria-pressed', String(soundOn)); soundBtn.textContent = soundOn ? 'звук: вкл' : 'звук: выкл';
-  ensureAudio();
-});
+soundBtn.addEventListener('change', () => { soundOn = soundBtn.checked; ensureAudio(); });
 const mtof = m => 440*Math.pow(2, (m - 69)/12);
 const PROG = [[57,60,64,67],[53,57,60,64],[48,52,55,59],[55,59,62,65]];
 function tone(freq, t0, dur, type, vol){
@@ -1645,7 +1921,8 @@ const titleEl = document.getElementById('title'), subEl = document.getElementByI
 function renderId(){
   gM.setAttribute('aria-pressed', String(ID.male)); gF.setAttribute('aria-pressed', String(!ID.male));
   if (document.activeElement !== nameInput) nameInput.value = ID.name;
-  titleEl.textContent = 'Квартира ' + decl(ID.name, 'gen');
+  titleEl.textContent = 'AI человек ' + ID.name;
+  document.querySelectorAll('.gx').forEach(el => { el.textContent = gx('он', 'она'); });
   const hrs = LIFE ? LIFE.wake_h + ':00 до ' + LIFE.sleep_h + ':00' : '8:00 до 17:00';
   subEl.textContent = ID.name + ' живёт своей жизнью: сам' + gx('', 'а') + ' решает, чем заняться, с ' + hrs + ' по Любляне, а потом спит. Напишите ' + gx('ему', 'ей') + ' — ' + gx('он', 'она') + ' ответит, или вмешайтесь в квартиру.';
   msgInput.placeholder = 'Напишите ' + decl(ID.name, 'dat') + '…';
@@ -1722,7 +1999,7 @@ function renderControls(){
   if (!LIFE) return;
   for (const p of POKES){
     const on = !!p.on(LIFE.state);
-    p.btn.setAttribute('aria-pressed', String(on));
+    if (p.what !== 'flood') p.btn.setAttribute('aria-pressed', String(on));
     if (p.what === 'flood'){ p.btn.disabled = on; p.btn.textContent = on ? 'Течёт вода' : p.label; }
   }
 }
@@ -1758,6 +2035,11 @@ for (const [k, lo, hi] of TRAITS_UI){
 const showHunger = () => { setHungerOut.textContent = '×' + Number(setHunger.value).toFixed(1).replace('.', ','); };
 setHunger.addEventListener('input', showHunger);
 function fillSettings(st){
+  const n = (LIFE && LIFE.notes) || {};
+  document.getElementById('setIdentity').value = n.identity || '';
+  document.getElementById('setSelf').value = n.self || '';
+  document.getElementById('setGuest').value = n.guest || '';
+  soundBtn.checked = soundOn;
   if (!st) return;
   setWake.value = st.wake; setSleep.value = st.sleep; setHunger.value = st.hunger_rate; showHunger();
   for (const k in traitInputs) traitInputs[k].value = st.traits[k] ?? 50;
@@ -1769,8 +2051,11 @@ document.getElementById('setForm').addEventListener('submit', e => {
   e.preventDefault();
   const traits = {}; for (const k in traitInputs) traits[k] = Number(traitInputs[k].value);
   setMsg.textContent = 'Сохраняю…';
+  const n = (LIFE && LIFE.notes) || {}, persona = {};
+  [['identity','setIdentity'], ['self_notes','setSelf'], ['guest_notes','setGuest']].forEach(([k, id]) => { const v = document.getElementById(id).value.trim(); const old = (k === 'identity' ? n.identity : k === 'self_notes' ? n.self : n.guest) || ''; if (v !== old.trim()) persona[k] = v; });
   api('/api/settings', {wake:Number(setWake.value), sleep:Number(setSleep.value), hunger_rate:Number(setHunger.value), traits})
-    .then(r => { applySettings(r.settings, r.state); setMsg.textContent = 'Сохранено.'; setTimeout(() => dlg.close(), 500); })
+    .then(r => { applySettings(r.settings, r.state); return Object.keys(persona).length ? api('/api/persona', persona).then(x => renderNotes(x.notes)) : null; })
+    .then(() => { setMsg.textContent = 'Сохранено.'; setTimeout(() => dlg.close(), 500); })
     .catch(err => { setMsg.textContent = 'Не сохранилось: ' + err.message; });
 });
 function applySettings(settings, st){
@@ -1779,6 +2064,46 @@ function applySettings(settings, st){
   if (st) applyState(st);
   renderId();
 }
+
+/* ---------- reload this tab when a new version is deployed ---------- */
+setInterval(() => { if (!PAGE_VERSION) return; api('/api/version').then(v => { if (v.version && v.version !== PAGE_VERSION) location.reload(); }).catch(() => {}); }, 60000);
+
+/* ---------- live status under the apartment ---------- */
+const lsBox = document.getElementById('liveStatus'), lsWho = document.getElementById('lsWho'), lsWhat = document.getElementById('lsWhat'), lsExtra = document.getElementById('lsExtra');
+let lsLast = '';
+function renderLiveStatus(what){
+  const st = LIFE && LIFE.state, T = st && st.together;
+  let extra = '';
+  if (S.pending) extra = 'думает над ответом вам';
+  else if (S.speech && !S.speech.think && S.speech.shown < S.speech.text.length + 40) extra = S.lastUser && S.t - S.lastUser < 30 ? 'говорит с вами' : 'говорит вслух';
+  else if (S.loop === 'phone') extra = 'разговаривает по телефону';
+  else if (st && st.busy === 'think') extra = 'обдумывает, что делать дальше';
+  else if (st && st.busy === 'plan') extra = 'планирует';
+  if (T) what = 'вместе с вами: ' + (T.text || {date:'свидание при свечах', movie:'кино вдвоём', dance:'танцы', cook:'ужин вдвоём'}[T.kind] || '');
+  const asleep = S.loop === 'sleep';
+  const key = ID.name + '|' + what + '|' + extra + '|' + asleep;
+  if (key === lsLast) return; lsLast = key;
+  lsWho.textContent = ID.name + ':'; lsWhat.textContent = what || '…'; lsExtra.textContent = extra ? '· ' + extra : '';
+  lsBox.className = 'liveStatus' + (asleep ? ' asleep' : extra ? ' busy' : '');
+}
+
+/* ---------- menus ---------- */
+const menuBtn = document.getElementById('menuBtn'), menuPanel = document.getElementById('menuPanel');
+menuBtn.addEventListener('click', e => { e.stopPropagation(); const open = menuPanel.hidden; menuPanel.hidden = !open; menuBtn.setAttribute('aria-expanded', String(open)); });
+document.getElementById('settingsBtn').addEventListener('click', () => { menuPanel.hidden = true; menuBtn.setAttribute('aria-expanded', 'false'); });
+const dds = [...document.querySelectorAll('.actbar .dd')];
+dds.forEach(d => d.addEventListener('toggle', () => { if (d.open) dds.forEach(o => { if (o !== d) o.open = false; }); }));
+const closeMenus = () => { dds.forEach(d => { d.open = false; }); menuPanel.hidden = true; menuBtn.setAttribute('aria-expanded', 'false'); };
+document.addEventListener('click', e => { if (!e.target.closest('.dd') && !e.target.closest('.topmenu')) closeMenus(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenus(); });
+document.querySelectorAll('.actbar .menu').forEach(m => m.addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.type === 'button') setTimeout(closeMenus, 120); }));
+document.querySelectorAll('.customForm[data-kind]').forEach(f => f.addEventListener('submit', e => {
+  e.preventDefault(); const inp = f.querySelector('input'), text = inp.value.trim(); if (!text) return;
+  const kind = f.dataset.kind;
+  const call = kind === 'custom_together' ? api('/api/invite', {kind:'custom', text}) : api('/api/poke', {what:kind, text});
+  call.then(() => { inp.value = ''; closeMenus(); }).catch(err => addSys('Не получилось: ' + err.message));
+}));
+giftForm.addEventListener('submit', () => setTimeout(closeMenus, 50));
 
 /* ---------- start ---------- */
 S.pose = Object.assign({}, basePose(S.loop, 0));
