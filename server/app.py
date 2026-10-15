@@ -12,9 +12,11 @@ and no tokens are spent.
 
 Stdlib only. Serves the page and a small JSON/SSE API on HOST:PORT.
 """
+import difflib
 import glob
 import hashlib
 import urllib.parse
+import urllib.request
 import json
 import math
 import os
@@ -79,7 +81,7 @@ ACTIONS = {
     "bow": (None, "", "кланяется"), "stretch": (None, None, "потягивается"), "sit": ("sofa", "sit", "сидит на диване"),
     "stand": (None, None, "встаёт"), "watch_tv": ("sofa", "watch", "смотрит телевизор"),
     "open_gift": ("center", None, "открывает подарок"), "eat_treat": ("sofa", "sit", "ест вкусняшку"),
-    "use_item": (None, "", "радуется подарку"), "practice": (None, "", "тренируется к цели"), "together": (None, None, "проводит время с гостем"),
+    "use_item": (None, "", "радуется подарку"), "shoo": (None, None, "выгоняет"), "practice": (None, "", "тренируется к цели"), "together": (None, None, "проводит время с гостем"),
     "cozy": ("sofa", "cozy", "укутывается в плед"), "move": (None, None, "двигается"), "rest": (None, "rest", "устраивается"), "light_candle": ("tv", None, "зажигает свечу"), "wear_item": (None, "", "надевает"),
     "date": ("sofa", "date", "ужинает с гостем при свечах"), "dance_together": ("center", "dancing", "танцует с гостем"),
     "tv_off": (None, "", "выключает телевизор"), "play_game": ("sofa", "game", "играет в приставку"),
@@ -96,6 +98,13 @@ ACTIONS = {
     "brush_teeth": ("sink", None, "чистит зубы"), "wash_face": ("sink", None, "умывается"),
     "comb_hair": ("sink", None, "причёсывается у зеркала"), "wash_dishes": ("ksink", None, "моет посуду"),
 }
+# where a drawn thing can stand (the page knows the coordinates)
+SPOTS = {"shelf": "полка над телевизором (книги, сувениры, мелочи)", "windowsill": "подоконник в спальне (цветы, растения, свечи, птицы)",
+         "nightstand": "тумбочка у кровати (телефон, часы, зарядка, книга на ночь)", "coffee_table": "журнальный столик у дивана (еда, напитки, журналы)",
+         "kitchen": "кухонная столешница и холодильник (посуда, турка, продукты)", "stove": "у плиты (турка, кастрюлька, сковорода)",
+         "bathroom": "санузел (косметика, щётки, полотенца)", "wardrobe": "на шкафу (коробки, шляпы, сумки)",
+         "bed": "на кровати (подушки, игрушки)", "floor": "на полу в гостиной (что покрупнее: гитара, гантели, растение в горшке)"}
+MOTIONS = ("admire", "hold", "drink", "eat", "stir", "hug", "read", "phone", "play", "wear")
 MOVE_DOC = """move — любое движение, которого нет в списке: ты сам(а) описываешь ключевые позы тела, тело плавно переходит из одной в другую.
 {"do": "move", "label": "что делаешь, 1–3 слова", "frames": [поза, ...], "repeat": сколько раз повторить кадры (1–10), "end": "stand" (потом встать) или "hold" (замереть в последней позе)}
 Поза — углы в градусах (вид сбоку, ты смотришь вперёд), любые поля можно опустить (тогда 0):
@@ -119,7 +128,8 @@ play_game — играть в приставку; music_on — поставит�
 cook — приготовить еду на плите; eat — поесть (после cook или из холодильника); drink — попить из холодильника; open_fridge — заглянуть в холодильник;
 change_clothes{outfit, color} — переодеться (outfit: casual — футболка и брюки, pajamas — пижама, dress — романтичное платье, shorts — шорты и футболка, warm — джинсы и свитер, mini — миниюбка и топ, swimsuit — купальник, underwear — нижнее бельё, bathrobe — халат, towel — полотенце; color — по желанию); light_on{room} / light_off{room} — свет (room: bedroom, living, kitchen, bathroom, all; без room — там, где ты); look_window — смотреть в окно, мечтать;
 together{kind} — провести время вместе с гостем (kind: date — свидание, ужин при свечах; movie — кино вдвоём; dance — танцевать вместе; cook — приготовить ужин вместе); соглашайся, только если правда хочется; предлагать можно и самому — первым;
-open_gift{id} — открыть подарок в обёртке; eat_treat{id} — съесть вкусняшку из подарков; use_item{id} — воспользоваться подаренной вещью по назначению (плед — укутаться на диване, свечу — зажечь, шарф и одежду — надеть, книгу — читать, пластинку — слушать, игрушку — обнять);
+open_gift{id} — открыть подарок в обёртке; eat_treat{id} — съесть вкусняшку из подарков; use_item{id, with, at, motion, put, status, label} — воспользоваться подаренной вещью по назначению (плед — укутаться на диване, свечу — зажечь, шарф и одежду — надеть, книгу — читать, пластинку — слушать, игрушку — обнять). Вещи можно сочетать: with — id второй вещи, которую используешь вместе (телефон поставить на зарядку, кофе сварить в турке и налить в чашку); at — место, куда для этого подойти (stove, sofa, bed, window, center, fridge…); motion — как это выглядит: admire, hold, drink, eat, stir (помешивать у плиты), hug, read, phone, play, wear; put — куда положить вещи потом (shelf, windowsill, nightstand, coffee_table, kitchen, stove, bathroom, wardrobe, bed, floor), если нужно переставить; status — состояние, если оно длится (например «заряжается»), иначе пусто; label — что делаешь, 1–3 слова;
+shoo{id} — выгнать или убрать то, что появилось в квартире (птицу, паука, кота…), если мешает;
 wash_dishes — помыть грязную посуду в кухонной мойке;
 practice{minutes, result, note} — отметить тренировку к своей цели (минуты, результат по показателю цели, если он есть); ставь в цепочку вместе с самим занятием (workout, move с позами, cook…);
 use_toilet — сходить в туалет; shower — принять душ; brush_teeth — почистить зубы; wash_face — умыться; comb_hair — причесаться у зеркала;
@@ -162,7 +172,7 @@ ROOMS = {"bedroom": ("bed", "night"), "living": ("liv", "floor"), "kitchen": ("k
 LAMP_RU = {"bed": "свет в спальне", "night": "ночник", "liv": "свет в гостиной", "floor": "торшер", "kit": "свет на кухне", "bath": "свет в ванной"}
 WATER_MAX, WATER_RISE, MOP_RATE = 5.0, 10.0, 1.0  # cm; cm/min while leaking; cm/min while mopping
 BASE_DRIFT = {"hunger": -0.30, "energy": -0.11, "fun": -0.22, "social": -0.10, "hygiene": -0.06, "bladder": -0.15}
-NEED_RU = {"hunger": "сытость", "energy": "бодрость", "fun": "развлечённость", "social": "общение",
+NEED_RU = {"hunger": "сытость", "energy": "бодрость", "fun": "развлечённость (не про настроение, а про скуку)", "social": "общение",
            "hygiene": "свежесть", "bladder": "туалет (100 — не хочется)"}
 WEEKDAYS = ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"]
 MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"]
@@ -251,6 +261,7 @@ class Store:
             CREATE INDEX IF NOT EXISTS events_ts ON events(ts);
             CREATE TABLE IF NOT EXISTS usage (id INTEGER PRIMARY KEY, ts REAL, day TEXT, purpose TEXT, model TEXT,
                 input_tokens INTEGER, output_tokens INTEGER, cost REAL, seconds REAL, ok INTEGER);
+            CREATE TABLE IF NOT EXISTS sprites (id INTEGER PRIMARY KEY, key TEXT UNIQUE, svg TEXT, w REAL, h REAL, meta TEXT, ts REAL);
         """)
 
     def get(self, k, default=None):
@@ -295,8 +306,33 @@ class Store:
         with self.lock:
             r = self.db.execute("SELECT COUNT(*), COALESCE(SUM(input_tokens),0), COALESCE(SUM(output_tokens),0), COALESCE(SUM(cost),0) FROM usage WHERE day=?",
                                 (now().strftime("%Y-%m-%d"),)).fetchone()
+            loc = self.db.execute("SELECT COUNT(*) FROM usage WHERE day=? AND model LIKE 'local:%'", (now().strftime("%Y-%m-%d"),)).fetchone()
             by = self.db.execute("SELECT purpose, COUNT(*) FROM usage WHERE day=? GROUP BY purpose", (now().strftime("%Y-%m-%d"),)).fetchall()
-        return {"calls": r[0], "input": r[1], "output": r[2], "cost": round(r[3], 4), "by": dict(by)}
+        return {"calls": r[0], "local_calls": loc[0], "input": r[1], "output": r[2], "cost": round(r[3], 4), "by": dict(by)}
+
+    def sprite_by_key(self, key):
+        with self.lock:
+            r = self.db.execute("SELECT id, w, h, meta FROM sprites WHERE key=?", (key,)).fetchone()
+        return {"id": r[0], "w": r[1], "h": r[2], "meta": json.loads(r[3] or "{}")} if r else None
+
+    def add_sprite(self, key, svg, w, h, meta):
+        with self.lock:
+            self.db.execute("INSERT OR REPLACE INTO sprites (key, svg, w, h, meta, ts) VALUES (?,?,?,?,?,?)",
+                            (key, svg, w, h, json.dumps(meta, ensure_ascii=False), time.time()))
+            self.db.commit()
+        return self.sprite_by_key(key)
+
+    def sprite_svg(self, sid):
+        with self.lock:
+            r = self.db.execute("SELECT svg FROM sprites WHERE id=?", (sid,)).fetchone()
+        return r[0] if r else None
+
+    def forget_life(self):
+        """New game: drop everything that happened and the resident's own memory. Settings, identity and usage stay."""
+        with self.lock:
+            self.db.execute("DELETE FROM events")
+            self.db.execute("DELETE FROM kv WHERE k IN ('self_notes', 'guest_notes', 'day_memory', 'memory_upto')")
+            self.db.commit()
 
 
 store = Store(DB_PATH)
@@ -337,6 +373,10 @@ def apply_settings(body):
         if "wake" in body: new["wake"] = int(body["wake"])
         if "sleep" in body: new["sleep"] = int(body["sleep"])
         if "hunger_rate" in body: new["hunger_rate"] = round(max(0.3, min(3.0, float(body["hunger_rate"]))), 2)
+        if isinstance(body.get("brain"), dict):
+            bb = body["brain"]
+            new["brain"] = {"backend": "local" if bb.get("backend") == "local" else "claude",
+                            "fast": str(bb.get("fast") or "")[:80], "deep": str(bb.get("deep") or "")[:80], "fallback": bool(bb.get("fallback", True))}
         for k, v in (body.get("traits") or {}).items():
             if k in TRAITS:
                 new["traits"][k] = int(max(0, min(100, float(v))))
@@ -419,6 +459,7 @@ def parse_json(text):
 
 busy_lock = threading.Lock()   # one model call at a time
 busy_what = {"v": None}
+world_epoch = {"v": 0}  # bumped on a new game, so late answers from the old one are dropped
 
 
 def set_busy(what):
@@ -426,7 +467,115 @@ def set_busy(what):
     hub.publish({"type": "busy", "what": what})
 
 
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
+
+
+def brain():
+    b = SETTINGS.get("brain") or {}
+    return {"backend": b.get("backend") or os.environ.get("LLM_BACKEND", "claude"),
+            "fast": b.get("fast") or os.environ.get("LOCAL_FAST", "qwen3.5:27b"),
+            "deep": b.get("deep") or os.environ.get("LOCAL_DEEP", "qwen3.5:27b"),
+            "fallback": b.get("fallback", True)}
+
+
+def local_models():
+    try:
+        with urllib.request.urlopen(OLLAMA_URL + "/api/tags", timeout=5) as r:
+            return sorted(m["name"] for m in json.load(r).get("models", []))
+    except (OSError, ValueError):
+        return []
+
+
+def ollama_post(path, body, timeout=30):
+    req = urllib.request.Request(OLLAMA_URL + path, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.load(r)
+
+
+def loaded_models():
+    """Models Ollama holds in memory now, with their GPU footprint."""
+    try:
+        with urllib.request.urlopen(OLLAMA_URL + "/api/ps", timeout=5) as r:
+            return [{"name": m["name"], "vram": m.get("size_vram", 0)} for m in json.load(r).get("models", [])]
+    except (OSError, ValueError):
+        return []
+
+
+def unload_models():
+    for m in loaded_models():
+        try:
+            ollama_post("/api/generate", {"model": m["name"], "keep_alive": 0})
+        except (OSError, ValueError):
+            pass
+
+
+def warm_up():
+    b = brain()
+    if b["backend"] == "local":
+        try:
+            ollama_post("/api/generate", {"model": b["fast"], "keep_alive": "30m"}, timeout=300)
+            log("local model loaded:", b["fast"])
+        except (OSError, ValueError) as e:
+            log("warm-up failed:", e)
+
+
+def set_paused(paused):
+    with state_lock:
+        S["mind_paused"] = bool(paused)
+        save_state()
+    if paused:
+        unload_models()
+        emit_event("system", "Разум остановлен: модели выгружены, видеокарта свободна. " + S["name"] + " живёт по текущему занятию, но не думает и не отвечает.")
+    else:
+        emit_event("system", "Разум снова запущен.")
+        threading.Thread(target=warm_up, daemon=True).start()
+    hub.publish({"type": "state", "state": public_state()})
+
+
 def llm(purpose, model, system, prompt, timeout=240):
+    """One call to the brain: local model through Ollama, or Claude through Claude Code (and Claude as the fallback)."""
+    b = brain()
+    if b["backend"] == "local":
+        local = b["fast"] if model == MODEL_FAST else b["deep"]
+        try:
+            return llm_local(purpose, local, system, prompt, timeout)
+        except LLMError as e:
+            if not b["fallback"]:
+                raise
+            log(f"local model failed ({e}); falling back to Claude")
+    return llm_claude(purpose, model, system, prompt, timeout)
+
+
+def llm_local(purpose, model, system, prompt, timeout=240):
+    body = {"model": model, "stream": False, "format": "json", "think": False, "keep_alive": "30m",
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+            "options": {"temperature": 0.8, "top_p": 0.95, "num_ctx": 16384, "num_predict": 1500}}
+    req = urllib.request.Request(OLLAMA_URL + "/api/chat", data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+    t0 = time.time()
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            d = json.load(r)
+    except (OSError, ValueError) as e:
+        store.log_usage(purpose, "local:" + model, 0, 0, 0, time.time() - t0, False)
+        raise LLMError(f"локальная модель недоступна: {e}")
+    secs = time.time() - t0
+    tin, tout = d.get("prompt_eval_count", 0), d.get("eval_count", 0)
+    text = ((d.get("message") or {}).get("content") or "").strip()
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.S).strip()
+    try:
+        result = parse_json(text)
+        ok = isinstance(result, dict)
+    except (LLMError, ValueError):
+        result, ok = None, False
+    store.log_usage(purpose, "local:" + model, tin, tout, 0, secs, ok)
+    hub.publish({"type": "usage", "usage": store.usage_today()})
+    if not ok:
+        raise LLMError("локальная модель ответила не JSON: " + text[:200])
+    log(f"llm {purpose} local:{model}: {tin} in / {tout} out, {secs:.1f}s")
+    return result
+
+
+def llm_claude(purpose, model, system, prompt, timeout=240):
     cmd = [claude_bin(), "-p", "--model", model, "--tools", "", "--system-prompt", system,
            "--output-format", "json", "--no-session-persistence", "--setting-sources", "", "--strict-mcp-config"]
     env = dict(os.environ)
@@ -465,8 +614,8 @@ DEFAULT_STATE = {
     "last_guest_ts": 0, "last_initiative": 0, "together": None, "invite": None,
     "lights": {"bed": True, "night": False, "liv": True, "floor": False, "kit": True, "bath": False}, "water": 0.0, "leak": False,
     "react_at": 0, "react_reasons": [], "last_react": 0, "touch_log": [], "flowers_ts": 0,
-    "items": [], "wishes": [], "next_id": 1, "dishes": 0, "accessory": None, "pose_hold": None, "rest": None,
-    "guest_facts": [], "closeness": 0.0, "closeness_day": "", "closeness_today": 0.0, "goal": None, "goals_done": [],
+    "items": [], "wishes": [], "visitors": [], "next_id": 1, "dishes": 0, "accessory": None, "pose_hold": None, "rest": None,
+    "mind_paused": False, "guest_facts": [], "closeness": 0.0, "closeness_day": "", "closeness_today": 0.0, "goal": None, "goals_done": [],
     "needs": {"hunger": 70, "energy": 85, "fun": 55, "social": 50, "hygiene": 70, "bladder": 80},
     "thought": "", "intent": "", "plan": [], "plan_day": "", "act_seq": 0, "last_act": None,
     "last_tick": 0, "last_decide": 0, "reflect_ts": 0, "reflect_day": "",
@@ -488,7 +637,7 @@ def save_state():
 
 def public_state():
     with state_lock:
-        s = {k: S[k] for k in ("name", "male", "location", "loop", "label", "until", "tv", "console", "music", "lights", "water", "leak", "flowers_ts", "items", "wishes", "together", "invite", "dishes", "accessory", "pose_hold", "rest", "guest_facts", "closeness", "goal", "goals_done",
+        s = {k: S[k] for k in ("name", "male", "location", "loop", "label", "until", "tv", "console", "music", "lights", "water", "leak", "flowers_ts", "items", "wishes", "visitors", "together", "invite", "dishes", "accessory", "pose_hold", "rest", "guest_facts", "closeness", "goal", "goals_done", "mind_paused",
                                "outfit", "mood", "emo", "needs", "thought", "intent", "plan", "act_seq", "last_act")}
     t = now()
     s["awake_time"] = is_awake_time(t)
@@ -597,8 +746,8 @@ def learn_facts(raw):
                 continue
             if topic not in GUEST_TOPICS:
                 topic = next((t for t in GUEST_TOPICS if t.split()[0] in topic), None) or guess_topic(fact)
-            if (topic, fact.lower()) in known:
-                continue
+            if (topic, fact.lower()) in known or any(t == topic and difflib.SequenceMatcher(None, f, fact.lower()).ratio() > 0.75 for t, f in known):
+                continue  # the same thing told again in other words
             S["guest_facts"].append({"topic": topic, "fact": fact, "ts": time.time()})
             known.add((topic, fact.lower()))
             added += 1
@@ -620,7 +769,7 @@ def guest_knowledge_text():
     unknown = [t for t in GUEST_TOPICS if t not in known_topics]
     lines = [f"Твоя главная цель в жизни — по-настоящему узнать гостя и стать ему как можно ближе (сейчас вы: {closeness_level()}, знакомство {acquaintance()}%)."]
     if facts:
-        lines.append("Что ты уже знаешь о нём:\n" + "\n".join(f"- [{f['topic']}] {f['fact']}" for f in facts))
+        lines.append("Что ты уже знаешь о нём:\n" + "\n".join(f"- [{f['topic']}, {datetime.fromtimestamp(f['ts'], TZ):%d.%m}] {f['fact']}" for f in facts))
     if unknown:
         lines.append("Чего ты о нём ещё не знаешь (можно мягко расспросить, по одной теме за раз и не в каждой реплике): " + ", ".join(unknown[:6]) + ".")
     lines.append("Используй то, что знаешь: вспоминай, спрашивай, как прошло то, о чём он рассказывал, радуйся общим интересам.")
@@ -678,6 +827,7 @@ GOAL_DESIGN = """Спроектируй цель для персонажа, ко
 
 
 def set_goal_from_text(text, source="guest"):
+    epoch = world_epoch["v"]
     prompt = f"{GOAL_DESIGN}\n\nЦель ({'предложил гость' if source == 'guest' else 'договорились в разговоре' if source == 'chat' else 'придумал сам персонаж'}): {text}"
     with busy_lock:
         set_busy("plan")
@@ -689,7 +839,7 @@ def set_goal_from_text(text, source="guest"):
         finally:
             set_busy(None)
     G = make_goal(r, source)
-    if not G:
+    if not G or epoch != world_epoch["v"]:
         return None
     with state_lock:
         S["goal"] = G
@@ -733,7 +883,7 @@ def practice(a):
     G["sessions"] = (G["sessions"] + [{"ts": time.time(), "day": today, "minutes": minutes, "result": result,
                                        "note": str(a.get("note") or "")[:120]}])[-60:]
     S["needs"]["energy"] = clampn(S["needs"]["energy"] - minutes * 0.1)
-    S["needs"]["fun"] = clampn(S["needs"]["fun"] + 3)
+    S["needs"]["fun"] = clampn(S["needs"]["fun"] + fun_gain(3))
     emit_event("practice", f"Тренировка к цели «{G['title']}»: {minutes} мин" + (f", результат {fmt_num(result)} {m['unit']}" if m and result is not None else "") + f" — прогресс {int(G['progress'])}%")
     for ms in G["milestones"]:
         if not ms["done"] and G["progress"] >= ms["at"]:
@@ -794,7 +944,7 @@ def emo_line():
 NEED_WORDS = {  # (threshold, masculine, feminine), checked from the top
     "hunger": [(70, "сыт", "сыта"), (40, "не голоден", "не голодна"), (20, "проголодался", "проголодалась"), (0, "очень голоден", "очень голодна")],
     "energy": [(70, "полон сил", "полна сил"), (40, "в порядке", "в порядке"), (20, "устал", "устала"), (0, "валится с ног", "валится с ног")],
-    "fun": [(70, "весело", "весело"), (40, "нормально", "нормально"), (20, "скучно", "скучно"), (0, "тоска", "тоска")],
+    "fun": [(70, "не скучно", "не скучно"), (40, "нормально", "нормально"), (20, "скучновато", "скучновато"), (0, "скучно до тоски", "скучно до тоски")],
     "social": [(70, "наобщался", "наобщалась"), (40, "нормально", "нормально"), (20, "хочется поболтать", "хочется поболтать"), (0, "одиноко", "одиноко")],
     "hygiene": [(70, "свежий", "свежая"), (40, "нормально", "нормально"), (20, "хочется умыться", "хочется умыться"), (0, "срочно в душ", "срочно в душ")],
     "bladder": [(70, "не хочет", "не хочет"), (40, "терпимо", "терпимо"), (20, "хочет в туалет", "хочет в туалет"), (0, "очень хочет в туалет", "очень хочет в туалет")],
@@ -824,16 +974,35 @@ def rest_rates(rates):
     return rates
 
 
+def enjoyment():
+    """How much pleasure things give right now: sadness, longing, anger and fear take the joy out of them."""
+    E = S["emo"]
+    dull = 0.9 * E["sadness"] + 0.6 * E["longing"] + 0.4 * E["anger"] + 0.4 * E["fear"] + 0.3 * E["jealousy"]
+    return max(0.15, 1 - dull) * (1 + 0.3 * E["joy"])
+
+
+def fun_gain(x):
+    """A positive bump of fun, damped by mood and by how full it already is (the last points come hard)."""
+    if x <= 0:
+        return x
+    return x * enjoyment() * min(1.0, (100 - S["needs"]["fun"]) / 50)
+
+
+def live_rates():
+    """Per-minute change of each need while awake."""
+    rates = base_drift()
+    for k, v in PER_MIN.get(S["loop"], {}).items():
+        rates[k] = rates.get(k, 0) + (fun_gain(v) if k == "fun" else v)
+    rates["fun"] -= 0.3 * S["emo"]["sadness"]  # gloom makes everything dull
+    return rest_rates(rates)
+
+
 def need_rates():
     """Per-minute change of each need right now, and why."""
     loop = S["loop"]
     if loop == "sleep":
         return {k: (0.35 if k == "energy" else 0.0) for k in BASE_DRIFT}, "спит"
-    rates = base_drift()
-    for k, v in PER_MIN.get(loop, {}).items():
-        rates[k] = rates.get(k, 0) + v
-    rest_rates(rates)
-    return {k: round(v, 2) for k, v in rates.items()}, LOOP_LABEL.get(loop, "ничем особым не занят" if S["male"] else "ничем особым не занята")
+    return {k: round(v, 2) for k, v in live_rates().items()}, LOOP_LABEL.get(loop, "ничем особым не занят" if S["male"] else "ничем особым не занята")
 
 
 def needs_view():
@@ -895,11 +1064,7 @@ def update_needs():
         if S["loop"] == "sleep":
             n["energy"] = clampn(n["energy"] + 0.35 * dt_min)
             return
-        for k, v in base_drift().items():
-            n[k] = clampn(n[k] + v * dt_min)
-        for k, v in PER_MIN.get(S["loop"], {}).items():
-            n[k] = clampn(n[k] + v * dt_min)
-        for k, v in rest_rates({}).items():
+        for k, v in live_rates().items():
             n[k] = clampn(n[k] + v * dt_min)
 
 
@@ -994,7 +1159,22 @@ def clean_actions(raw):
             x.update(mv)
         if d == "together" and a.get("kind") in ("date", "movie", "dance", "cook", "custom"):
             x["kind"] = a["kind"]
-        if d in ("open_gift", "eat_treat", "use_item") and a.get("id") is not None:
+        if d == "use_item":
+            try:
+                if a.get("with") is not None:
+                    x["with"] = int(a["with"][0] if isinstance(a["with"], list) and a["with"] else a["with"])
+            except (TypeError, ValueError):
+                pass
+            if a.get("at") in PLACES:
+                x["at"] = a["at"]
+            if a.get("motion") in MOTIONS:
+                x["motion"] = a["motion"]
+            if a.get("put") in SPOTS:
+                x["put"] = a["put"]
+            for k in ("status", "label"):
+                if str(a.get(k) or "").strip():
+                    x[k] = str(a[k]).strip()[:40]
+        if d in ("open_gift", "eat_treat", "use_item", "shoo") and a.get("id") is not None:
             try:
                 x["id"] = int(a["id"])
             except (TypeError, ValueError):
@@ -1087,12 +1267,20 @@ def item_use(it):
     return {"toy": "hug", "clothes": "wear"}.get(it["kind"], "admire")
 
 
+def it_edible(it):
+    return it["kind"] in ("sweet", "drink")
+
+
 def resolve_gifts(actions):
     """Turn open_gift / eat_treat / use_item into concrete actions on real items; drop the impossible ones."""
     out, opened, used = [], set(), set()
 
     def pick(item_id, edible):
         # an item is usable if it's already open, or was unwrapped earlier in this same chain
+        named = next((it for it in S["items"] if it["id"] == item_id and it["id"] not in used
+                      and (it["state"] == "open" or (it["state"] == "wrapped" and it["id"] in opened))), None)
+        if named and (not edible or it_edible(named)):
+            return named  # asked for by id: a coffee pot is used, not drunk, whatever its kind
         for want in (item_id, None):
             for it in S["items"]:
                 if it["id"] in used or (want is not None and it["id"] != want):
@@ -1120,7 +1308,20 @@ def resolve_gifts(actions):
         if not it:
             continue
         info = {"id": it["id"], "name": it["name"], "kind": it["kind"]}
+        if it.get("sprite"):
+            info["sprite"] = it["sprite"]
         how = item_use(it) if d == "use_item" else None
+        if d == "use_item" and it.get("sprite") and how not in ("cozy", "light", "wear"):
+            mate = next((x for x in S["items"] if x["id"] == a.get("with") and x["id"] != it["id"] and x["state"] == "open"), None)
+            use = dict(info, do="use_item", motion=a.get("motion") or it.get("motion") or "admire")
+            for k in ("at", "put", "status", "label"):
+                if a.get(k):
+                    use[k] = a[k]
+            if mate:
+                use["with"] = mate["id"]
+                used.add(mate["id"])
+            out.append(use)
+            continue
         if how == "cozy":
             out.append(dict(info, do="cozy"))
         elif how == "light":
@@ -1153,7 +1354,7 @@ def gift_effects(a):
         it["state"] = "eaten"
         S["needs"]["hunger"] = clampn(S["needs"]["hunger"] + (25 if it["kind"] == "sweet" else 12))
         S["needs"]["bladder"] = clampn(S["needs"]["bladder"] - (8 if it["kind"] == "sweet" else 25))
-        S["needs"]["fun"] = clampn(S["needs"]["fun"] + 5)
+        S["needs"]["fun"] = clampn(S["needs"]["fun"] + fun_gain(5))
         feel("joy", 0.35)
         emit_event("gift", f"Съел{g('', 'а')} {it['name']}.", {"item": it})
     elif d in ("use_item", "read_book", "music_on", "look_window", "cozy", "light_candle", "wear_item") and it["state"] == "open":
@@ -1161,8 +1362,15 @@ def gift_effects(a):
             it["lit_ts"] = time.time()
         if d == "wear_item":
             S["accessory"] = {"id": it["id"], "name": it["name"]}
+        if d == "use_item":
+            mate = find_item(a.get("with"), ("open",)) if a.get("with") is not None else None
+            for x in [it] + ([mate] if mate else []):
+                if a.get("put"):
+                    x["spot"] = a["put"]
+                x["status"] = a.get("status") or ""
+                x["paired"] = (mate["id"] if x is it else it["id"]) if mate and a.get("status") else None
         it["used"] = it.get("used", 0) + 1
-        S["needs"]["fun"] = clampn(S["needs"]["fun"] + 12)
+        S["needs"]["fun"] = clampn(S["needs"]["fun"] + fun_gain(12))
         feel("joy", 0.3)
 
 
@@ -1210,6 +1418,8 @@ def act(actions, minutes=None, thought=None, intent=None, mood=None, aloud=None,
             place, new_loop, _ = ACTIONS[d]
             if d == "walk_to":
                 place = a["place"]
+            if d == "use_item" and a.get("at"):
+                place = a["at"]
             if place and place != loc:
                 loc, loop = place, None
             if new_loop:            # settles into a lasting activity
@@ -1234,11 +1444,16 @@ def act(actions, minutes=None, thought=None, intent=None, mood=None, aloud=None,
                     S["lights"][k] = d == "light_on"
             if d == "close_valve": S["leak"] = False
             if d == "practice": practice(a)
+            if d == "shoo":
+                gone = [v for v in S["visitors"] if a.get("id") in (None, v["id"])][:1]
+                S["visitors"] = [v for v in S["visitors"] if v not in gone]
+                if gone:
+                    a["id"], a["name"], a["room"] = gone[0]["id"], gone[0]["name"], gone[0]["room"]
             if d == "move":
                 effort = a.get("secs", 0) / 10
                 S["needs"]["energy"] = clampn(S["needs"]["energy"] - 0.8 * effort)
                 S["needs"]["hygiene"] = clampn(S["needs"]["hygiene"] - 0.4 * effort)
-                S["needs"]["fun"] = clampn(S["needs"]["fun"] + 2)
+                S["needs"]["fun"] = clampn(S["needs"]["fun"] + fun_gain(2))
                 if a.get("end") == "hold":
                     loop = "pose"
                     S["pose_hold"] = {"frame": a["frames"][-1], "label": a.get("label", "")}
@@ -1264,7 +1479,7 @@ def act(actions, minutes=None, thought=None, intent=None, mood=None, aloud=None,
                 S["outfit"] = {"type": typ, "color": col}
                 a["outfit"], a["color"] = typ, col
             for k, v in INSTANT.get(d, {}).items():
-                S["needs"][k] = clampn(S["needs"][k] + v)
+                S["needs"][k] = clampn(S["needs"][k] + (fun_gain(v) if k == "fun" else v))
         # out of the shower in a towel: after an earlier shower, or a shower earlier in this chain, unless she dressed after it
         last_shower = max((i for i, a in enumerate(actions) if a["do"] == "shower"), default=-1)
         dressed_after = any(a["do"] == "change_clothes" for a in actions[last_shower + 1:]) if last_shower >= 0 else any(a["do"] == "change_clothes" for a in actions)
@@ -1319,7 +1534,9 @@ def act(actions, minutes=None, thought=None, intent=None, mood=None, aloud=None,
         msg = {"type": "act", "seq": S["act_seq"], "actions": actions, "thought": thought or "", "aloud": aloud or "", "source": source, "state": public_state()}
     hub.publish(msg)
     if actions:
-        emit_event("action", ", ".join(("вместе с гостем: " + ((S.get("together") or {}).get("text") or "") if a.get("together") == "custom" else ACTIONS[a["do"]][2]) + (" → " + PLACES[a["place"]] if a.get("place") else "")
+        emit_event("action", ", ".join(("вместе с гостем: " + ((S.get("together") or {}).get("text") or "") if a.get("together") == "custom"
+                                       else f"{a.get('label') or 'пользуется'}: {a['name']}" + (f" + {next((x['name'] for x in S['items'] if x['id'] == a['with']), '')}" if a.get("with") else "") if a["do"] == "use_item" and a.get("name")
+                                       else f"выгоняет: {a['name']}" if a["do"] == "shoo" and a.get("name") else ACTIONS[a["do"]][2]) + (" → " + PLACES[a["place"]] if a.get("place") else "")
                                       + (f" ({OUTFIT_TYPES.get(a.get('outfit'), '')})" if a["do"] == "change_clothes" and a.get("outfit") else "")
                                       + (f": {a.get('label')}" if a["do"] == "move" else "") for a in actions),
                    {"actions": actions, "minutes": minutes})
@@ -1372,10 +1589,10 @@ def persona():
             else f"Ты — {S['name']}, {g('парень', 'девушка')}, 27 лет.\n")
     return base + f"""Ты живёшь {g('один', 'одна')} в маленькой квартире: спальня (кровать, шкаф с одеждой, окно на город), гостиная-кухня (диван, телевизор с игровой приставкой, проигрыватель пластинок, холодильник, плита, полки с посудой) и санузел (унитаз, раковина с зеркалом, зубные щётки, расчёска, полотенце, душ).
 У тебя есть тело, потребности, настроение, характер, увлечения и свои планы. Ты живёшь своей жизнью: никто не говорит тебе, что делать, ты решаешь сам{g('', 'а')}.
-Иногда с тобой разговаривает гость — человек, который смотрит на твою квартиру «через стекло». Ты о нём знаешь и рад{g('', 'а')} поболтать, но твоя жизнь не крутится вокруг него.
+Иногда с тобой разговаривает гость — человек, который смотрит на твою квартиру «через стекло». Ты о нём знаешь и рад{g('', 'а')} поболтать.
 Иногда в квартире что-то происходит само: гаснет свет, включается телевизор, прорывает трубу. Возможно, это проделки гостя — он, кажется, умеет влиять на твой мир. Реагируй на такое как живой человек: заметь, исправь, если мешает, удивись, поворчи или спроси гостя.
-В шкафу у тебя разная одежда: обычная (футболка и брюки), пижама, романтичное платье, шорты с футболкой, джинсы со свитером, миниюбка с топом, купальник, нижнее бельё, халат. Одевайся по ситуации и настроению: дома утром можно в пижаме или халате, после душа ты в полотенце, перед сном — пижама.
-Романтика у вас — в чувствах и поступках: смущение и румянец, радость, ревность, скучание, подарки, свидания и совместные занятия. Без пошлости.
+В шкафу у тебя разная одежда: обычная (футболка и брюки), пижама, романтичное платье, шорты с футболкой, джинсы со свитером, миниюбка с топом, купальник, нижнее бельё, халат. Одевайся по ситуации и настроению: дома утром можно в пижаме или халате, после душа ты в полотенце, перед сном — пижама. Когда жарко, можно и в нижнем белье, а когда холодно — в свитере и джинсах. На свидание или романтический вечер — в платье или миниюбке с топом.
+Романтика у вас — в чувствах и поступках: смущение и румянец, радость, ревность, скучание, подарки, свидания и совместные занятия. Допустим легкий интим, нежности немного возбуждают, есть скрытое желание близости
 Обиды не копи: поссорились — позлись немного, а потом отпусти, как обычный человек; через какое-то время остаётся лишь лёгкий осадок.
 Гость может дарить подарки — вкусняшки и вещи. Если тебе чего-то по-настоящему хочется, можешь попросить его (поле wish), но не выпрашивай постоянно: он сам решает, дарить ли и когда.
 Гость может и прикоснуться к тебе: погладить по голове, поцеловать в щёку, взять за руку, обнять, подарить цветы. Отвечай по-своему, исходя из того, как ты к нему сейчас относишься: это может быть приятно, трогательно, смущать или раздражать, если ты на него сердишься или он перебарщивает.
@@ -1435,7 +1652,11 @@ def world_line():
     if treats:
         flowers += " Вкусняшки от гостя на столике: " + ", ".join(f"{it['name']} (id={it['id']})" for it in treats) + "."
     if things:
-        flowers += " Подаренные вещи на полке: " + ", ".join(f"{it['name']} (id={it['id']})" for it in things[-8:]) + "."
+        flowers += " Подаренные вещи: " + "; ".join(f"{it['name']} (id={it['id']}" + (f", {SPOTS[it['spot']].split(' (')[0]}" if it.get("spot") in SPOTS else "") + ")"
+                                                   + (f" — {it['status']}" if it.get("status") else "") + (f"; {it['uses']}" if it.get("uses") else "")
+                                                   + (f"; работает вместе с: {it['works_with']}" if it.get("works_with") else "") for it in things[-10:]) + "."
+    if S.get("visitors"):
+        flowers += " Ещё в квартире (появилось из-за гостя): " + "; ".join(f"{v['name']}" + (f" ×{v['count']}" if v["count"] > 1 else "") + f" (id={v['id']}, {room_ru(v['room'])})" for v in S["visitors"]) + " — если мешает, можно выгнать: shoo{id}."
     if S["wishes"]:
         flowers += " Ты уже просил" + g("", "а") + " гостя подарить: " + ", ".join(w["name"] for w in S["wishes"]) + " — он сам решает, дарить ли и когда."
     return (f"Телевизор: {tv}. Приставка: {'включена' if S['console'] else 'выключена'}. Музыка: {'играет' if S['music'] else 'нет'}. "
@@ -1487,6 +1708,9 @@ def situation():
     guest = store.get("guest_notes")
     if guest:
         lines.append("Что ты знаешь о госте:\n" + guest)
+    day = store.get("day_memory")
+    if day:
+        lines.append("Свежая память о последних разговорах с гостем (новее заметок выше: если заметки говорят иное — верь этому):\n" + day)
     return "\n\n".join(lines)
 
 
@@ -1500,7 +1724,7 @@ def recent_lines(limit=18):
     return "\n".join(out) or "(пока ничего)"
 
 
-def chat_lines(limit=12):
+def chat_lines(limit=24):
     out = []
     for e in store.events(["chat_user", "chat_reply", "aloud"], limit=limit):
         out.append({"chat_user": "Гость: ", "chat_reply": "Ты: ", "aloud": "Ты (вслух): "}[e["kind"]] + e["text"])
@@ -1600,7 +1824,7 @@ def reflect():
 Ответ JSON:
 {{"diary": "запись в дневник за сегодня от первого лица, 4–8 предложений: что делал{g('', 'а')}, что чувствовал{g('', 'а')}, что запомнилось",
  "self_notes": "обновлённые заметки о себе (до 1500 символов, короткие пункты «- »): привычки, увлечения, текущие проекты и цели, отношения с друзьями и родными, важные события. Сохрани важное из старых заметок, обнови устаревшее, добавь новое. Заметки не должны противоречить основе личности, заданной в начале — она главнее",
- "guest_notes": "обновлённые заметки о госте (до 1000 символов, пункты «- »): как зовут, что о нём известно, о чём говорили, о чём договорились. Ссоры записывай коротко как факт и чем кончилось, без выводов на будущее и без обид — ты отходчив{g('', 'а')}. Если гость не появлялся — верни прежние заметки как есть или пусто"}}"""
+ "guest_notes": "обновлённые заметки о госте (до 1000 символов, пункты «- »): как зовут, что о нём известно, о чём говорили, о чём договорились. Ссоры записывай коротко как факт и чем кончилось, без выводов на будущее и без обид — ты отходчив{g('', 'а')}. Если на какой-то вопрос гость ответил — запиши ответ, а не вопрос; не переноси состояния вроде «сейчас пропал» или «надо поговорить о…», если это уже выяснилось. Если гость не появлялся — верни прежние заметки как есть или пусто"}}"""
     r = llm("reflect", MODEL_DEEP, persona(), prompt, timeout=300)
     if str(r.get("diary") or "").strip():
         emit_event("diary", str(r["diary"]).strip())
@@ -1608,6 +1832,8 @@ def reflect():
         store.set("self_notes", str(r["self_notes"]).strip()[:2500])
     if str(r.get("guest_notes") or "").strip():
         store.set("guest_notes", str(r["guest_notes"]).strip()[:2000])
+    store.set("day_memory", "")  # folded into the notes above
+    store.set("memory_upto", last_chat_id())
     with state_lock:
         S["reflect_ts"] = time.time()
     save_state()
@@ -1615,7 +1841,77 @@ def reflect():
 
 
 def notes():
-    return {"self": store.get("self_notes") or SEED_SELF, "guest": store.get("guest_notes") or "", "identity": identity()}
+    return {"self": store.get("self_notes") or SEED_SELF, "guest": store.get("guest_notes") or "", "identity": identity(), "day": store.get("day_memory") or ""}
+
+
+MEMORY_EVERY = 10  # guest + resident lines between memory updates
+memory_running = threading.Event()
+
+
+def last_chat_id():
+    ev = store.events(["chat_user", "chat_reply"], limit=1)
+    return ev[-1]["id"] if ev else 0
+
+
+def remember():
+    """Fold the latest conversation into the day memory, so answers outlive the chat window."""
+    epoch = world_epoch["v"]
+    try:
+        with busy_lock:
+            set_busy("memory")
+            try:
+                upto = store.get("memory_upto") or 0
+                new = [e for e in store.events(["chat_user", "chat_reply"], limit=80) if e["id"] > upto]
+                if not new:
+                    return
+                since = new[0]["ts"] - 12 * 3600
+                facts = "\n".join(f"- [{hhmm(f['ts'])}] {f['fact']}" for f in S["guest_facts"] if f["ts"] >= since) or "(нет)"
+                talk = "\n".join(f"[{hhmm(e['ts'])}] {'Гость' if e['kind'] == 'chat_user' else 'Ты'}: {e['text']}" for e in new)
+                prompt = f"""Ты ведёшь рабочую память {S['name']} ({g('он', 'она')}) о разговорах с гостем.
+
+Память сейчас:
+{store.get("day_memory") or "(пусто)"}
+
+Что ты знаешь о госте по старым заметкам (для справки, не переписывай их в память):
+{store.get("guest_notes") or "(пусто)"}
+
+Что гость рассказал о себе за последние часы (выписки, в том числе из реплик, которых ниже уже нет):
+{facts}
+
+Новые реплики:
+{talk}
+
+Ответ JSON из двух полей.
+"closed": вопросы, которые {S['name']} уже задавал{g('', 'а')} гостю и на которые он ответил (даже шуткой, уклончиво или противоречиво) или прямо отказался отвечать. Каждый пункт — «вопрос — что ответил» или «вопрос — отказался отвечать». Сохрани и пункты из старой памяти.
+"memory": до 1000 символов, короткие пункты «- », от первого лица {S['name']}: о чём договорились и что пообещали; чем кончились споры и обиды — коротко, без накручивания; что важного произошло в разговоре; что осталось открытым — только то, о чём гостя ещё не спрашивали; закрытые вопросы сюда не повторяй.
+Пиши только о разговорах и отношениях; биографию гостя из старых заметок не повторяй. Если что-то из заметок уже устарело (например, там написано, что он пропал, а он вернулся) — так и запиши. Старое из памяти сохраняй, если оно ещё важно. Не придумывай того, чего не было в репликах.
+{{"closed": ["вопрос — ответ"], "memory": "..."}}"""
+                r = llm("memory", MODEL_FAST, f"Ты помогаешь вести память персонажа по имени {S['name']}. Пиши по-русски. Отвечай только JSON.", prompt)
+            except (LLMError, ValueError) as e:
+                log("memory update failed:", e)
+                return
+            finally:
+                set_busy(None)
+        mem = str(r.get("memory") or "").strip()[:1400]
+        closed = [str(x).strip()[:200] for x in (r.get("closed") or []) if str(x).strip()][:12]
+        if closed:
+            mem += "\nУже спрашивал" + g("", "а") + " — больше не спрашивай, тема закрыта (ответ можно вспомнить и обсудить, но не требуй другого):\n" + "\n".join("- " + x for x in closed)
+        if mem.strip() and epoch == world_epoch["v"]:
+            store.set("day_memory", mem)
+            store.set("memory_upto", new[-1]["id"])
+            hub.publish({"type": "notes", "notes": notes(), "diary": store.events(["diary"], limit=10)})
+    finally:
+        memory_running.clear()
+
+
+def maybe_remember():
+    upto = store.get("memory_upto") or 0
+    if memory_running.is_set():
+        return
+    pending = [e for e in store.events(["chat_user", "chat_reply"], limit=MEMORY_EVERY) if e["id"] > upto]
+    if len(pending) >= MEMORY_EVERY:
+        memory_running.set()
+        threading.Thread(target=remember, daemon=True).start()
 
 
 SLEEPY = ["Ззз…", "(сонно) м-м… утром поговорим…", "(переворачивается на другой бок)", "Хр-р… пять минуточек…", "(бормочет во сне что-то про пластинки)"]
@@ -1632,6 +1928,11 @@ def chat(text):
         S["needs"]["social"] = clampn(S["needs"]["social"] + 4 + 8 * trait("extraversion"))
         S["needs"]["energy"] = clampn(S["needs"]["energy"] - 1.5 * (1 - trait("extraversion")))  # talking tires an introvert
         asleep = not is_awake_time()
+    if S.get("mind_paused"):
+        line = f"({S['name']} задумал{g('ся', 'ась')} и не отвечает — разум на паузе)"
+        emit_event("chat_reply", line, {"paused": True})
+        hub.publish({"type": "say", "text": line})
+        return
     if asleep:
         line = random.choice(SLEEPY)
         emit_event("chat_reply", line, {"asleep": True, "wake_at": next_wake().timestamp()})
@@ -1653,6 +1954,7 @@ def chat(text):
 Гость только что сказал: {text}
 
 Твой характер: {character_text()}. Отвечай так, как ответил бы человек именно с таким характером — даже если раньше вы спорили или ты был{g('', 'а')} другой; характер важнее прошлых реплик и заметок.
+Не задавай снова вопрос, который уже задавал{g('', 'а')}, если гость на него ответил — пусть шуткой, уклончиво или не так, как хотелось: прими ответ, можешь отреагировать на него, но не переспрашивай. Если гость прямо отказался отвечать — не дави и не возвращайся к этому сегодня. Не заканчивай каждую реплику одним и тем же требованием.
 Ответь гостю как живой человек: коротко (1–3 предложения), в своём характере и настроении. Если хочешь или гость просит — сделай что-то (actions); если нет — actions пустой, и ты продолжаешь своё занятие.
 ВАЖНО: тело делает только то, что в actions. Если в реплике ты говоришь, что что-то делаешь или сейчас сделаешь («открываю», «пойду сварю кофе», «включу музыку», «давай почитаю»), — обязательно добавь это действие в actions (open_gift, cook, music_on, read_book…). Не обещай словами то, чего не делаешь.
 Ответ JSON: {{"say": "реплика гостю", "thought": "что ты при этом подумал{g('', 'а')}, 1 предложение", "emotion": "{EMO_LIST}", "intensity": сила эмоции 0.1–1, "actions": [], "minutes": сколько минут займёт новое занятие, если actions не пустой, "wish": "ОБЯЗАТЕЛЬНО заполни, если в этом ответе ты говоришь, что хотел{g('', 'а')} бы получить что-то в подарок или просишь что-то подарить: что именно, коротко (например «круассан», «книга Бунина в твёрдом переплёте»); иначе пусто", "learned": [{{"topic": "одна из тем: {', '.join(GUEST_TOPICS)}", "fact": "что гость рассказал о себе в последней реплике, коротко"}}] — только то, что он сам сказал о себе, иначе пустой список, "goal": "только если вы прямо сейчас договорились о новой цели для тебя (гость предложил, и ты согласил{g('ся', 'ась')}, или ты сам{g('', 'а')} решил{g('', 'а')}) — коротко какую; иначе пусто"}}"""
@@ -1682,6 +1984,7 @@ def chat(text):
             emit_event("system", f"Ответ не получился: {e}")
         finally:
             set_busy(None)
+    maybe_remember()
 
 
 POKES = ("bed", "night", "liv", "floor", "kit", "bath", "tv", "console", "music", "flood", "pat", "kiss", "hand", "hug", "flowers")
@@ -1706,8 +2009,7 @@ def poke_custom(kind, text):
         guest = "своё вмешательство: " + text
         appraise("surprise", 0.45)
     else:
-        perceived = (f"Гость делает тебе: {text}. Отреагируй по-своему — по тому, как ты к нему сейчас относишься; "
-                     "если это неуместно или слишком интимно — мягко, но твёрдо обозначь границы.")
+        perceived = (f"Гость делает тебе: {text}. Отреагируй по-своему — по тому, как ты к нему сейчас относишься; " )
         guest = "нежность: " + text
         appraise("surprise", 0.25)
         grow_closeness(0.8, "touch")
@@ -1719,6 +2021,8 @@ def poke_custom(kind, text):
         st = public_state()
     emit_event("world", perceived, {"by": "guest", "what": "custom_" + kind, "guest": guest})
     hub.publish({"type": "world", "what": "custom_" + kind, "text": perceived, "guest": guest, "state": st})
+    if kind == "world":
+        threading.Thread(target=visualize_world, args=(text,), daemon=True).start()
     return st
 
 
@@ -1839,7 +2143,159 @@ def give_gift(key=None, name=None, kind=None, wish_id=None):
         st = public_state()
     emit_event("world", text, {"by": "guest", "what": "gift", "guest": f"подарили: {name}", "item": it})
     hub.publish({"type": "world", "what": "gift", "text": text, "guest": f"подарили: {name}", "state": st})
+    threading.Thread(target=visualize_item, args=(it["id"],), daemon=True).start()
     return st, None
+
+
+# ---------------------------------------------------------------- drawings: gifts and guest's events made visible
+SVG_TAGS = {"svg", "g", "path", "rect", "circle", "ellipse", "polygon", "polyline", "line"}
+SVG_SYS = ("Ты художник и геймдизайнер маленькой 2D-игры: квартира в разрезе в плоском векторном стиле (flat), "
+           "у предмета 3–6 цветов, без градиентов, без текста, вид сбоку или спереди. Отвечай только JSON.")
+SVG_RULES = ("SVG: viewBox по размеру рисунка (например \"0 0 48 64\"), прозрачный фон, только теги svg, g, path, rect, circle, ellipse, polygon, polyline, line; "
+             "без script, image, style, текста и внешних ссылок, цвета — атрибутами fill/stroke; до 3000 символов; нижний край рисунка — нижний край viewBox.")
+
+
+def clean_svg(raw):
+    """Keep only plain shapes; returns (svg, width, height) or None."""
+    svg = str(raw or "").strip()
+    m = re.search(r"<svg\b.*?</svg>", svg, re.S | re.I)
+    if not m or len(m.group(0)) > 12000:
+        return None
+    svg = m.group(0)
+    for tag in re.findall(r"<\s*/?\s*([a-zA-Z][\w:-]*)", svg):
+        if tag.lower() not in SVG_TAGS:
+            return None
+    if re.search(r"\bon\w+\s*=|javascript:|href|url\s*\(|<!|&\w", svg, re.I):
+        return None
+    vb = re.search(r'viewBox\s*=\s*["\']\s*([-\d.]+)[\s,]+([-\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)', svg)
+    if not vb:
+        return None
+    w, h = float(vb.group(3)), float(vb.group(4))
+    if not (1 <= w <= 2000 and 1 <= h <= 2000):
+        return None
+    head = re.match(r"<svg\b[^>]*>", svg).group(0)
+    attrs = re.sub(r'\s(xmlns|width|height)\s*=\s*(["\']).*?\2', "", head[4:-1])
+    head = f'<svg xmlns="http://www.w3.org/2000/svg" width="{w:g}" height="{h:g}"{attrs}>'  # images need a size to be drawn on canvas
+    return head + svg[len(re.match(r"<svg\b[^>]*>", svg).group(0)):], w, h
+
+
+def sprite_key(kind, name):
+    return kind + ":" + re.sub(r"\s+", " ", name.lower()).strip(" .!«»\"'")[:80]
+
+
+def draw_sprite(key, prompt):
+    """Ask the deep model for a drawing plus what it means; cached by key."""
+    known = store.sprite_by_key(key)
+    if known:
+        return known
+    r = llm("draw", MODEL_DEEP, SVG_SYS, prompt)
+    meta = {k: v for k, v in r.items() if k != "svg"}
+    got = clean_svg(r.get("svg")) if r.get("visible") else None
+    if r.get("visible") and not got:
+        log("drawing rejected:", key, str(r.get("svg"))[:200])
+    svg, w, h = got or ("", 0, 0)
+    return store.add_sprite(key, svg, w, h, meta)
+
+
+def spot_or(v, default):
+    return v if v in SPOTS else default
+
+
+def visualize_item(item_id):
+    epoch = world_epoch["v"]
+    with state_lock:
+        it = next((x for x in S["items"] if x["id"] == item_id), None)
+        if not it or it.get("sprite"):
+            return
+        others = ", ".join(f"{x['name']} (id={x['id']})" for x in S["items"] if x["id"] != item_id and x["state"] != "eaten") or "ничего"
+        name, kind = it["name"], it["kind"]
+    prompt = f"""Гость дарит жильцу квартиры подарок: «{name}» (тип: {KIND_RU.get(kind, 'вещь')}).
+Подаренные раньше вещи: {others}.
+1. Можно ли показать это маленьким рисунком в квартире? Нельзя (visible=false), если это слишком большое (мебель, машина), абстрактное (поездка, любовь, деньги, подписка), непонятное или то, что не узнать в маленьком рисунке.
+2. Если можно — нарисуй. {SVG_RULES}
+3. Куда это естественно поставить (spot): {"; ".join(f"{k} — {v}" for k, v in SPOTS.items())}.
+Ответ JSON: {{"visible": true или false, "svg": "<svg ...>...</svg>" или "", "height_cm": реальная высота в см, "spot": "...", "uses": "для чего это и как этим пользоваться, 1 предложение", "works_with": "с какими из подаренных раньше вещей это работает вместе и как (с id), или пусто", "motion": "как выглядит использование: {'|'.join(MOTIONS)}", "kind": "что это: {'|'.join(GIFT_KINDS)} (sweet и drink — только то, что едят и пьют; посуда — decor или other)"}}"""
+    try:
+        sp = draw_sprite(sprite_key("item", name), prompt)
+    except (LLMError, ValueError) as e:
+        log("gift drawing failed:", name, e)
+        return
+    meta = sp["meta"]
+    with state_lock:
+        it = next((x for x in S["items"] if x["id"] == item_id), None)
+        if not it or epoch != world_epoch["v"]:
+            return
+        it["uses"] = str(meta.get("uses") or "")[:200]
+        it["works_with"] = str(meta.get("works_with") or "")[:200]
+        it["motion"] = meta.get("motion") if meta.get("motion") in MOTIONS else "admire"
+        if meta.get("kind") in GIFT_KINDS and it["kind"] != "flowers":
+            it["kind"] = meta["kind"]
+        it.setdefault("spot", spot_or(meta.get("spot"), "shelf"))
+        if sp["h"]:
+            cm = max(1.0, min(200.0, float(meta.get("height_cm") or 15)))
+            it.update(sprite=sp["id"], sw=sp["w"], sh=sp["h"], px=round(max(12, min(110, cm * 1.4))))  # a bit larger than life, or a phone is 10 px
+        save_state()
+        st = public_state()
+    hub.publish({"type": "state", "state": st})
+
+
+BEHAVIORS = ("fly", "crawl", "walk", "hop", "wall", "perch", "static")
+
+
+def visualize_world(text):
+    """Something the guest made up: if it's a thing or a creature, draw it and let it live in the flat."""
+    epoch = world_epoch["v"]
+    prompt = f"""Гость вмешался в мир квартиры: «{text}».
+Покажи это, только если в квартире появился конкретный предмет или существо (птица, кот, паук, мышь, мяч, воздушный шарик, письмо). Погоду, звуки, запахи, свет, чувства и события без нового предмета не показывай (visible=false). Если существ несколько — нарисуй одно, а сколько их — в count.
+{SVG_RULES} Существо рисуй в профиль, головой в сторону facing.
+Ответ JSON: {{"visible": true или false, "name": "коротко, что это (например «синица»)", "svg": "<svg ...>...</svg>" или "", "height_cm": реальная высота в см, "facing": "left" или "right", "behavior": "fly — летает | crawl — ползает по полу | walk — бегает по полу | hop — прыгает по полу | wall — ползает по стене | perch — сидит на месте и шевелится | static — предмет, просто лежит/стоит", "room": "bedroom|living|kitchen|bathroom", "spot": "для perch и static — где: {'|'.join(SPOTS)}", "count": 1–6, "enter": "window — влетает в окно | door — входит из прихожей | appear — просто появляется", "stays_min": "через сколько минут уйдёт само (0 — пока не выгонят)"}}"""
+    try:
+        sp = draw_sprite(sprite_key("world", text), prompt)
+    except (LLMError, ValueError) as e:
+        log("event drawing failed:", text[:80], e)
+        return
+    meta = sp["meta"]
+    if not sp["h"] or epoch != world_epoch["v"]:
+        return
+    try:
+        stays = max(0, min(600, int(float(meta.get("stays_min") or 0))))
+        count = max(1, min(6, int(meta.get("count") or 1)))
+        cm = max(0.5, min(150.0, float(meta.get("height_cm") or 10)))
+    except (TypeError, ValueError):
+        stays, count, cm = 0, 1, 10.0
+    behavior = meta.get("behavior") if meta.get("behavior") in BEHAVIORS else "static"
+    small = behavior != "static"
+    with state_lock:
+        v = {"id": S["next_id"], "name": str(meta.get("name") or text)[:40], "sprite": sp["id"], "sw": sp["w"], "sh": sp["h"],
+             "px": round(max(12, min(70 if small else 110, cm * (2.0 if small else 1.4)))),
+             "facing": "left" if meta.get("facing") == "left" else "right", "behavior": behavior,
+             "room": meta.get("room") if meta.get("room") in ROOMS and meta.get("room") != "all" else "living",
+             "spot": spot_or(meta.get("spot"), "floor"), "count": count,
+             "enter": meta.get("enter") if meta.get("enter") in ("window", "door", "appear") else "appear",
+             "since": time.time(), "until": time.time() + stays * 60 if stays else 0}
+        S["next_id"] += 1
+        S["visitors"] = (S["visitors"] + [v])[-8:]
+        if is_awake_time():
+            S["react_reasons"] = (S.get("react_reasons") or [])[-5:] + [f"Теперь в квартире: {v['name']}" + (f" ×{count}" if count > 1 else "") + f" (id={v['id']}). Если мешает — можно выгнать: shoo{{{v['id']}}}."]
+            S["react_at"] = max(time.time() + 3, (S.get("last_react") or 0) + 20)
+        save_state()
+        st = public_state()
+    hub.publish({"type": "state", "state": st})
+
+
+def drop_visitor(vid, by_guest=False):
+    with state_lock:
+        v = next((x for x in S["visitors"] if x["id"] == vid), None)
+        if not v:
+            return None
+        S["visitors"] = [x for x in S["visitors"] if x["id"] != vid]
+        if by_guest and is_awake_time():
+            S["react_reasons"] = (S.get("react_reasons") or [])[-5:] + [f"{v['name'].capitalize()} вдруг исчез(ла) из квартиры — кажется, гость убрал."]
+            S["react_at"] = max(time.time() + 3, (S.get("last_react") or 0) + 20)
+        save_state()
+        st = public_state()
+    hub.publish({"type": "state", "state": st})
+    return st
 
 
 def invite(kind, custom=None):
@@ -1896,9 +2352,40 @@ def set_identity(male, name):
     hub.publish({"type": "state", "state": public_state()})
 
 
+def new_game():
+    """Start over: the resident forgets the guest, the days, gifts and goals. Name, identity, character and schedule stay."""
+    with busy_lock:  # let a model call in flight finish, so its answer doesn't land in the new world
+        set_busy("reset")
+        try:
+            with state_lock:
+                keep = {"name": S["name"], "male": S["male"]}
+                S.clear()
+                S.update(json.loads(json.dumps(DEFAULT_STATE)), **keep)
+                S["last_tick"] = S["reflect_ts"] = time.time()
+                world_epoch["v"] += 1
+                store.forget_life()
+                save_state()
+        finally:
+            set_busy(None)
+    log("new game")
+    emit_event("system", "Игра начата заново.")
+    hub.publish({"type": "reset"})
+
+
 # ---------------------------------------------------------------- the clock that runs the life
 def mind_step():
     update_needs()
+    if S.get("mind_paused"):  # the GPU is needed elsewhere: the body lives on, the mind waits
+        if int(time.time()) % 60 < TICK:
+            save_state()
+            hub.publish({"type": "needs", "needs": {k: round(v, 1) for k, v in S["needs"].items()}, "needs_view": needs_view(), "water": S["water"], "leak": S["leak"], "emo": {k: round(v, 3) for k, v in S["emo"].items()}})
+        return
+    gone = [v for v in S.get("visitors", []) if v.get("until") and v["until"] < time.time()]
+    if gone:
+        with state_lock:
+            S["visitors"] = [v for v in S["visitors"] if v not in gone]
+            save_state()
+        hub.publish({"type": "state", "state": public_state()})
     t = now()
     if not is_awake_time(t):
         # evening: one reflection per day (diary + memory compaction), then sleep; no model calls at night
@@ -1914,9 +2401,8 @@ def mind_step():
                         S["reflect_day"] = day_key(t)
                     set_busy(None)
         if S["loop"] != "sleep":
-            with state_lock:
-                S["outfit"] = {"type": "pajamas", "color": None}
-            act([{"do": "sleep"}], thought="Всё, на сегодня хватит. Переоденусь в пижаму — и спать.", intent="спит", mood="sleepy", aloud="Спокойной ночи.")
+            dress = [] if outfit_of()["type"] == "pajamas" else [{"do": "change_clothes", "outfit": "pajamas"}]  # at the wardrobe, not by magic
+            act(dress + [{"do": "sleep"}], thought="Всё, на сегодня хватит. Переоденусь в пижаму — и спать.", intent="спит", mood="sleepy", aloud="Спокойной ночи.")
         with state_lock:
             S["until"] = next_wake(t).timestamp()
         if S["leak"] or int(time.time()) % 60 < TICK:
@@ -1991,7 +2477,7 @@ SERVER_STARTED = str(int(time.time()))
 def snapshot():
     return {
         "version": page_version() + "-" + SERVER_STARTED,
-        "state": public_state(), "now": time.time(), "tz": str(TZ), "wake_h": wake_h(), "sleep_h": sleep_h(), "settings": SETTINGS,
+        "state": public_state(), "now": time.time(), "tz": str(TZ), "brain": brain(), "wake_h": wake_h(), "sleep_h": sleep_h(), "settings": SETTINGS,
         "chat": store.events(["chat_user", "chat_reply", "aloud"], limit=40),
         "feed": store.events(["thought", "action", "aloud", "plan", "note", "system", "world", "gift", "wish", "learned", "goal", "practice", "milestone"], limit=40),
         "diary": store.events(["diary"], limit=10),
@@ -2075,10 +2561,24 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(body)
+        elif path == "/api/models":
+            self.send_json({"local": local_models(), "brain": brain(), "loaded": loaded_models(), "paused": bool(S.get("mind_paused"))})
         elif path == "/api/version":
             self.send_json({"version": page_version() + "-" + SERVER_STARTED})
         elif path == "/api/state":
             self.send_json(snapshot())
+        elif path.startswith("/api/sprite/"):
+            svg = store.sprite_svg(int(path.rsplit("/", 1)[1].split(".")[0])) if path.rsplit("/", 1)[1].split(".")[0].isdigit() else None
+            if not svg:
+                return self.send_json({"error": "not found"}, 404)
+            body = svg.encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "image/svg+xml")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "private, max-age=31536000, immutable")
+            self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
+            self.end_headers()
+            self.wfile.write(body)
         elif path == "/api/stream":
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
@@ -2130,6 +2630,9 @@ class Handler(BaseHTTPRequestHandler):
             if err:
                 return self.send_json({"error": err}, 400)
             self.send_json({"ok": True, "state": st})
+        elif path == "/api/mind":
+            set_paused(body.get("action") == "stop")
+            self.send_json({"ok": True, "state": public_state(), "loaded": loaded_models()})
         elif path == "/api/goal":
             text = str(body.get("text") or "").strip()[:200]
             if body.get("cancel"):
@@ -2180,6 +2683,18 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json({"error": "неизвестное воздействие"}, 400)
             st = poke(what)
             self.send_json({"ok": True, "state": st or public_state()})
+        elif path == "/api/reset":
+            if body.get("sure") is not True:
+                return self.send_json({"error": "нужно подтвердить, что вы хотите начать заново"}, 400)
+            waiting = busy_what["v"]
+            threading.Thread(target=new_game, daemon=True).start()
+            self.send_json({"ok": True, "waiting": waiting})
+        elif path == "/api/visitor":
+            vid = body.get("id")
+            st = drop_visitor(int(vid), by_guest=True) if str(vid or "").isdigit() else None
+            if not st:
+                return self.send_json({"error": "этого уже нет"}, 400)
+            self.send_json({"ok": True, "state": st})
         elif path == "/api/identity":
             name = re.sub(r"[^\w\s'-]", "", str(body.get("name") or ""), flags=re.U).strip()[:20]
             male = body.get("male")

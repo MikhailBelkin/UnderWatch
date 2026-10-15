@@ -147,6 +147,8 @@ canvas{display:block}
 .menuPanel details.sub summary{cursor:pointer;padding:8px 10px;border-radius:8px;font-weight:600;font-size:14px}
 .menuPanel details.sub summary:hover,.menuItem:hover{background:var(--bg)}
 .statusList{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:4px 10px 10px}
+.vram{margin:-2px 10px 4px;font-size:12px}
+.vram:empty{display:none}
 .menuItem{display:flex;align-items:center;gap:8px;font:inherit;font-size:14px;font-weight:600;text-align:left;padding:8px 10px;border:0;border-radius:8px;background:transparent;color:var(--fg);cursor:pointer}
 .liveStatus{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:-6px;padding:8px 14px;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;background:var(--panel);font-size:14px}
 .liveStatus .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
@@ -166,14 +168,21 @@ canvas{display:block}
 .dd .menu > button[aria-pressed="true"]::after{content:"вкл";font-family:var(--f-mono);font-size:11.5px;color:var(--accent)}
 .dd .menu > button[aria-pressed="false"]::after{content:"выкл";font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
 .dd .menu > button:disabled{opacity:.55;cursor:default}
+.visitors{display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--line);margin-top:4px;padding-top:4px;order:98}
+.visitors button{font:inherit;font-size:14px;text-align:left;padding:7px 10px;border:0;border-radius:8px;background:transparent;color:var(--danger);cursor:pointer}
+.visitors button:hover{background:var(--bg)}
 .customForm{display:flex;gap:4px;padding:6px 4px 2px;border-top:1px solid var(--line);margin-top:4px;order:99}
 .customForm input{flex:1;min-width:0;font:inherit;font-size:13px;padding:6px 9px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
 .customForm button{font:inherit;font-size:13px;font-weight:600;padding:6px 10px;border-radius:8px;border:0;background:var(--accent);color:var(--accent-fg);cursor:pointer}
 label.check{display:flex;align-items:center;gap:8px;font-size:14px;margin-top:8px}
+.radios{display:grid;gap:6px;font-size:14px}
+.radios label{display:flex;gap:8px;align-items:center}
+.brainModels{margin-top:8px}
+.brainModels select{max-width:14rem}
 label.area{display:grid;gap:4px;font-size:12.5px;color:var(--muted);margin-bottom:8px}
 label.area textarea{font:inherit;font-size:13.5px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;min-height:70px}
-dialog#settings{border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--fg);padding:0;width:min(560px, calc(100vw - 32px));max-height:calc(100vh - 40px)}
-dialog#settings::backdrop{background:rgba(10,14,20,.45)}
+dialog#settings,dialog#resetDlg{border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--fg);padding:0;width:min(560px, calc(100vw - 32px));max-height:calc(100vh - 40px)}
+dialog#settings::backdrop,dialog#resetDlg::backdrop{background:rgba(10,14,20,.45)}
 #setForm{display:grid;gap:4px;padding:18px 20px}
 .setHead{display:flex;justify-content:space-between;align-items:center}
 .setHead h2{font-family:var(--f-display);font-size:20px;margin:0}
@@ -192,6 +201,18 @@ dialog#settings::backdrop{background:rgba(10,14,20,.45)}
 #setForm footer{display:flex;align-items:center;gap:12px;margin-top:16px}
 #setForm footer .note{flex:1;margin:0}
 #setForm .primary{font:inherit;font-weight:600;padding:9px 16px;border-radius:10px;border:0;background:var(--accent);color:var(--accent-fg);cursor:pointer}
+dialog#resetDlg{width:min(460px, calc(100vw - 32px))}
+#resetForm{display:grid;gap:10px;padding:18px 20px}
+#resetForm p{margin:0;font-size:14px}
+#resetForm ul{margin:0;padding-left:20px;font-size:14px;display:grid;gap:3px}
+#resetForm .keep{font-size:13px;color:var(--muted)}
+#resetForm label.check{align-items:flex-start;margin-top:4px;padding:10px 12px;border:1px solid color-mix(in srgb, var(--danger) 45%, var(--line));border-radius:10px;background:color-mix(in srgb, var(--danger) 6%, var(--panel))}
+#resetForm label.check input{margin-top:3px;accent-color:var(--danger)}
+#resetForm footer{display:flex;justify-content:flex-end;gap:10px;margin-top:6px}
+#resetForm footer button{font:inherit;font-weight:600;padding:9px 16px;border-radius:10px;cursor:pointer}
+#resetCancel{border:1px solid var(--line);background:transparent;color:var(--fg)}
+#resetGo{border:0;background:var(--danger);color:#fff}
+#resetGo:disabled{opacity:.45;cursor:not-allowed}
 @media (max-width:520px){.trait{grid-template-columns:1fr 1fr;}.trait input{grid-column:1 / -1;grid-row:2}.trait span:first-child{text-align:left}.trait span:last-child{text-align:right}}
 .controls{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:-4px}
 .controls .lbl{margin-right:4px}
@@ -233,7 +254,10 @@ dialog#settings::backdrop{background:rgba(10,14,20,.45)}
             <span class="chip" id="stUsage" title="Вызовы модели за сегодня. Расход идёт из лимитов подписки; сумма — по прайсу API, для справки">сегодня: —</span>
           </div>
         </details>
+        <button type="button" class="menuItem" id="mindBtn">⏸ Остановить разум (освободить видеокарту)</button>
+        <p class="note vram" id="vramNote"></p>
         <button type="button" class="menuItem" id="settingsBtn" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.3 7.3 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.3 7.3 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.3 7.3 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.3 7.3 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg> Настройки…</button>
+        <button type="button" class="menuItem" id="resetBtn"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg> Начать заново…</button>
       </div>
     </div>
   </header>
@@ -291,7 +315,7 @@ dialog#settings::backdrop{background:rgba(10,14,20,.45)}
     <details open><summary>Лента жизни</summary><ul class="feed" id="feed"></ul></details>
     <details class="diary"><summary>Дневник</summary><div id="diary"><p class="hint">Записи появляются каждый вечер, когда жилец ложится спать.</p></div></details>
     <details><summary>Что помнит о себе</summary><p class="notes" id="selfNotes"></p></details>
-    <details><summary>Что помнит о вас</summary><p class="notes" id="guestNotes"></p></details>
+    <details><summary>Что помнит о вас</summary><p class="notes" id="guestNotes"></p><h2 class="sub2" id="dayNotesTitle" hidden>Из сегодняшних разговоров</h2><p class="notes" id="dayNotes" hidden></p></details>
   </section>
 </div>
 
@@ -309,6 +333,15 @@ dialog#settings::backdrop{background:rgba(10,14,20,.45)}
       </div>
       <label class="check"><input type="checkbox" id="soundBtn"> Звук пластинки</label>
     </section>
+    <section><h3>Разум</h3>
+      <div class="radios">
+        <label><input type="radio" name="brain" value="local" id="brainLocal"> Локальная модель (Ollama, на этой машине — бесплатно)</label>
+        <label><input type="radio" name="brain" value="claude" id="brainClaude"> Claude (через подписку)</label>
+      </div>
+      <div class="row2 brainModels"><label>Быстрая: <select id="brainFast"></select></label><label>Глубокая: <select id="brainDeep"></select></label></div>
+      <label class="check"><input type="checkbox" id="brainFallback"> Если локальная модель не ответила — спросить Claude</label>
+      <p class="note">Быстрая модель отвечает в чате и принимает решения, глубокая составляет план дня, подводит итоги и проектирует цели.</p>
+    </section>
     <section><h3>Личность и память</h3>
       <label class="area"><span>Кто <b class="gx">она</b>: основа личности — возраст, работа, характер, вкусы, история. Это главное в каждом запросе; сама она это не переписывает.</span><textarea id="setIdentity" rows="6"></textarea></label>
       <label class="area"><span>Что <b class="gx">она</b> думает о себе — заметки, которые обновляются каждый вечер (не противоречат основе).</span><textarea id="setSelf" rows="5"></textarea></label>
@@ -325,6 +358,16 @@ dialog#settings::backdrop{background:rgba(10,14,20,.45)}
       <p class="note">Характер идёт в каждый её запрос и важнее её старых заметок о себе. Изменения действуют со следующего решения.</p>
     </section>
     <footer><button type="button" id="setReset" class="linkBtn">Вернуть по умолчанию</button><span id="setMsg" class="note" role="status"></span><button type="submit" id="setSave" class="primary">Сохранить</button></footer>
+  </form>
+</dialog>
+<dialog id="resetDlg" aria-labelledby="resetTitle">
+  <form id="resetForm" method="dialog">
+    <header class="setHead"><h2 id="resetTitle">Начать заново?</h2><button type="button" class="x" id="resetClose" aria-label="Закрыть">×</button></header>
+    <p><b id="resetWho">Жилец</b> забудет всё, и вернуть это будет нельзя:</p>
+    <ul id="resetLoss"></ul>
+    <p class="keep">Останутся: имя, пол, основа личности, характер и распорядок.</p>
+    <label class="check"><input type="checkbox" id="resetSure"> <span>Я понимаю, что вся память персонажа и достижения в игре будут утрачены, и хочу начать заново.</span></label>
+    <footer><button type="button" id="resetCancel">Отмена</button><button type="submit" id="resetGo" disabled>Начать заново</button></footer>
   </form>
 </dialog>
 
@@ -517,6 +560,10 @@ const GEST = {
   eat:{d:4.5, ru:'ест', f:(p,t) => { const c = (Math.sin(t*3.2 - PI/2) + 1)/2; p.shR = 0.5 + 0.8*c; p.elR = 0.8 + 1.5*c; p.shL = 0.75; p.elL = 0.95; p.head = -0.05*c; }},
   drink:{d:3, ru:'пьёт', f:(p,t) => { const c = clamp(Math.sin(PI*clamp(t/3,0,1))*1.6, 0, 1); p.shR = 0.4 + 0.9*c; p.elR = 0.6 + 1.75*c; p.head = -0.2*c; }},
   change:{d:2.6, ru:'переодевается', full:true, f:(p,t,g) => { p.shL = p.shR = 2.9; p.elL = p.elR = 0.2; S.face = (Math.floor(t*6) % 2) ? -1 : 1; if (Math.random() < 0.4) spark(S.x + rand(-20,20), GROUND - rand(20,110), 'star'); }, end:g => { S.face = g.face0 || 1; }},
+  readg:{d:6, ru:'читает', f:(p) => { p.shR = 0.85; p.elR = 1.05; p.shL = 0.85; p.elL = 1.0; p.head = 0.22; p.lean = 0.06; }},
+  phoneg:{d:5, ru:'говорит по телефону', f:(p,t) => { p.shR = 1.25; p.elR = 2.45; p.head = 0.05*Math.sin(t*0.9) - 0.05; }},
+  playg:{d:6, ru:'играет', f:(p,t) => { p.shR = 1.0 + 0.06*Math.sin(t*13); p.elR = 0.8; p.shL = 0.95; p.elL = 0.85; p.head = 0.15; p.lean = 0.1; }},
+  shoo:{d:2.6, ru:'выгоняет', f:(p,t) => { p.shR = 2.2 + 0.5*Math.sin(t*10); p.elR = 0.4; p.shL = 1.6 + 0.4*Math.sin(t*10 + 1); p.elL = 0.4; p.lean = 0.08; }},
   look:{d:4, ru:'смотрит в окно', f:(p) => { p.head = -0.25; p.shL = -0.35; p.elL = 0.4; p.shR = -0.35; p.elR = 0.4; S.lookTX = 0.3; S.lookTY = -1; }}
 };
 
@@ -536,7 +583,7 @@ const ACT_RU = {
   phone_call:'звонит по телефону', workout:'делает зарядку', tidy_up:'прибирается', console_off:'выключает приставку',
   move:'двигается', rest:'устраивается', cozy:'укутывается в плед', light_candle:'зажигает свечу', wear_item:'надевает',
   date:'ужинает с вами при свечах', dance_together:'танцует с вами', together:'проводит время с вами',
-  open_gift:'открывает подарок', eat_treat:'ест вкусняшку', use_item:'радуется подарку',
+  open_gift:'открывает подарок', eat_treat:'ест вкусняшку', use_item:'пользуется подарком', shoo:'выгоняет',
   wash_dishes:'моет посуду',
   close_valve:'перекрывает воду', mop_floor:'вытирает пол', use_toilet:'идёт в туалет', shower:'принимает душ',
   brush_teeth:'чистит зубы', wash_face:'умывается', comb_hair:'причёсывается'
@@ -554,9 +601,19 @@ function expand(a, plan){
     case 'tv_off': return [gest('point', {end:() => { S.tv = 'off'; if (S.loop === 'watch' || S.loop === 'game') S.loop = 'sit'; }})];
     case 'play_game': return [walk('tv'), gest('reach', {end:() => { S.tv = 'game'; S.console = true; S.hold.R = 'pad'; }}), walk('sofa'), loop('game')];
     case 'console_off': return [gest('point', {end:() => { S.console = false; if (S.tv === 'game') S.tv = 'show'; if (S.loop === 'game') S.loop = 'sit'; }})];
-    case 'open_gift': return [walk('center'), gest('unwrap')];
-    case 'eat_treat': return [walk('sofa'), loop('sit'), fx(() => { S.hold.L = 'treat:' + (a.name || ''); S.hold.R = null; }), gest('eat', {end:() => { S.hold.L = null; }})];
-    case 'use_item': return a.kind === 'toy' ? [fx(() => { S.hold.R = 'thing:toy'; }), gest('selfhug', {end:() => { S.hold.R = null; }})]
+    case 'open_gift': return [walk('center'), gest('unwrap'), fx(() => { const it = itemById(a.id); if (it && it.sprite) S.hold.R = 'svg:' + a.id; }),
+      gest('admire', {dur:2.2, end:() => { if (S.hold.R === 'svg:' + a.id) S.hold.R = null; }})];
+    case 'eat_treat': return [walk('sofa'), loop('sit'), fx(() => { const it = itemById(a.id); S.hold.L = it && it.sprite ? 'svg:' + a.id : 'treat:' + (a.name || ''); S.hold.R = null; }), gest('eat', {end:() => { S.hold.L = null; }})];
+    case 'shoo': { const at = visitorPlace(a.id); if (VIS[a.id]) VIS[a.id].shooPending = true;
+      return (at ? [{k:'walk', x:at.x, face:1, place:'center'}] : []).concat([gest('shoo', {end:() => { const e = VIS[a.id]; if (e){ e.shooPending = false; startLeaving(e); } }})]); }
+    case 'use_item': if (a.sprite){
+      const G = {admire:'admire', hold:'admire', wear:'admire', drink:'drink', eat:'eat', stir:'stir', hug:'selfhug', read:'readg', phone:'phoneg', play:'playg'}[a.motion] || 'admire';
+      const pre = PL[a.at] ? [walk(a.at)] : [];
+      const take = fx(() => { S.hold.R = 'svg:' + a.id; S.hold.L = a.with ? 'svg:' + a.with : null; if (G === 'stir') S.stove = true; });
+      const done = () => { S.hold.R = null; S.hold.L = null; if (G === 'stir') S.stove = false; };
+      return pre.concat([take, gest(G, {dur:G === 'stir' ? 12 : G === 'readg' || G === 'playg' ? 8 : undefined, end:done})]);
+    }
+      return a.kind === 'toy' ? [fx(() => { S.hold.R = 'thing:toy'; }), gest('selfhug', {end:() => { S.hold.R = null; }})]
                                              : [fx(() => { S.hold.R = 'thing:' + (a.kind || 'other'); }), gest('admire', {end:() => { S.hold.R = null; }})];
     case 'date': return [walk('sofa'), loop('date')];
     case 'rest': { const on = SURF[a.on] ? a.on : 'sofa', how = a.how || 'sit';
@@ -623,7 +680,7 @@ function clearQueue(){
   S.wardrobe = false;
   S.queue = []; S.cur = null;
   if (S.loop !== 'game' && S.hold.R === 'pad') S.hold.R = null;
-  for (const h of ['L', 'R']){ const k = S.hold[h]; if (k && /^(thing|treat|garment):|^groceries$|^toothbrush$|^comb$/.test(k)) S.hold[h] = null; }
+  for (const h of ['L', 'R']){ const k = S.hold[h]; if (k && /^(thing|treat|garment|svg):|^groceries$|^toothbrush$|^comb$/.test(k)) S.hold[h] = null; }
   S.changing = false; S.taken = null;
   if (S.hold.R === 'spoon' || S.hold.R === 'cup') S.hold.R = null;
   if (S.hold.L === 'plate') S.hold.L = null;
@@ -746,6 +803,7 @@ function update(dt){
   S.t += dt;
   S.walking = false; S.mouthLaugh = false;
   stepUpdate(dt);
+  updateVisitors(dt);
   if (S.loop !== S.prevLoop){ onLoopChange(S.prevLoop, S.loop); S.prevLoop = S.loop; S.loopT = 0; }
   S.loopT += dt;
 
@@ -961,7 +1019,7 @@ function drawWindow(ph){
   ctx.beginPath(); ctx.moveTo(x - 14, y - 10); ctx.quadraticCurveTo(x + 6, y + 50, x - 6, y + h + 6); ctx.lineTo(x - 16, y + h + 6); ctx.closePath(); ctx.fill();
   ctx.beginPath(); ctx.moveTo(x + w + 14, y - 10); ctx.quadraticCurveTo(x + w - 6, y + 50, x + w + 6, y + h + 6); ctx.lineTo(x + w + 16, y + h + 6); ctx.closePath(); ctx.fill();
   rect(x - 20, y - 14, w + 40, 4, C.woodDark);
-  if (LIFE && Date.now()/1000 - (LIFE.state.flowers_ts || 0) < 3*86400){
+  if (LIFE && Date.now()/1000 - (LIFE.state.flowers_ts || 0) < 3*86400 && !S.items.some(it => it.kind === 'flowers' && it.sprite && it.state === 'open')){
     rr(94, y + h - 14, 12, 16, 3, 'rgba(190,225,235,0.85)');
     [[-6,-30,'#e0457a'],[0,-36,'#f2c94c'],[6,-29,'#e0457a'],[-2,-24,'#ffffff'],[4,-22,'#ec8a3c']].forEach(([dx, dy, col]) => {
       line(100, y + h - 12, 100 + dx*0.6, y + h + dy + 4, 1.2, '#3f8a4c');
@@ -1078,7 +1136,7 @@ function drawLiving(){
   rr(398, FLOOR - 58, 22, 22, 6, '#e9b931');
   // shelf above the TV for the guest's gifts
   rect(600, 212, 120, 4, C.woodDark); rect(606, 216, 3, 6, C.woodDark); rect(711, 216, 3, 6, C.woodDark);
-  const kept = S.items.filter(it => it.state === 'open' && !['sweet','drink','flowers'].includes(it.kind)).slice(-7);
+  const kept = S.items.filter(it => it.state === 'open' && !it.sprite && !['sweet','drink','flowers'].includes(it.kind)).slice(-7);
   kept.forEach((it, i) => {
     const plaid = /плед|одеял|покрывал/i.test(it.name), lit = /свеч/i.test(it.name) && Date.now()/1000 - (it.lit_ts || 0) < 7200;
     if (plaid && S.loop === 'cozy') return;
@@ -1091,7 +1149,7 @@ function drawLiving(){
   ctx.fillStyle = S.lights.floor ? '#fff0c2' : '#d8cfb4'; ctx.beginPath(); ctx.moveTo(552, FLOOR - 150); ctx.lineTo(580, FLOOR - 150); ctx.lineTo(574, FLOOR - 172); ctx.lineTo(558, FLOOR - 172); ctx.closePath(); ctx.fill();
   // coffee table in front of the sofa with opened treats
   rr(478, FLOOR - 18, 56, 4, 2, C.woodDark); rect(484, FLOOR - 14, 3, 16, C.woodDark); rect(525, FLOOR - 14, 3, 16, C.woodDark);
-  const treats = S.items.filter(it => it.state === 'open' && ['sweet','drink'].includes(it.kind)).slice(-3);
+  const treats = S.items.filter(it => it.state === 'open' && !it.sprite && ['sweet','drink'].includes(it.kind)).slice(-3);
   treats.forEach((it, i) => { ellipse(490 + i*16, FLOOR - 18, 7, 1.6, '#ffffff'); drawTreat(it.name, 490 + i*16, FLOOR - 19); });
   // TV + stand + console
   rect(588, FLOOR - 38, 132, 40, C.woodDark); rect(592, FLOOR - 34, 124, 30, '#5e3e28');
@@ -1260,6 +1318,7 @@ function drawItem(kind, hand){
   if (kind && kind.startsWith('garment:')){ const {hd} = hand, sp = outfitSpec({type:kind.slice(8)}); ctx.fillStyle = sp.skirt || sp.top || sp.bottom || '#ccc';
     ctx.beginPath(); ctx.moveTo(hd.x - 3, hd.y); ctx.lineTo(hd.x + 3, hd.y); ctx.lineTo(hd.x + 7, hd.y + 22); ctx.lineTo(hd.x - 7, hd.y + 22); ctx.fill(); line(hd.x - 4, hd.y - 1, hd.x + 4, hd.y - 1, 1.2, C.metal); return; }
   if (kind && kind.startsWith('thing:')){ drawThing(kind.slice(6), hand.hd.x, hand.hd.y + 2); return; }
+  if (kind && kind.startsWith('svg:')){ drawHeldSprite(kind, hand); return; }
   if (!kind) return;
   const {hd, a2} = hand;
   if (kind === 'pad'){ rr(hd.x - 8, hd.y - 4, 16, 8, 3, '#2a2a30'); circle(hd.x + 4, hd.y - 1, 1.2, '#ef476f'); circle(hd.x - 4, hd.y - 1, 1.2, '#06d6a0'); }
@@ -1455,6 +1514,143 @@ function drawGifts(){
     if (it.wish) circle(x + 18, y - 15, 2, '#f7e08a');
   });
 }
+/* ---------- drawn things: gifts and the guest's creatures, drawn by the model as SVG ---------- */
+const SPRITES = {};
+function spriteImg(sid){
+  if (!sid) return null;
+  let e = SPRITES[sid];
+  if (!e){ e = SPRITES[sid] = new Image(); e.decoding = 'async'; e.src = '/api/sprite/' + sid + '.svg'; }
+  return e.complete && e.naturalWidth > 0 ? e : null;
+}
+function drawSprite(o, x, yb, opts){
+  opts = opts || {};
+  const im = spriteImg(o.sprite); if (!im) return false;
+  const h = Math.min(opts.max || 999, o.px), w = h * o.sw / o.sh;
+  ctx.save(); ctx.translate(x, yb); if (opts.rot) ctx.rotate(opts.rot); if (opts.flip) ctx.scale(-1, 1); if (opts.alpha != null) ctx.globalAlpha = Math.max(0, Math.min(1, opts.alpha));
+  ctx.drawImage(im, -w/2, -h, w, h); ctx.restore();
+  return true;
+}
+const spriteW = o => Math.min(o.px, 999) * o.sw / o.sh;
+// surfaces things can stand on: [x from, x to, surface y], filled left to right
+const SPOT_GEO = {
+  shelf:[[604,716,212]], windowsill:[[110,166,218],[72,92,218]], nightstand:[[214,250,FLOOR - 34]], coffee_table:[[482,532,FLOOR - 18]],
+  kitchen:[[964,978,FLOOR - 66],[896,904,FLOOR - 66],[812,860,FLOOR - 186]], stove:[[896,904,FLOOR - 66],[964,978,FLOOR - 66]],
+  bathroom:[[1112,1130,GROUND],[998,1014,FLOOR - 84]], wardrobe:[[312,326,FLOOR - 206]], bed:[[96,116,FLOOR - 46]], floor:[[600,722,GROUND],[330,350,GROUND]]
+};
+// when a surface is full, the thing goes to a neighbour in the same room, and only then to the floor
+const SPOT_NEXT = {nightstand:['bed', 'windowsill'], windowsill:['nightstand', 'bed'], bed:['nightstand', 'windowsill'], wardrobe:['nightstand', 'bed'],
+  shelf:['coffee_table'], coffee_table:['shelf'], kitchen:['stove'], stove:['kitchen'], bathroom:[], floor:[]};
+const itemById = id => S.items.find(it => it.id === id);
+function heldIds(){ const ids = new Set(); for (const h of ['L', 'R']){ const k = S.hold[h]; if (k && k.startsWith('svg:')) ids.add(+k.slice(4)); } return ids; }
+function layoutThings(){
+  const held = heldIds(), out = [], fill = {};
+  const things = S.items.filter(it => it.state === 'open' && it.sprite && !held.has(it.id) && !(S.loop === 'cozy' && /плед|одеял|покрывал/i.test(it.name)));
+  const group = it => it.paired ? Math.min(it.id, it.paired) : it.id;
+  things.sort((a, b) => group(a) - group(b) || a.id - b.id);
+  const pos = {};
+  for (const it of things){
+    const spot = SPOT_GEO[it.spot] ? it.spot : 'shelf', w = spriteW(it) + 3;
+    const segs = [spot].concat(SPOT_NEXT[spot] || [], 'floor').flatMap(k => SPOT_GEO[k]);
+    const mate = it.paired && pos[it.paired];
+    if (mate){ const L = {it, x:mate.x + spriteW(mate.it)/2 + w/2, y:mate.y}; pos[it.id] = L; out.push(L); continue; }  // a pair stays together, even past the edge
+    let placed = null;
+    for (const sg of segs){
+      const key = sg.join(), used = fill[key] || 0, room = sg[1] - sg[0];
+      if (used + w <= room || (used === 0 && segs.indexOf(sg) === 0)){ placed = {x:sg[0] + used + w/2, y:sg[2]}; fill[key] = used + w; break; }
+    }
+    if (!placed){ const sg = segs[0], key = sg.join(); placed = {x:sg[0] + ((fill[key] || 0) % (sg[1] - sg[0] + 1)) + w/2, y:sg[2]}; fill[key] = (fill[key] || 0) + w*0.6; }
+    pos[it.id] = Object.assign({it}, placed); out.push(pos[it.id]);
+  }
+  return out;
+}
+function drawThings(){
+  const laid = layoutThings(), at = {};
+  for (const L of laid){
+    const it = L.it;
+    if (!drawSprite(it, L.x, L.y)) continue;
+    at[it.id] = L;
+    if (/свеч/i.test(it.name) && Date.now()/1000 - (it.lit_ts || 0) < 7200) ellipse(L.x, L.y - it.px - 3 + Math.sin(S.t*9)*0.4, 1.8, 3, '#ffb347');
+    if (it.status){ const blink = 0.5 + 0.5*Math.sin(S.t*3); circle(L.x + spriteW(it)/2, L.y - it.px, 1.8, 'rgba(70,200,110,' + (0.4 + 0.6*blink) + ')'); }
+  }
+  // paired things (a phone on its charger): a cable between them
+  for (const L of laid){ const it = L.it, mate = it.paired && at[it.paired]; if (!mate || it.id > it.paired || !it.status) continue;
+    ctx.beginPath(); ctx.moveTo(L.x, L.y - 2); ctx.quadraticCurveTo((L.x + mate.x)/2, Math.max(L.y, mate.y) + 4, mate.x, mate.y - 2); ctx.lineWidth = 1.2; ctx.strokeStyle = '#2a2a30'; ctx.stroke(); }
+}
+function drawHeldSprite(kind, hand){
+  const it = itemById(+kind.slice(4)); if (!it || !it.sprite) return;
+  drawSprite(it, hand.hd.x + 2, hand.hd.y + Math.min(it.px, 30)*0.45, {max:30});
+}
+
+/* creatures and things the guest made appear */
+const ROOM_BOX = {bedroom:[40,330], living:[350,800], kitchen:[810,975], bathroom:[995,1165]};
+const WINDOW_IN = {x:119, y:160}, DOOR_IN = {x:338, y:GROUND};
+const VIS = {};
+function spotPoint(spot, i){ const sg = (SPOT_GEO[spot] || SPOT_GEO.floor)[0]; return {x:sg[0] + ((i*17 + 5) % Math.max(1, sg[1] - sg[0])), y:sg[2]}; }
+function syncVisitors(list){
+  if (!list) return;
+  const ids = new Set(list.map(v => v.id));
+  for (const v of list){
+    if (VIS[v.id]){ VIS[v.id].v = v; continue; }
+    const [x0, x1] = ROOM_BOX[v.room] || ROOM_BOX.living, fresh = Date.now()/1000 - v.since < 30;
+    const inst = [];
+    for (let i = 0; i < v.count; i++){
+      const home = ['perch', 'static'].includes(v.behavior) ? spotPoint(v.spot, i) : {x:rand(x0 + 10, x1 - 10), y:v.behavior === 'fly' ? rand(CEIL + 60, FLOOR - 90) : v.behavior === 'wall' ? rand(CEIL + 40, FLOOR - 130) : GROUND};
+      const from = !fresh || v.enter === 'appear' ? home : v.enter === 'window' ? {x:WINDOW_IN.x, y:WINDOW_IN.y} : {x:DOOR_IN.x, y:v.behavior === 'fly' ? FLOOR - 120 : GROUND};
+      inst.push({x:from.x + rand(-6, 6), y:from.y, tx:home.x, ty:home.y, home, wait:fresh ? i*0.6 : rand(0, 3), face:1, hop:0, perch:0, born:S.t});
+    }
+    VIS[v.id] = {v, inst, leaving:false, alpha:fresh && v.enter === 'appear' ? 0 : 1};
+  }
+  for (const id in VIS) if (!ids.has(+id) && !VIS[id].leaving && !VIS[id].shooPending) startLeaving(VIS[id]);
+}
+function startLeaving(e){
+  e.leaving = true; e.leftAt = S.t;
+  for (const p of e.inst){
+    const to = e.v.behavior === 'fly' ? WINDOW_IN : e.v.behavior === 'static' ? {x:p.x, y:p.y} : DOOR_IN;
+    p.tx = to.x; p.ty = e.v.behavior === 'fly' ? to.y : GROUND; p.wait = 0;
+  }
+}
+const SPEED = {fly:110, walk:80, hop:60, crawl:14, wall:10, perch:60, static:0};
+function updateVisitors(dt){
+  for (const id in VIS){
+    const e = VIS[id], v = e.v, [x0, x1] = ROOM_BOX[v.room] || ROOM_BOX.living;
+    if (!e.leaving) e.alpha = Math.min(1, e.alpha + dt*1.5);
+    else if (S.t - e.leftAt > (v.behavior === 'static' ? 0 : 3.5)){ e.alpha -= dt*1.5; if (e.alpha <= 0){ delete VIS[id]; continue; } }
+    for (const p of e.inst){
+      if (p.wait > 0){ p.wait -= dt; if (v.behavior === 'perch' || p.perch) p.bob = Math.abs(Math.sin(S.t*6 + p.born)) * 1.5; continue; }
+      const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy), sp = SPEED[v.behavior] * (e.leaving ? 1.6 : 1);
+      if (d < 2 || sp === 0){
+        if (e.leaving) continue;
+        p.x = p.tx; p.y = p.ty; if (!p.perchNext) p.perch = 0;
+        if (v.behavior === 'fly'){
+          if (p.perchNext){ p.perch = 1; p.wait = rand(3, 8); p.perchNext = false; }
+          else if (Math.random() < 0.35){ const sp2 = spotPoint(v.spot === 'floor' ? 'windowsill' : v.spot, Math.floor(rand(0, 5))); p.tx = sp2.x; p.ty = sp2.y; p.perchNext = true; }
+          else { p.tx = rand(x0 + 10, x1 - 10); p.ty = rand(CEIL + 60, FLOOR - 90); }
+        } else if (v.behavior === 'perch' || v.behavior === 'static'){ p.wait = rand(2, 6); if (v.behavior === 'perch' && Math.random() < 0.4) p.face *= -1; }
+        else { p.wait = rand(0.5, v.behavior === 'crawl' || v.behavior === 'wall' ? 4 : 2.5); p.tx = clamp(p.x + rand(-120, 120), x0 + 8, x1 - 8); p.ty = v.behavior === 'wall' ? rand(CEIL + 40, FLOOR - 130) : GROUND; }
+        continue;
+      }
+      const step = Math.min(d, sp*dt);
+      p.x += dx/d*step; p.y += dy/d*step;
+      if (Math.abs(dx) > 0.5) p.face = Math.sign(dx);
+      if (v.behavior === 'hop') p.hop = (p.hop + dt*5) % PI;
+    }
+  }
+}
+function drawVisitors(){
+  for (const id in VIS){
+    const e = VIS[id], v = e.v;
+    for (const p of e.inst){
+      let y = p.y, rot = 0;
+      if (v.behavior === 'fly' && !p.perch && p.wait <= 0) y += Math.sin(S.t*9 + p.born*3)*2.2;
+      if (v.behavior === 'hop' && p.wait <= 0) y -= Math.sin(p.hop)*10;
+      if (v.behavior === 'perch' || p.perch) y -= p.bob || 0;
+      const flip = (p.face < 0) !== (v.facing === 'left');
+      drawSprite(v, p.x, y, {flip, rot, alpha:e.alpha});
+    }
+  }
+}
+function visitorPlace(id){ const e = VIS[id]; if (!e) return null; const p = e.inst[0]; return {x:clamp(p.x - 40, 40, 1160)}; }
+
 function drawPlaid(){
   if (S.loop !== 'cozy' || Math.abs(S.x - PL.sofa.x) > 4) return;
   const x = S.x + S.pose.dx, y = GROUND - 50 + S.pose.dy;
@@ -1631,7 +1827,7 @@ function draw(){
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   const ph = phase();
   drawOutside(ph); drawShell(); drawBedroom(ph); drawLiving(); drawKitchen(); drawBathroom();
-  drawGifts(); drawTogether(); drawKitchenSinkDishes(); if (S.drawStool) S.drawStool(); drawPerson(); drawPlaid(); drawScarf(); drawBlanketOver(); drawBathFront(); drawTouch(1/60); drawWater();
+  drawGifts(); drawThings(); drawTogether(); drawKitchenSinkDishes(); if (S.drawStool) S.drawStool(); drawPerson(); drawPlaid(); drawScarf(); drawBlanketOver(); drawBathFront(); drawVisitors(); drawTouch(1/60); drawWater();
   drawLighting(ph); drawParticles(); drawBubble();
 }
 let last = performance.now(), lastStatus = '';
@@ -1660,14 +1856,15 @@ stage.addEventListener('pointerup', () => { scrollTimer = setTimeout(() => { use
 /* ---------- the mind lives on the server ---------- */
 let LIFE = null, lastSeq = 0, connected = false;
 const stAct = document.getElementById('stAct'), stBrain = document.getElementById('stBrain'), stClock = document.getElementById('stClock'), stUsage = document.getElementById('stUsage');
-const BUSY_RU = {think:'думает', chat:'отвечает', plan:'планирует день', reflect:'подводит итоги дня'};
+const BUSY_RU = {think:'думает', chat:'отвечает', plan:'планирует день', reflect:'подводит итоги дня', reset:'начинает заново', memory:'запоминает разговор'};
 function setBrain(){
   const st = LIFE && LIFE.state;
   let cls = 'chip', text = 'разум: подключается';
   if (!connected){ cls += ' off'; text = 'нет связи с сервером'; }
+  else if (st && st.mind_paused){ text = 'разум на паузе'; }
   else if (st && st.busy){ cls += ' live'; text = 'разум: ' + BUSY_RU[st.busy]; }
   else if (st && !st.awake_time){ text = 'спит до ' + hhmm(st.wake_at*1000); }
-  else { cls += ' live'; text = 'разум: живёт'; }
+  else { cls += ' live'; const b = LIFE && LIFE.brain; text = 'разум: ' + (b && b.backend === 'local' ? 'локальный · ' + b.fast : 'Claude'); }
   stBrain.className = cls; stBrain.lastChild.textContent = text;
 }
 async function api(path, body){
@@ -1679,13 +1876,32 @@ const HOLD_FOR = {game:{R:'pad'}, read:{R:'book'}, write:{R:'pen', L:'note'}, ph
 function syncDevices(st){
   S.tv = st.tv; S.music = st.music; S.console = st.console; S.leak = st.leak;
   if (st.items) S.items = st.items;
+  syncVisitors(st.visitors);
   if ('dishes' in st) S.dishes = st.dishes;
   if ('accessory' in st) S.accessory = st.accessory;
-  if (st.outfit) S.outfit = normOutfit(st.outfit);
+  if (st.outfit){
+    // clothes change at the wardrobe; only a towel after the shower and pyjamas in bed may just appear
+    const o = normOutfit(st.outfit), cur = normOutfit(S.outfit);
+    if (o.type !== cur.type || o.color !== cur.color){
+      if (o.type === 'towel' || st.loop === 'sleep' || S.loop === 'sleep' || st.loop === 'shower') S.outfit = o;
+      else if (!S.cur && !S.queue.length) redress(st);
+    }
+  }
   for (const k in st.lights) S.lights[k] = st.lights[k];
+}
+// the server says she's wearing something else (a change got interrupted): walk to the wardrobe, change, go back to what she was doing
+function redress(st){
+  const o = normOutfit(st.outfit), steps = expand({do:'change_clothes', outfit:o.type, color:o.color}, {});
+  if (st.loop === 'rest' && st.rest) steps.push(...expand({do:'rest', on:st.rest.on, how:st.rest.how}, {}));
+  else {
+    if (PL[st.location]) steps.push(walk(st.location));
+    steps.push(fx(() => { S.hold = Object.assign({L:null, R:null}, HOLD_FOR[st.loop] || {}); }), loop(st.loop || null));
+  }
+  S.queue = steps; S.idleT = 0;
 }
 function placeFromServer(st){
   clearQueue();
+  S.outfit = normOutfit(st.outfit);  // a fresh look: no walk to the wardrobe
   const pl = PL[st.location] || PL.sofa;
   S.x = pl.x; S.face = pl.face || 1;
   S.loop = st.loop || null; S.prevLoop = S.loop; S.loopT = 0;
@@ -1699,6 +1915,7 @@ function placeFromServer(st){
 }
 function applyState(st){
   LIFE.state = st; S.waterTarget = st.water || 0;
+  syncVisitors(st.visitors);
   if (st.emo){
     const jump = (st.emo.surprise - (S.emoT.surprise || 0)) > 0.3 || (st.emo.fear - (S.emoT.fear || 0)) > 0.3;
     S.emoT = Object.assign({}, EMO_ZERO, st.emo);
@@ -1706,7 +1923,7 @@ function applyState(st){
     renderEmotions(st.emo);
   }
   if (ID.male !== st.male || ID.name !== st.name){ ID.male = st.male; ID.name = st.name; renderId(); }
-  renderMind(); renderNeeds(st.needs, st.needs_view); setBrain(); renderControls(); renderWishes(); renderTogether(); renderGoals(st);
+  renderMind(); renderNeeds(st.needs, st.needs_view); setBrain(); renderControls(); renderWishes(); renderTogether(); renderGoals(st); renderMindBtn();
 }
 function renderMind(){
   const st = LIFE.state;
@@ -1791,7 +2008,7 @@ document.getElementById('goalForm').addEventListener('submit', e => {
 function renderUsage(u){
   if (!u) return;
   const tok = u.input + u.output;
-  stUsage.textContent = 'сегодня: ' + u.calls + ' ' + (u.calls % 10 === 1 && u.calls % 100 !== 11 ? 'вызов' : 'вызовов') + ' · ' + (tok >= 1000 ? (tok/1000).toFixed(1) + 'k' : tok) + ' ток. · ≈$' + u.cost.toFixed(2);
+  stUsage.textContent = 'сегодня: ' + u.calls + ' ' + (u.calls % 10 === 1 && u.calls % 100 !== 11 ? 'вызов' : 'вызовов') + (u.local_calls ? ' (' + u.local_calls + ' локально)' : '') + ' · ' + (tok >= 1000 ? (tok/1000).toFixed(1) + 'k' : tok) + ' ток. · ≈$' + u.cost.toFixed(2);
 }
 function feedItem(ev){
   const li = document.createElement('li'); li.className = 'k-' + ev.kind;
@@ -1802,7 +2019,7 @@ function feedItem(ev){
 function renderFeed(list){ const ul = document.getElementById('feed'); ul.replaceChildren(...list.slice().reverse().map(feedItem)); }
 function renderNotes(notes, diary){
   if (notes && LIFE) LIFE.notes = notes;
-  if (notes){ document.getElementById('selfNotes').textContent = notes.self || '—'; document.getElementById('guestNotes').textContent = notes.guest || 'Пока ничего: заметки о вас появятся после первого вечера, когда вы поболтаете.'; }
+  if (notes){ document.getElementById('selfNotes').textContent = notes.self || '—'; document.getElementById('guestNotes').textContent = notes.guest || 'Пока ничего: заметки о вас появятся после первого вечера, когда вы поболтаете.'; document.getElementById('dayNotes').textContent = notes.day || ''; document.getElementById('dayNotes').hidden = document.getElementById('dayNotesTitle').hidden = !notes.day; }
   if (diary && diary.length){
     const box = document.getElementById('diary'); box.replaceChildren();
     for (const d of diary.slice().reverse()){ const a = document.createElement('article'); const t = document.createElement('time'); const dt = new Date(d.ts*1000); t.textContent = dt.toLocaleDateString('ru-RU', {timeZone:'Europe/Ljubljana', day:'numeric', month:'long', weekday:'long'}); const p = document.createElement('p'); p.textContent = d.text; a.append(t, p); box.append(a); }
@@ -1834,6 +2051,7 @@ function handle(msg){
   else if (msg.type === 'notes') renderNotes(msg.notes, msg.diary);
   else if (msg.type === 'settings') applySettings(msg.settings, msg.state);
   else if (msg.type === 'state') applyState(msg.state);
+  else if (msg.type === 'reset') location.reload();
 }
 let es = null;
 function connect(){
@@ -1995,8 +2213,17 @@ for (const p of POKES){
   b.addEventListener('click', () => poke(p.what));
   controls.append(b); p.btn = b;
 }
+const visitorBox = document.createElement('div'); visitorBox.className = 'visitors';
+function renderVisitors(){
+  const list = (LIFE && LIFE.state.visitors) || [];
+  visitorBox.replaceChildren(...list.map(v => { const b = document.createElement('button'); b.type = 'button'; b.textContent = 'Убрать: ' + v.name + (v.count > 1 ? ' ×' + v.count : '');
+    b.addEventListener('click', () => api('/api/visitor', {id:v.id}).catch(e => addSys('Не получилось: ' + e.message))); return b; }));
+  visitorBox.hidden = !list.length;
+}
 function renderControls(){
   if (!LIFE) return;
+  if (!visitorBox.isConnected) document.getElementById('controls').append(visitorBox);
+  renderVisitors();
   for (const p of POKES){
     const on = !!p.on(LIFE.state);
     if (p.what !== 'flood') p.btn.setAttribute('aria-pressed', String(on));
@@ -2034,7 +2261,19 @@ for (const [k, lo, hi] of TRAITS_UI){
 }
 const showHunger = () => { setHungerOut.textContent = '×' + Number(setHunger.value).toFixed(1).replace('.', ','); };
 setHunger.addEventListener('input', showHunger);
+async function fillBrain(){
+  const fast = document.getElementById('brainFast'), deep = document.getElementById('brainDeep');
+  let info = {local:[], brain:(LIFE && LIFE.brain) || {}};
+  try { info = await api('/api/models'); } catch (e) {}
+  const b = info.brain || {}, models = info.local || [];
+  for (const sel of [fast, deep]){ sel.replaceChildren(); (models.length ? models : ['(модели не установлены)']).forEach(m => sel.add(new Option(m, m))); }
+  fast.value = b.fast; deep.value = b.deep;
+  document.getElementById(b.backend === 'local' ? 'brainLocal' : 'brainClaude').checked = true;
+  document.getElementById('brainLocal').disabled = !models.length;
+  document.getElementById('brainFallback').checked = b.fallback !== false;
+}
 function fillSettings(st){
+  fillBrain();
   const n = (LIFE && LIFE.notes) || {};
   document.getElementById('setIdentity').value = n.identity || '';
   document.getElementById('setSelf').value = n.self || '';
@@ -2053,17 +2292,53 @@ document.getElementById('setForm').addEventListener('submit', e => {
   setMsg.textContent = 'Сохраняю…';
   const n = (LIFE && LIFE.notes) || {}, persona = {};
   [['identity','setIdentity'], ['self_notes','setSelf'], ['guest_notes','setGuest']].forEach(([k, id]) => { const v = document.getElementById(id).value.trim(); const old = (k === 'identity' ? n.identity : k === 'self_notes' ? n.self : n.guest) || ''; if (v !== old.trim()) persona[k] = v; });
-  api('/api/settings', {wake:Number(setWake.value), sleep:Number(setSleep.value), hunger_rate:Number(setHunger.value), traits})
+  const brainSel = {backend:document.getElementById('brainLocal').checked ? 'local' : 'claude', fast:document.getElementById('brainFast').value, deep:document.getElementById('brainDeep').value, fallback:document.getElementById('brainFallback').checked};
+  api('/api/settings', {wake:Number(setWake.value), sleep:Number(setSleep.value), hunger_rate:Number(setHunger.value), traits, brain:brainSel})
     .then(r => { applySettings(r.settings, r.state); return Object.keys(persona).length ? api('/api/persona', persona).then(x => renderNotes(x.notes)) : null; })
     .then(() => { setMsg.textContent = 'Сохранено.'; setTimeout(() => dlg.close(), 500); })
     .catch(err => { setMsg.textContent = 'Не сохранилось: ' + err.message; });
 });
 function applySettings(settings, st){
   if (!LIFE) return;
+  if (settings.brain) LIFE.brain = Object.assign({}, LIFE.brain || {}, settings.brain);
   LIFE.settings = settings; LIFE.wake_h = settings.wake; LIFE.sleep_h = settings.sleep;
   if (st) applyState(st);
   renderId();
 }
+
+/* ---------- new game ---------- */
+const resetDlg = document.getElementById('resetDlg'), resetSure = document.getElementById('resetSure'), resetGo = document.getElementById('resetGo');
+function resetLosses(){
+  const st = (LIFE && LIFE.state) || {}, out = [];
+  const c = st.closeness || 0; let lvl = 0; LEVELS.forEach(([th], i) => { if (c >= th) lvl = i; });
+  out.push('близость с вами: ' + LEVELS[lvl][1] + ' (' + Math.round(c) + ' / 100)');
+  if ((st.guest_facts || []).length) out.push('всё, что ' + gx('он', 'она') + ' узнал' + gx('', 'а') + ' о вас: ' + st.guest_facts.length + ' фактов');
+  out.push('разговоры, ленту жизни и дневник');
+  out.push('заметки о себе и о вас');
+  if (st.goal) out.push('текущую цель «' + st.goal.title + '» (' + Math.round(st.goal.progress) + '%)');
+  if ((st.goals_done || []).length) out.push('достигнутые цели: ' + st.goals_done.length);
+  if ((st.items || []).length) out.push('подарки: ' + st.items.length);
+  if ((st.wishes || []).length) out.push('список желаний: ' + st.wishes.length);
+  return out;
+}
+document.getElementById('resetBtn').addEventListener('click', () => {
+  menuPanel.hidden = true; menuBtn.setAttribute('aria-expanded', 'false');
+  document.getElementById('resetWho').textContent = ID.name;
+  document.getElementById('resetLoss').replaceChildren(...resetLosses().map(t => { const li = document.createElement('li'); li.textContent = t; return li; }));
+  resetSure.checked = false; resetGo.disabled = true;
+  resetDlg.showModal();
+});
+resetSure.addEventListener('change', () => { resetGo.disabled = !resetSure.checked; });
+document.getElementById('resetClose').addEventListener('click', () => resetDlg.close());
+document.getElementById('resetCancel').addEventListener('click', () => resetDlg.close());
+document.getElementById('resetForm').addEventListener('submit', e => {
+  e.preventDefault();
+  if (!resetSure.checked) return;
+  resetGo.disabled = true;
+  api('/api/reset', {sure:true})
+    .then(r => { resetDlg.close(); addSys(r.waiting ? 'Начинаю заново — сначала ' + ID.name + ' ' + (BUSY_RU[r.waiting] || 'закончит мысль') + '…' : 'Начинаю заново…'); })
+    .catch(err => { resetGo.disabled = false; addSys('Не получилось: ' + err.message); });
+});
 
 /* ---------- reload this tab when a new version is deployed ---------- */
 setInterval(() => { if (!PAGE_VERSION) return; api('/api/version').then(v => { if (v.version && v.version !== PAGE_VERSION) location.reload(); }).catch(() => {}); }, 60000);
@@ -2074,7 +2349,8 @@ let lsLast = '';
 function renderLiveStatus(what){
   const st = LIFE && LIFE.state, T = st && st.together;
   let extra = '';
-  if (S.pending) extra = 'думает над ответом вам';
+  if (st && st.mind_paused) extra = 'разум на паузе';
+  else if (S.pending) extra = 'думает над ответом вам';
   else if (S.speech && !S.speech.think && S.speech.shown < S.speech.text.length + 40) extra = S.lastUser && S.t - S.lastUser < 30 ? 'говорит с вами' : 'говорит вслух';
   else if (S.loop === 'phone') extra = 'разговаривает по телефону';
   else if (st && st.busy === 'think') extra = 'обдумывает, что делать дальше';
@@ -2086,6 +2362,27 @@ function renderLiveStatus(what){
   lsWho.textContent = ID.name + ':'; lsWhat.textContent = what || '…'; lsExtra.textContent = extra ? '· ' + extra : '';
   lsBox.className = 'liveStatus' + (asleep ? ' asleep' : extra ? ' busy' : '');
 }
+
+/* ---------- stop / start the mind (frees the GPU) ---------- */
+function renderMindBtn(){
+  const b = document.getElementById('mindBtn'); if (!b) return;
+  b.textContent = (LIFE && LIFE.state.mind_paused) ? '▶ Запустить разум' : '⏸ Остановить разум (освободить видеокарту)';
+}
+async function refreshVram(){
+  const note = document.getElementById('vramNote');
+  try {
+    const info = await api('/api/models');
+    const gb = (info.loaded || []).reduce((a, m) => a + (m.vram || 0), 0) / 1e9;
+    note.textContent = info.loaded && info.loaded.length ? 'В видеопамяти: ' + info.loaded.map(m => m.name).join(', ') + ' · ' + gb.toFixed(1) + ' ГБ' : 'Видеопамять свободна';
+  } catch (e) { note.textContent = ''; }
+}
+document.getElementById('mindBtn').addEventListener('click', () => {
+  const b = document.getElementById('mindBtn'), stop = !(LIFE && LIFE.state.mind_paused);
+  b.disabled = true; b.textContent = stop ? 'Останавливаю…' : 'Запускаю…';
+  api('/api/mind', {action:stop ? 'stop' : 'start'}).then(r => { applyState(r.state); setTimeout(refreshVram, stop ? 300 : 5000); })
+    .catch(e => addSys('Не получилось: ' + e.message)).finally(() => { b.disabled = false; renderMindBtn(); });
+});
+document.getElementById('menuBtn').addEventListener('click', () => { renderMindBtn(); refreshVram(); });
 
 /* ---------- menus ---------- */
 const menuBtn = document.getElementById('menuBtn'), menuPanel = document.getElementById('menuPanel');
