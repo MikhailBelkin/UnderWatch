@@ -171,6 +171,16 @@ canvas{display:block}
 .visitors{display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--line);margin-top:4px;padding-top:4px;order:98}
 .visitors button{font:inherit;font-size:14px;text-align:left;padding:7px 10px;border:0;border-radius:8px;background:transparent;color:var(--danger);cursor:pointer}
 .visitors button:hover{background:var(--bg)}
+.giftList{order:100;display:grid;gap:4px;border-top:1px solid var(--line);margin-top:4px;padding:6px 4px 2px}
+.giftList .lbl{padding:2px 6px}
+.giftRow{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;padding:4px 6px;font-size:13.5px}
+.giftRow .nm{flex:1;min-width:8rem}
+.giftRow .st{font-size:12px;color:var(--muted)}
+.giftRow button{font:inherit;font-size:12.5px;padding:3px 9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+.giftRow button.del{color:var(--danger)}
+.giftRow form{flex-basis:100%;display:flex;gap:4px}
+.giftRow form input{flex:1;min-width:0;font:inherit;font-size:13px;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
+.giftRow form button{background:var(--accent);color:var(--accent-fg);border:0;font-weight:600}
 .customForm{display:flex;gap:4px;padding:6px 4px 2px;border-top:1px solid var(--line);margin-top:4px;order:99}
 .customForm input{flex:1;min-width:0;font:inherit;font-size:13px;padding:6px 9px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
 .customForm button{font:inherit;font-size:13px;font-weight:600;padding:6px 10px;border-radius:8px;border:0;background:var(--accent);color:var(--accent-fg);cursor:pointer}
@@ -181,13 +191,27 @@ label.check{display:flex;align-items:center;gap:8px;font-size:14px;margin-top:8p
 .brainModels select{max-width:14rem}
 label.area{display:grid;gap:4px;font-size:12.5px;color:var(--muted);margin-bottom:8px}
 label.area textarea{font:inherit;font-size:13.5px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;min-height:70px}
-dialog#settings,dialog#resetDlg,dialog#memDlg{border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--fg);padding:0;width:min(560px, calc(100vw - 32px));max-height:calc(100vh - 40px)}
-dialog#settings::backdrop,dialog#resetDlg::backdrop,dialog#memDlg::backdrop{background:rgba(10,14,20,.45)}
+dialog#settings,dialog#resetDlg,dialog#memDlg,dialog#adminDlg{border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--fg);padding:0;width:min(560px, calc(100vw - 32px));max-height:calc(100vh - 40px)}
+dialog#settings::backdrop,dialog#resetDlg::backdrop,dialog#memDlg::backdrop,dialog#adminDlg::backdrop{background:rgba(10,14,20,.45)}
 #setForm{display:grid;gap:4px;padding:18px 20px}
 .setHead{display:flex;justify-content:space-between;align-items:center}
 .setHead h2{font-family:var(--f-display);font-size:20px;margin:0}
 .setHead .x{font:inherit;font-size:22px;border:0;background:transparent;color:var(--muted);cursor:pointer;line-height:1}
+.pwGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.pwGrid label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+.pwGrid input{font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
+.pwRow{display:flex;align-items:center;gap:12px;margin-top:8px}
+.pwRow .note{margin:0}
+#setForm .secondary{font:inherit;font-weight:600;font-size:14px;padding:7px 14px;border-radius:10px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer}
+@media (max-width:520px){.pwGrid{grid-template-columns:1fr}}
 .memBox{display:grid;gap:2px;padding:18px 20px}
+.adminList{list-style:none;margin:4px 0 8px;padding:0;display:grid;gap:6px;font-size:14px}
+.adminList li{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px}
+.adminList code{font-family:var(--f-mono);font-size:14px;font-weight:600;letter-spacing:.04em}
+.adminList .meta{color:var(--muted);font-size:12.5px}
+.adminList .used{opacity:.6}
+.adminList button{font:inherit;font-size:12.5px;padding:3px 10px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+.adminList button.del{color:var(--danger)}
 .memBox .notes{margin:0}
 .memHint{margin:14px 0 0}
 #setForm h3, .memBox h3{font-family:var(--f-mono);font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px}
@@ -301,7 +325,7 @@ dialog#resetDlg{width:min(460px, calc(100vw - 32px))}
   .wishes li{white-space:nowrap}
   .wishes .lbl{white-space:nowrap}
   .menuPanel{position:fixed;left:12px;right:12px;top:52px;min-width:0;max-width:none;max-height:calc(100dvh - 70px);overflow-y:auto}
-  dialog#settings, dialog#resetDlg, dialog#memDlg{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;border-radius:0;border:0}
+  dialog#settings, dialog#resetDlg, dialog#memDlg, dialog#adminDlg{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;border-radius:0;border:0}
   #setForm footer{position:sticky;bottom:0;background:var(--panel);padding:10px 0 calc(10px + env(safe-area-inset-bottom));margin-bottom:-18px}
 }
 @media (max-width:680px) and (max-height:560px){
@@ -327,10 +351,12 @@ dialog#resetDlg{width:min(460px, calc(100vw - 32px))}
             <span class="chip" id="stUsage" title="Вызовы модели за сегодня. Расход идёт из лимитов подписки; сумма — по прайсу API, для справки">сегодня: —</span>
           </div>
         </details>
-        <button type="button" class="menuItem" id="mindBtn">⏸ Остановить разум (освободить видеокарту)</button>
-        <p class="note vram" id="vramNote"></p>
+        <button type="button" class="menuItem" id="adminBtn" aria-haspopup="dialog" hidden><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M9 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm7.5 2a3 3 0 1 1 0-6 3 3 0 0 1 0 6zM2 20v-1c0-2.8 3.1-5 7-5s7 2.2 7 5v1H2zm2.2-2h9.6c-.6-1.2-2.4-2-4.8-2s-4.2.8-4.8 2zM17.5 13c2.6 0 4.5 1.6 4.5 3.8V20h-4v-2h2v-1.2c0-1-1.1-1.8-2.5-1.8h-.6a5.6 5.6 0 0 0-1-1.9c.5-.1 1-.1 1.6-.1z"/></svg> Пользователи и приглашения…</button>
+        <button type="button" class="menuItem" id="mindBtn" hidden>⏸ Остановить разум (освободить видеокарту)</button>
+        <p class="note vram" id="vramNote" hidden></p>
         <button type="button" class="menuItem" id="memBtn" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M6 2h11a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm0 2v16h11V4H6zm2 3h7v2H8V7zm0 4h7v2H8v-2zm0 4h5v2H8v-2z"/></svg> Память…</button>
         <button type="button" class="menuItem" id="settingsBtn" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.3 7.3 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.3 7.3 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.3 7.3 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.3 7.3 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg> Настройки…</button>
+        <button type="button" class="menuItem" id="logoutBtn" hidden><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M10 3h9a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-9v-2h9V5h-9V3zm-.5 4.5L11 9l-2 2h8v2H9l2 2-1.5 1.5L5 12l4.5-4.5z"/></svg> Выйти</button>
         <button type="button" class="menuItem" id="resetBtn"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg> Начать заново…</button>
       </div>
     </div>
@@ -347,6 +373,7 @@ dialog#resetDlg{width:min(460px, calc(100vw - 32px))}
       <form class="customForm" data-kind="custom_touch"><input maxlength="200" placeholder="другое: например, поправить ей прядь волос" aria-label="Своя нежность"><button type="submit">Сделать</button></form>
     </div></details>
     <details class="dd"><summary>Подарить</summary><div class="menu" id="gifts" role="group" aria-label="Подарить">
+      <div class="giftList" id="giftList" hidden></div>
       <form id="giftForm" class="customForm"><input id="giftName" maxlength="80" placeholder="свой подарок…" aria-label="Свой подарок"><button type="submit">Подарить</button></form>
     </div></details>
     <details class="dd"><summary>Вместе</summary><div class="menu" id="togetherRow" role="group" aria-label="Вместе">
@@ -420,7 +447,7 @@ dialog#resetDlg{width:min(460px, calc(100vw - 32px))}
       </div>
       <label class="check"><input type="checkbox" id="soundBtn"> Звук пластинки</label>
     </section>
-    <section><h3>Разум</h3>
+    <section id="brainBox" hidden><h3>Разум</h3>
       <div class="radios">
         <label><input type="radio" name="brain" value="local" id="brainLocal"> Локальная модель (Ollama, на этой машине — бесплатно)</label>
         <label><input type="radio" name="brain" value="claude" id="brainClaude"> Claude (через подписку)</label>
@@ -444,8 +471,28 @@ dialog#resetDlg{width:min(460px, calc(100vw - 32px))}
     <section><h3>Характер</h3><div id="setTraits" class="traits"></div>
       <p class="note">Характер идёт в каждый её запрос и важнее её старых заметок о себе. Изменения действуют со следующего решения.</p>
     </section>
+    <section id="accessBox"><h3>Доступ</h3>
+      <div class="pwGrid">
+        <label id="pwCurWrap">Текущий пароль <input type="password" id="pwCur" autocomplete="current-password"></label>
+        <label>Новый пароль <input type="password" id="pwNew" autocomplete="new-password" minlength="8"></label>
+        <label>Ещё раз <input type="password" id="pwNew2" autocomplete="new-password" minlength="8"></label>
+      </div>
+      <div class="pwRow"><button type="button" id="pwBtn" class="secondary">Сменить пароль</button><span id="pwMsg" class="note" role="status"></span></div>
+      <p class="note">Не короче 8 символов. После смены все остальные устройства выйдут, и войти на них нужно будет заново.</p>
+    </section>
     <footer><button type="button" id="setReset" class="linkBtn">Вернуть по умолчанию</button><span id="setMsg" class="note" role="status"></span><button type="submit" id="setSave" class="primary">Сохранить</button></footer>
   </form>
+</dialog>
+<dialog id="adminDlg" aria-labelledby="adminTitle">
+  <div class="memBox">
+    <header class="setHead"><h2 id="adminTitle">Пользователи</h2><button type="button" class="x" id="adminClose" aria-label="Закрыть">×</button></header>
+    <h3>Пригласить</h3>
+    <form id="inviteForm" class="goalForm"><input id="inviteNote" maxlength="60" placeholder="для кого — например, «сестра»" aria-label="Для кого приглашение"><button type="submit">Создать код</button></form>
+    <p class="hint">Код одноразовый. Отправьте его вместе со ссылкой: <a id="regLink" href="/register" target="_blank" rel="noopener"></a></p>
+    <ul class="adminList" id="inviteList"></ul>
+    <h3>Пользователи</h3>
+    <ul class="adminList" id="userList"></ul>
+  </div>
 </dialog>
 <dialog id="memDlg" aria-labelledby="memTitle">
   <div class="memBox">
@@ -601,7 +648,7 @@ function basePose(loop, t){
     case 'workout': { const c = (Math.sin(t*3.4) + 1)/2; return P({hipL:1.1*c, kneeL:-1.6*c, hipR:1.05*c, kneeR:-1.55*c, dy:17*c, lean:0.3*c, shL:1.55, elL:0.05, shR:1.6, elR:0.05}); }
     case 'toilet': return P(Object.assign({}, sit, {lean:0.18, head:0.12 + 0.04*Math.sin(t*0.6), shL:0.95, elL:0.6, shR:1.0, elR:0.7}));
     case 'shower': { const c = Math.sin(t*6); return P({shL:2.7, elL:1.5 + 0.3*c, shR:2.6, elR:1.6 - 0.3*c, head:-0.2 + 0.05*c, dy:Math.sin(t*2)*0.6}); }
-    case 'pose': return groundPose(Object.assign({}, S.freePose || P({})));
+    case 'pose': return groundPose(Object.assign({}, S.freePose || P({})), S.freeTop);
     case 'cozy': return P(Object.assign({}, sit, {lean:-0.05, head:0.06 + 0.03*Math.sin(t*0.5), shL:0.9, elL:1.6, shR:0.95, elR:1.7, sq:-1}));
     case 'date': return P(Object.assign({}, sit, {lean:0.12 + 0.03*Math.sin(t*0.9), head:-0.08 + 0.06*Math.sin(t*1.3), shL:0.7, elL:1.1, shR:0.9 + 0.15*Math.max(0, Math.sin(t*0.7)), elR:1.3 + 0.4*Math.max(0, Math.sin(t*0.7))}));
     case 'dancing': { const pp = P({}); GEST.dance.f(pp, t, {face0:1}); return pp; }
@@ -715,13 +762,14 @@ function expand(a, plan){
     case 'rest': { const on = SURF[a.on] ? a.on : 'sofa', how = a.how || 'sit';
       const go = how === 'lie' ? {k:'walk', x:SURF[on].lieX || PL[on].x, face:1, place:on} : walk(on);
       return [go, fx(() => { S.rest = {on, how}; if (how === 'lie') S.face = 1; }), loop('rest')]; }
-    case 'move': return [{k:'move', frames:a.frames || [], repeat:a.repeat || 1, end:a.end, label:a.label || 'двигается'}];
+    case 'move': { const sf = a.on && a.on !== 'floor' && SURF[a.on];  // on the bed, the sofa…: go there and lean on its surface
+      return (sf ? [{k:'walk', x:sf.lieX || PL[a.on].x, face:1, place:a.on}] : []).concat([{k:'move', frames:a.frames || [], repeat:a.repeat || 1, end:a.end, label:a.label || 'двигается', top:sf ? sf.top : undefined}]); }
     case 'cozy': return [walk('sofa'), fx(() => { S.hold.L = S.hold.R = null; }), loop('cozy')];
     case 'light_candle': return [walk('tv'), gest('reachup', {end:() => { S.candleLit = a.id; }})];
     case 'wear_item': return [fx(() => { S.hold.R = 'thing:clothes'; }), gest('admire', {end:() => { S.hold.R = null; S.accessory = {id:a.id, name:a.name}; }})];
     case 'dance_together': return [walk('center'), loop('dancing')];
     case 'use_toilet': return [walk('toilet'), loop('toilet'), wait(60)];
-    case 'shower': return [walk('shower'), fx(() => { S.showerClothes = normOutfit(S.outfit); S.accessory = null; }), loop('shower'), wait(150),
+    case 'shower': return [walk('shower'), fx(() => { S.showerClothes = normOutfit(S.outfit); S.accessory = null; S.openShower = a.private === false; }), loop('shower'), wait(150),
       loop(null), fx(() => { S.outfit = {type:'towel', color:null}; S.showerClothes = null; }), gest('towel_dry')];
     case 'brush_teeth': return [walk('sink'), fx(() => { S.hold.R = 'toothbrush'; S.hold.L = null; }), gest('brush', {end:() => { S.hold.R = null; }})];
     case 'wash_face': return [walk('sink'), gest('wash')];
@@ -750,7 +798,7 @@ function expand(a, plan){
       const next = {type:typ || 'casual', color:col || (typ ? null : nextOutfit())};
       return [walk('wardrobe'), fx(() => { S.wardrobe = true; }), gest('browse'),
         gest('reach', {end:() => { S.taken = next.type; S.hold.R = 'garment:' + next.type; }}),
-        fx(() => { S.changing = true; S.dropped = normOutfit(S.outfit).type; }),
+        fx(() => { S.changing = a.private !== false; S.dropped = normOutfit(S.outfit).type; if (a.private === false) S.outfit = {type:'underwear', color:null}; }),
         gest('changing', {midAt:3.5, mid:() => { S.outfit = next; S.hold.R = null; }}),
         fx(() => { S.changing = false; S.taken = null; S.dropped = null; }), wait(0.6), fx(() => { S.wardrobe = false; })];
     }
@@ -823,7 +871,7 @@ function stepUpdate(dt){
       S.loop = null;
       if (moveStep(c, dt)){
         const last = c.frames[c.frames.length - 1];
-        if (c.end === 'hold'){ S.freePose = frameToPose(last); S.freeLabel = c.label; S.loop = 'pose'; }
+        if (c.end === 'hold'){ S.freePose = frameToPose(last); S.freeLabel = c.label; S.freeTop = c.top; S.loop = 'pose'; }
         else if (last.dx){ S.x += last.dx*S.face; S.pose.dx -= last.dx; }
         S.moveTgt = null; S.cur = null; continue;
       }
@@ -855,7 +903,7 @@ function activity(){
   if (c && c.k === 'gest') { const r = GEST[c.g].ru; return [r, r]; }
   if (c && c.k === 'move') return [c.label, ''];
   if (S.loop === 'pose') return ['в позе: ' + (S.freeLabel || ''), ''];
-  if (S.loop === 'rest' && S.rest) return [({sit:'сидит', lie:'лежит', stand:'стоит'}[S.rest.how] || '') + ': ' + ((PL[S.rest.on] || {}).ru || ''), ''];
+  if (S.loop === 'rest' && S.rest) return [({sit:'сидит', lie:'лежит', belly:'лежит на животе', stand:'стоит'}[S.rest.how] || '') + ': ' + ((PL[S.rest.on] || {}).ru || ''), ''];
   switch (S.loop){
     case 'watch': return ['смотрит телек', 'сидишь на диване и смотришь телевизор'];
     case 'game': return ['играет в приставку', 'сидишь на диване с геймпадом и играешь в приставку'];
@@ -966,8 +1014,8 @@ function frameToPose(fr){
     hipR:(fr.hip_near || 0)*RAD, kneeR:-(fr.knee_near || 0)*RAD, hipL:(fr.hip_far || 0)*RAD, kneeL:-(fr.knee_far || 0)*RAD,
     tilt:(fr.tilt || 0)*RAD, dx:fr.dx || 0});
 }
-// rest the body on the floor with whatever part is lowest (feet, knees, hands, bottom, back)
-function groundPose(p){
+// rest the body on a surface (the floor unless told otherwise) with whatever part is lowest (feet, knees, hands, bottom, back)
+function groundPose(p, top){
   const f = S.face, A = p.rot + p.tilt*f, ca = Math.cos(A), sa = Math.sin(A);
   const lean = p.lean, neck = {x:Math.sin(lean)*TOR, y:-Math.cos(lean)*TOR}, shp = {x:neck.x*0.86, y:neck.y*0.86 + p.sq};
   const pts = [[0, 0, 9], [neck.x, neck.y, 8.5], [Math.sin(lean)*5, -Math.cos(lean)*5, 8.5]];
@@ -982,7 +1030,7 @@ function groundPose(p){
   const ha = lean + p.head; pts.push([neck.x + Math.sin(ha)*(HR + 3), neck.y - Math.cos(ha)*(HR + 3), HR]);
   let low = -1e9;
   for (const [x, y, r] of pts) low = Math.max(low, x*f*sa + y*ca + r);
-  p.dy = 51 - low;
+  p.dy = 51 - low + ((top ?? GROUND) - GROUND);
   return p;
 }
 function moveStep(c, dt){
@@ -992,8 +1040,8 @@ function moveStep(c, dt){
   let tt = Math.min(c.t, total - 1e-6) % per, i = 0;
   while (i < n - 1 && tt >= frames[i].t + (frames[i].hold || 0)){ tt -= frames[i].t + (frames[i].hold || 0); i++; }
   const loopIdx = Math.floor(Math.min(c.t, total - 1e-6) / per);
-  const from = i > 0 ? groundPose(frameToPose(frames[i - 1])) : loopIdx > 0 ? groundPose(frameToPose(frames[n - 1])) : c.start;
-  const to = groundPose(frameToPose(frames[i]));
+  const from = i > 0 ? groundPose(frameToPose(frames[i - 1]), c.top) : loopIdx > 0 ? groundPose(frameToPose(frames[n - 1]), c.top) : c.start;
+  const to = groundPose(frameToPose(frames[i]), c.top);
   const u = clamp(tt / frames[i].t, 0, 1), e = u*u*(3 - 2*u);
   const out = {};
   for (const key in ZERO) out[key] = (from[key] ?? ZERO[key]) + ((to[key] ?? ZERO[key]) - (from[key] ?? ZERO[key]))*e;
@@ -1010,6 +1058,10 @@ function lyingPose(top, t, awake){
 function restPose(r, t){
   const sf = SURF[r && r.on] || SURF.sofa, how = (r && r.how) || 'sit';
   if (how === 'lie') return lyingPose(sf.top, t, true);
+  if (how === 'belly'){  // on the stomach, propped on the elbows, feet swinging
+    const sw = Math.sin(t*1.6);
+    return groundPose(frameToPose({tilt:86, head:-35, shoulder_near:118, elbow_near:105, shoulder_far:112, elbow_far:110, hip_near:-4, hip_far:-6, knee_near:70 + 18*sw, knee_far:55 - 18*sw}), sf.top);
+  }
   if (how === 'stand') return P({dy:sf.top - GROUND, head:0.04*Math.sin(t*0.5), shL:0.08, shR:-0.05});
   if (r && r.on === 'floor') return groundPose(frameToPose({hip_near:90, hip_far:90, knee_near:10, shoulder_near:20, shoulder_far:-25, elbow_near:20, torso:-5}));
   const high = sf.top < FLOOR - 35;
@@ -1376,7 +1428,7 @@ function drawToiletScreen(){
 function drawBathFront(){
   drawToiletScreen(); drawWardrobeFront();
   const inShower = S.loop === 'shower' && Math.abs(S.x - PL.shower.x) < 6;
-  S.fog += ((inShower ? 0.86 : 0) - S.fog) * (inShower ? 0.15 : 0.02);
+  S.fog += ((inShower ? (S.openShower ? 0.42 : 0.86) : 0) - S.fog) * (inShower ? 0.15 : 0.02);
   if (S.showerClothes && inShower){
     const sp = outfitSpec(S.showerClothes);
     rr(1104, GROUND - 7, 16, 5, 2, sp.bottom || sp.skirt || '#888'); rr(1105, GROUND - 11, 14, 5, 2, sp.top || sp.skirt || '#aaa');
@@ -1409,6 +1461,8 @@ function drawThing(kind, x, y){
   else { rr(x - 6, y - 10, 12, 10, 1.5, '#9fb2a8'); rect(x - 1, y - 10, 2, 10, '#e0457a'); }
 }
 function drawItem(kind, hand){
+  const stand = kind && !kind.includes(':') && propGift(kind);
+  if (stand){ drawHeldSprite('svg:' + stand.id, hand); return; }
   if (kind && kind.startsWith('treat:')){ drawTreat(kind.slice(6), hand.hd.x + 4, hand.hd.y - 2); return; }
   if (kind === 'groceries'){ const {hd} = hand; rr(hd.x - 6, hd.y - 2, 12, 8, 2, '#c9a77a'); circle(hd.x - 2, hd.y - 3, 2.6, '#d2493f'); circle(hd.x + 3, hd.y - 4, 2.2, '#3f9a5c'); rect(hd.x + 1, hd.y - 7, 3, 5, '#f3f2ec'); return; }
   if (kind && kind.startsWith('garment:')){ const {hd} = hand, sp = outfitSpec({type:kind.slice(8)}); ctx.fillStyle = sp.skirt || sp.top || sp.bottom || '#ccc';
@@ -1639,7 +1693,12 @@ const SPOT_GEO = {
 const SPOT_NEXT = {nightstand:['bed', 'windowsill'], windowsill:['nightstand', 'bed'], bed:['nightstand', 'windowsill'], wardrobe:['nightstand', 'bed'],
   shelf:['coffee_table'], coffee_table:['shelf'], kitchen:['stove'], stove:['kitchen'], bathroom:[], floor:[]};
 const itemById = id => S.items.find(it => it.id === id);
-function heldIds(){ const ids = new Set(); for (const h of ['L', 'R']){ const k = S.hold[h]; if (k && k.startsWith('svg:')) ids.add(+k.slice(4)); } return ids; }
+function propGift(kind){
+  let best = null;
+  for (const it of S.items) if (it.prop === kind && it.state === 'open' && it.sprite && (!best || it.id > best.id)) best = it;
+  return best;
+}
+function heldIds(){ const ids = new Set(); for (const h of ['L', 'R']){ const k = S.hold[h]; if (!k) continue; if (k.startsWith('svg:')) ids.add(+k.slice(4)); else { const g = propGift(k); if (g) ids.add(g.id); } } return ids; }
 function layoutThings(){
   const held = heldIds(), out = [], fill = {};
   const things = S.items.filter(it => it.state === 'open' && it.sprite && !held.has(it.id) && !(S.loop === 'cozy' && /плед|одеял|покрывал/i.test(it.name)))
@@ -2008,7 +2067,7 @@ function placeFromServer(st){
   S.hold = Object.assign({L:null, R:null}, HOLD_FOR[S.loop] || {});
   S.rest = st.rest || null;
   if ((st.loop === 'rest' && st.rest && st.rest.how === 'lie') || st.loop === 'sleep'){ S.face = 1; if (st.rest && SURF[st.rest.on] && SURF[st.rest.on].lieX) S.x = SURF[st.rest.on].lieX; }
-  if (st.loop === 'pose' && st.pose_hold){ S.freePose = frameToPose(st.pose_hold.frame); S.freeLabel = st.pose_hold.label; }
+  if (st.loop === 'pose' && st.pose_hold){ S.freePose = frameToPose(st.pose_hold.frame); S.freeLabel = st.pose_hold.label; const sf = st.pose_hold.on && st.pose_hold.on !== 'floor' && SURF[st.pose_hold.on]; S.freeTop = sf ? sf.top : undefined; if (sf) S.x = sf.lieX || PL[st.pose_hold.on].x; }
   S.pose = Object.assign({}, basePose(S.loop, 0));
   if (st.emo){ S.emoT = Object.assign({}, EMO_ZERO, st.emo); S.emoS = Object.assign({}, EMO_ZERO, st.emo); }
 }
@@ -2022,7 +2081,7 @@ function applyState(st){
     renderEmotions(st.emo);
   }
   if (ID.male !== st.male || ID.name !== st.name){ ID.male = st.male; ID.name = st.name; renderId(); }
-  renderMind(); renderNeeds(st.needs, st.needs_view); setBrain(); renderControls(); renderWishes(); renderTogether(); renderGoals(st); renderMindBtn();
+  renderMind(); renderNeeds(st.needs, st.needs_view); setBrain(); renderControls(); renderGiftList(); renderWishes(); renderTogether(); renderGoals(st); renderMindBtn();
 }
 function renderMind(){
   const st = LIFE.state;
@@ -2124,7 +2183,7 @@ function renderNotes(notes, diary){
     for (const d of diary.slice().reverse()){ const a = document.createElement('article'); const t = document.createElement('time'); const dt = new Date(d.ts*1000); t.textContent = dt.toLocaleDateString('ru-RU', {timeZone:'Europe/Ljubljana', day:'numeric', month:'long', weekday:'long'}); const p = document.createElement('p'); p.textContent = d.text; a.append(t, p); box.append(a); }
   }
 }
-function actsText(actions){ return (actions || []).map(a => (ACT_RU[a.do] || a.do) + (a.place ? ' → ' + PL[a.place].ru : '') + (a.do === 'change_clothes' && (a.outfit || a.color) ? ' (' + outfitName({type:a.outfit || 'casual', color:a.color}) + ')' : '') + (a.do === 'move' && a.label ? ': ' + a.label : '') + (a.do === 'rest' ? ' (' + ({sit:'сесть', lie:'лечь', stand:'встать'}[a.how] || '') + ' — ' + ((PL[a.on] || {}).ru || '') + ')' : '') + (a.do === 'sleep' && a.on && a.on !== 'bed' ? ' (' + ((PL[a.on] || {}).ru || '') + ')' : '')).join(' · '); }
+function actsText(actions){ return (actions || []).map(a => (ACT_RU[a.do] || a.do) + (a.place ? ' → ' + PL[a.place].ru : '') + (a.do === 'change_clothes' && (a.outfit || a.color) ? ' (' + outfitName({type:a.outfit || 'casual', color:a.color}) + ')' : '') + (a.do === 'move' && a.label ? ': ' + a.label : '') + (a.do === 'rest' ? ' (' + ({sit:'сесть', lie:'лечь', belly:'лечь на живот', stand:'встать'}[a.how] || '') + ' — ' + ((PL[a.on] || {}).ru || '') + ')' : '') + (a.do === 'sleep' && a.on && a.on !== 'bed' ? ' (' + ((PL[a.on] || {}).ru || '') + ')' : '')).join(' · '); }
 function handle(msg){
   if (msg.type === 'act'){
     if (msg.seq === lastSeq + 1){ if (msg.actions.length) run(msg.actions); }
@@ -2177,6 +2236,7 @@ async function resync(force){
       if (!snap.chat.length) log.append(sysEl('Напишите что-нибудь — ' + snap.state.name + ' ответит, если не спит.'));
       log.scrollTop = log.scrollHeight;
     }
+    renderAccess();
     renderFeed(snap.feed); renderNotes(snap.notes, snap.diary); renderUsage(snap.usage); applyState(snap.state);
     renderId();
   } catch (e) { connected = false; setBrain(); }
@@ -2278,6 +2338,35 @@ const giftsRow = document.getElementById('gifts'), giftForm = document.getElemen
 for (const [key, label] of GIFT_CATALOG){ const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.className = 'giftBtn'; b.addEventListener('click', () => gift({key})); giftsRow.insertBefore(b, giftForm); }
 giftForm.addEventListener('submit', e => { e.preventDefault(); const name = giftName.value.trim(); if (!name) return; gift({name}); giftName.value = ''; });
 function gift(body){ ensureAudio(); api('/api/gift', body).catch(e => addSys('Не получилось: ' + e.message)); }
+const giftList = document.getElementById('giftList');
+let giftSig = '';
+function renderGiftList(){
+  const items = ((LIFE && LIFE.state.items) || []).filter(it => it.state !== 'eaten').slice(-12).reverse();
+  const sig = items.map(it => it.id + it.state + (it.sprite || '') + (it.redraw ? 'r' : '')).join(',');
+  if (sig === giftSig) return;  // don't rebuild under the guest's fingers
+  giftSig = sig;
+  giftList.hidden = !items.length;
+  const head = document.createElement('span'); head.className = 'lbl'; head.textContent = 'Подарено';
+  giftList.replaceChildren(head, ...items.map(it => {
+    const row = document.createElement('div'); row.className = 'giftRow';
+    const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = it.name;
+    const st = document.createElement('span'); st.className = 'st'; st.textContent = it.state === 'wrapped' ? 'в коробке' : it.redraw ? 'рисуется…' : it.sprite ? '' : 'без рисунка';
+    const redo = document.createElement('button'); redo.type = 'button'; redo.dataset.keep = '1'; redo.textContent = 'Перерисовать';
+    const del = document.createElement('button'); del.type = 'button'; del.dataset.keep = '1'; del.className = 'del'; del.textContent = 'Убрать';
+    redo.addEventListener('click', () => {
+      if (row.querySelector('form')) return;
+      const f = document.createElement('form'); const inp = document.createElement('input'); inp.maxLength = 200; inp.placeholder = 'подсказка: «поменьше, на полку»… (можно пусто)';
+      const go = document.createElement('button'); go.type = 'submit'; go.textContent = 'Нарисовать'; f.append(inp, go); row.append(f); inp.focus();
+      f.addEventListener('submit', e => { e.preventDefault(); api('/api/item', {id:it.id, action:'redraw', hint:inp.value.trim()}).then(r => { applyState(r.state); }).catch(err => addSys('Не получилось: ' + err.message)); });
+    });
+    let armed = 0;
+    del.addEventListener('click', () => {
+      if (Date.now() - armed > 3000){ armed = Date.now(); del.textContent = 'Точно убрать?'; setTimeout(() => { del.textContent = 'Убрать'; }, 3000); return; }
+      api('/api/item', {id:it.id, action:'remove'}).then(r => { applyState(r.state); syncDevices(r.state); }).catch(err => addSys('Не получилось: ' + err.message));
+    });
+    row.append(nm, st, redo, del); return row;
+  }));
+}
 function renderWishes(){
   const list = (LIFE && LIFE.state.wishes) || [];
   const box = document.getElementById('wishes'), ul = document.getElementById('wishList');
@@ -2295,7 +2384,7 @@ function renderWishes(){
 document.getElementById('wishClear').addEventListener('click', () => api('/api/wish/delete', {all:true}).catch(e => addSys('Не получилось: ' + e.message)));
 const TOGETHER_UI = [['date','Пригласить на свидание'], ['movie','Посмотреть кино вместе'], ['dance','Потанцевать вместе'], ['cook','Приготовить ужин вместе']];
 const togetherRow = document.getElementById('togetherRow'), togetherBtns = [];
-for (const [kind, label] of TOGETHER_UI){ const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.className = 'tenderBtn'; b.addEventListener('click', () => api('/api/invite', {kind}).catch(e => addSys('Не получилось: ' + e.message))); togetherRow.append(b); togetherBtns.push(b); }
+for (const [kind, label] of TOGETHER_UI){ const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.className = 'tenderBtn'; b.dataset.kind = kind; b.addEventListener('click', () => api('/api/invite', {kind}).catch(e => addSys('Не получилось: ' + e.message))); togetherRow.append(b); togetherBtns.push(b); }
 const endBtn = document.createElement('button'); endBtn.type = 'button'; endBtn.textContent = 'Закончить'; endBtn.hidden = true;
 endBtn.addEventListener('click', () => api('/api/invite', {kind:'end'}).catch(e => addSys('Не получилось: ' + e.message))); togetherRow.append(endBtn);
 function renderTogether(){
@@ -2305,7 +2394,7 @@ function renderTogether(){
 }
 const TOUCHES = [['pat','Погладить по голове'], ['kiss','Чмокнуть в щёчку'], ['hand','Взять за руку'], ['hug','Обнять'], ['flowers','Подарить цветы']];
 const tender = document.getElementById('tender');
-for (const [what, label] of TOUCHES){ const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.className = 'tenderBtn'; b.addEventListener('click', () => poke(what)); tender.append(b); }
+for (const [what, label] of TOUCHES){ const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.className = 'tenderBtn'; b.dataset.what = what; b.addEventListener('click', () => poke(what)); tender.append(b); }
 const controls = document.getElementById('controls');
 for (const p of POKES){
   const b = document.createElement('button'); b.type = 'button'; b.textContent = p.label; b.dataset.what = p.what;
@@ -2493,7 +2582,7 @@ dds.forEach(d => d.addEventListener('toggle', () => { if (d.open) dds.forEach(o 
 const closeMenus = () => { dds.forEach(d => { d.open = false; }); menuPanel.hidden = true; menuBtn.setAttribute('aria-expanded', 'false'); };
 document.addEventListener('click', e => { if (!e.target.closest('.dd') && !e.target.closest('.topmenu')) closeMenus(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenus(); });
-document.querySelectorAll('.actbar .menu').forEach(m => m.addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.type === 'button') setTimeout(closeMenus, 120); }));
+document.querySelectorAll('.actbar .menu').forEach(m => m.addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.type === 'button' && !b.dataset.keep) setTimeout(closeMenus, 120); }));
 document.querySelectorAll('.customForm[data-kind]').forEach(f => f.addEventListener('submit', e => {
   e.preventDefault(); const inp = f.querySelector('input'), text = inp.value.trim(); if (!text) return;
   const kind = f.dataset.kind;
@@ -2501,6 +2590,67 @@ document.querySelectorAll('.customForm[data-kind]').forEach(f => f.addEventListe
   call.then(() => { inp.value = ''; closeMenus(); }).catch(err => addSys('Не получилось: ' + err.message));
 }));
 giftForm.addEventListener('submit', () => setTimeout(closeMenus, 50));
+
+/* ---------- access: password change and logout ---------- */
+const pwMsg = document.getElementById('pwMsg');
+function renderAccess(){
+  const on = !!(LIFE && LIFE.auth && LIFE.auth.on), admin = !!(LIFE && LIFE.me && LIFE.me.admin);
+  document.getElementById('pwCurWrap').hidden = !on;
+  document.getElementById('logoutBtn').hidden = !on;
+  for (const id of ['adminBtn', 'mindBtn', 'vramNote', 'brainBox']) document.getElementById(id).hidden = !admin;  // the GPU and the subscription are the owner's
+  const romantic = !LIFE || !LIFE.rel || LIFE.rel === 'romantic';
+  document.querySelectorAll('#tender [data-what="kiss"], #togetherRow [data-kind="date"]').forEach(b => { b.hidden = !romantic; });
+}
+
+/* ---------- owner: invitations and users ---------- */
+const adminDlg = document.getElementById('adminDlg');
+const fmtDay = ts => ts ? new Date(ts*1000).toLocaleString('ru-RU', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : '—';
+function renderAdmin(v){
+  const inv = document.getElementById('inviteList'), users = document.getElementById('userList');
+  inv.replaceChildren(...v.invites.map(i => {
+    const li = document.createElement('li'); if (i.used_by) li.className = 'used';
+    const code = document.createElement('code'); code.textContent = i.code;
+    const meta = document.createElement('span'); meta.className = 'meta'; meta.textContent = (i.note ? i.note + ' · ' : '') + (i.used_by ? 'использован: ' + i.used_login + ', ' + fmtDay(i.used_ts) : 'свободен, создан ' + fmtDay(i.ts));
+    li.append(code, meta);
+    if (!i.used_by){
+      const cp = document.createElement('button'); cp.type = 'button'; cp.textContent = 'Скопировать';
+      cp.addEventListener('click', () => { const t = 'Код приглашения: ' + i.code + '\n' + location.origin + '/register'; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => { cp.textContent = 'Скопировано'; }, () => { cp.textContent = i.code; }); });
+      const del = document.createElement('button'); del.type = 'button'; del.className = 'del'; del.textContent = 'Удалить';
+      del.addEventListener('click', () => api('/api/admin', {action:'drop_invite', code:i.code}).then(renderAdmin));
+      li.append(cp, del);
+    }
+    return li;
+  }));
+  if (!v.invites.length){ const li = document.createElement('li'); li.className = 'meta'; li.textContent = 'Кодов пока нет.'; inv.append(li); }
+  users.replaceChildren(...v.users.map(u => {
+    const li = document.createElement('li');
+    const b = document.createElement('b'); b.textContent = u.login + (u.admin ? ' (вы)' : '');
+    const meta = document.createElement('span'); meta.className = 'meta'; meta.textContent = 'жилец: ' + (u.name || '—') + (u.rel ? ', ' + u.rel : '') + ' · был: ' + fmtDay(u.seen);
+    li.append(b, meta); return li;
+  }));
+}
+document.getElementById('adminBtn').addEventListener('click', () => {
+  menuPanel.hidden = true; menuBtn.setAttribute('aria-expanded', 'false');
+  const link = document.getElementById('regLink'); link.textContent = location.origin + '/register'; link.href = '/register';
+  api('/api/admin').then(renderAdmin).catch(e => addSys('Не получилось: ' + e.message));
+  adminDlg.showModal();
+});
+document.getElementById('adminClose').addEventListener('click', () => adminDlg.close());
+adminDlg.addEventListener('click', e => { if (e.target === adminDlg) adminDlg.close(); });
+document.getElementById('inviteForm').addEventListener('submit', e => {
+  e.preventDefault(); const note = document.getElementById('inviteNote');
+  api('/api/admin', {action:'invite', note:note.value.trim()}).then(v => { note.value = ''; renderAdmin(v); }).catch(err => addSys('Не получилось: ' + err.message));
+});
+document.getElementById('pwBtn').addEventListener('click', () => {
+  const cur = document.getElementById('pwCur'), a = document.getElementById('pwNew'), b = document.getElementById('pwNew2');
+  if (a.value.length < 8){ pwMsg.textContent = 'Новый пароль — не короче 8 символов.'; return; }
+  if (a.value !== b.value){ pwMsg.textContent = 'Пароли не совпадают.'; return; }
+  pwMsg.textContent = 'Меняю…';
+  api('/api/password', {current:cur.value, new:a.value})
+    .then(() => { cur.value = a.value = b.value = ''; pwMsg.textContent = 'Пароль изменён. Остальные устройства вышли.'; if (LIFE){ LIFE.auth = {on:true}; renderAccess(); } })
+    .catch(err => { pwMsg.textContent = 'Не получилось: ' + err.message; });
+});
+document.getElementById('logoutBtn').addEventListener('click', () => { fetch('/logout', {method:'POST'}).finally(() => location.reload()); });
 
 /* ---------- phone tabs ---------- */
 const wrapEl = document.getElementById('wrap'), heroEl = document.getElementById('hero');

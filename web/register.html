@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Новый жилец</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Registration: one scrolling form — invitation, you, your resident, who they are to you, character */
+:root{
+  --bg:#e9ece6; --panel:#f8faf5; --fg:#1c2124; --muted:#5b6661; --line:#d0d7cd;
+  --accent:#2c52c4; --accent-fg:#ffffff; --danger:#b8392b; --rose:#e86a92;
+  --f-display:"Unbounded","Golos Text",system-ui,sans-serif;
+  --f-body:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#13171a; --panel:#1b2024; --fg:#e6ebe7; --muted:#97a29d; --line:#2b3237;
+    --accent:#8ea6ff; --accent-fg:#0f1530; --danger:#f08a7c; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#13171a; --panel:#1b2024; --fg:#e6ebe7; --muted:#97a29d; --line:#2b3237;
+  --accent:#8ea6ff; --accent-fg:#0f1530; --danger:#f08a7c; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:640px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));display:grid;gap:14px}
+h1{font-family:var(--f-display);font-weight:700;font-size:26px;line-height:1.15;margin:0}
+.lead{margin:0;color:var(--muted)}
+.card{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:16px;display:grid;gap:12px;min-width:0}
+.card h2{font-family:var(--f-mono);font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0}
+label.field{display:grid;gap:4px;font-size:13.5px;color:var(--muted)}
+input[type=text], input[type=password], input:not([type]){font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0;width:100%}
+.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (max-width:480px){.row{grid-template-columns:1fr}}
+.seg{display:inline-grid;grid-auto-flow:column;border:1px solid var(--line);border-radius:999px;padding:2px;gap:2px;justify-self:start}
+.seg button{font:inherit;font-size:14px;padding:6px 16px;border-radius:999px;border:0;background:transparent;color:var(--fg);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{font:inherit;font-size:13.5px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+.chips button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb, var(--accent) 10%, var(--panel))}
+.rels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (max-width:480px){.rels{grid-template-columns:1fr}}
+.rel{display:grid;gap:2px;text-align:left;font:inherit;padding:12px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+.rel b{font-size:15px}
+.rel span{font-size:13px;color:var(--muted)}
+.rel[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:color-mix(in srgb, var(--accent) 7%, var(--panel))}
+.rel.rom[aria-pressed="true"]{border-color:var(--rose);box-shadow:inset 0 0 0 1px var(--rose);background:color-mix(in srgb, var(--rose) 8%, var(--panel))}
+label.check{display:flex;align-items:flex-start;gap:8px;font-size:14px}
+label.check input{margin-top:4px}
+.slider{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;font-size:14px}
+.slider input{grid-column:1 / -1;width:100%;accent-color:var(--accent)}
+.slider .ends{grid-column:1 / -1;display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:-4px}
+.slider output{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+.traits{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px}
+@media (max-width:520px){.traits{grid-template-columns:1fr}}
+.hint{font-size:12.5px;color:var(--muted);margin:0}
+.linkBtn{font:inherit;font-size:13px;border:0;background:transparent;color:var(--accent);text-decoration:underline;cursor:pointer;padding:0;justify-self:start}
+.submit{display:grid;gap:8px}
+.submit button{font:inherit;font-weight:600;font-size:16px;padding:13px;border-radius:12px;border:0;background:var(--accent);color:var(--accent-fg);cursor:pointer}
+.submit button:disabled{opacity:.6;cursor:default}
+.err{color:var(--danger);font-size:14px;margin:0}
+.err:empty{display:none}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<form class="wrap" id="reg" novalidate>
+  <header>
+    <h1>Новый жилец</h1>
+    <p class="lead">Придумайте, кто будет жить в вашей нарисованной квартире. Дальше он сам решает, чем заняться, и ждёт, когда вы заглянете.</p>
+  </header>
+
+  <section class="card">
+    <h2>Приглашение</h2>
+    <label class="field">Код из приглашения <input id="invite" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD-1234-EF56" required></label>
+  </section>
+
+  <section class="card">
+    <h2>Вы</h2>
+    <div class="row">
+      <label class="field">Как к вам обращаться <input id="guestName" maxlength="30" autocomplete="given-name" placeholder="например, Оля"></label>
+      <div class="field" style="display:grid;gap:4px;font-size:13.5px;color:var(--muted)">Вы
+        <div class="seg" role="group" aria-label="Ваш пол"><button type="button" id="gm" aria-pressed="false">Мужчина</button><button type="button" id="gf" aria-pressed="false">Женщина</button></div>
+      </div>
+    </div>
+    <div class="row">
+      <label class="field">Логин <input id="login" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="латиница, 3–32 символа" required></label>
+      <span></span>
+      <label class="field">Пароль <input type="password" id="pw" autocomplete="new-password" placeholder="не короче 8 символов" required></label>
+      <label class="field">Пароль ещё раз <input type="password" id="pw2" autocomplete="new-password" required></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Ваш жилец</h2>
+    <div class="seg" role="group" aria-label="Пол жильца"><button type="button" id="rm" aria-pressed="false">Он</button><button type="button" id="rf" aria-pressed="true">Она</button></div>
+    <div class="row">
+      <label class="field">Имя <input id="name" maxlength="20" autocomplete="off" required></label>
+      <div class="slider"><span>Возраст</span><output id="ageOut"></output><input type="range" id="age" min="18" max="70" value="27" aria-label="Возраст"></div>
+    </div>
+    <label class="field">Профессия <input id="prof" maxlength="60" list="profList" placeholder="кем работает или учится"></label>
+    <datalist id="profList"></datalist>
+    <div class="field" style="display:grid;gap:6px;font-size:13.5px;color:var(--muted)">Чем увлекается
+      <div class="chips" id="likes" role="group" aria-label="Увлечения"></div>
+      <input id="likesMore" maxlength="120" placeholder="ещё что-нибудь своё, через запятую" aria-label="Другие увлечения">
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 id="relTitle">Кто она для вас</h2>
+    <div class="rels" id="rels" role="group" aria-labelledby="relTitle"></div>
+    <label class="check" id="adultWrap" hidden><input type="checkbox" id="adult"> <span>Мне есть 18 лет</span></label>
+  </section>
+
+  <section class="card">
+    <h2>Характер</h2>
+    <div class="traits" id="traits"></div>
+    <button type="button" class="linkBtn" id="shuffle">Случайный характер</button>
+  </section>
+
+  <div class="submit">
+    <p class="err" id="err" role="alert"></p>
+    <button type="submit" id="go">Заселить</button>
+    <p class="hint">Уже есть жилец? <a href="/">Войти</a></p>
+  </div>
+</form>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const st = {residentMale:false, guestMale:null, rel:null, likes:new Set()};
+const NAMES = {m:['Артём','Лёва','Миша','Костя','Даня','Ваня','Тимур','Саша'], f:['Лена','Аня','Маша','Катя','Вера','Соня','Алиса','Даша']};
+const PROFS = ['иллюстратор','программист','бариста','учитель','врач','звукорежиссёр','фотограф','повар','студент','архитектор','журналист','фитнес-тренер','дизайнер','переводчик','инженер','психолог','флорист','музыкант'];
+const LIKES = ['музыка','кино и сериалы','книги','видеоигры','спорт','велосипед','горы и походы','готовка','путешествия','рисование','фотография','наука','танцы','животные','мода','технологии','настольные игры','йога'];
+const RELS = [
+  ['romantic', 'Романтический друг', 'Флирт, смущение, ревность, свидания и подарки', 'rom'],
+  ['support', 'Близкий друг', 'Тёплый и внимательный, интересуется вашими делами, подбадривает', ''],
+  ['interests', 'Друг по интересам', 'Общие увлечения, споры, советы и совместные занятия', ''],
+  ['mentor', 'Наставник по целям', 'Ставите цели вместе, он тренируется и подтягивает вас', ''],
+];
+// [key, label, low, high, default]; extraversion and talk come first — they matter most in conversation
+const TRAITS = [
+  ['extraversion','Общительность','интроверт','экстраверт',60], ['talk','Разговорчивость','молчун','болтун',50],
+  ['friendliness','Дружелюбие','колючий','ласковый',70], ['positivity','Оптимизм','пессимист','оптимист',65],
+  ['humor','Чувство юмора','серьёзный','шутник',60], ['activity','Активность','лентяй','энерджайзер',55],
+  ['curiosity','Любопытство','равнодушный','любопытный',60], ['romance','Романтичность','прагматик','мечтатель',50],
+  ['tidiness','Аккуратность','небрежный','чистюля',55], ['sensitivity','Ранимость','невозмутимый','ранимый',50],
+];
+
+$('profList').append(...PROFS.map(p => { const o = document.createElement('option'); o.value = p; return o; }));
+const likesBox = $('likes');
+for (const l of LIKES){
+  const b = document.createElement('button'); b.type = 'button'; b.textContent = l; b.setAttribute('aria-pressed', 'false');
+  b.addEventListener('click', () => { const on = !st.likes.has(l); on ? st.likes.add(l) : st.likes.delete(l); b.setAttribute('aria-pressed', String(on)); });
+  likesBox.append(b);
+}
+const relsBox = $('rels'), relBtns = {};
+for (const [key, title, sub, cls] of RELS){
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'rel ' + cls; b.setAttribute('aria-pressed', 'false');
+  const t = document.createElement('b'); t.textContent = title; const s = document.createElement('span'); s.textContent = sub; b.append(t, s);
+  b.addEventListener('click', () => { st.rel = key; for (const k in relBtns) relBtns[k].setAttribute('aria-pressed', String(k === key)); $('adultWrap').hidden = key !== 'romantic'; });
+  relsBox.append(b); relBtns[key] = b;
+}
+const traitBox = $('traits'), sliders = {};
+for (const [key, label, lo, hi, def] of TRAITS){
+  const w = document.createElement('div'); w.className = 'slider';
+  const name = document.createElement('span'); name.textContent = label;
+  const out = document.createElement('output');
+  const inp = document.createElement('input'); inp.type = 'range'; inp.min = 0; inp.max = 100; inp.step = 5; inp.value = def; inp.setAttribute('aria-label', label);
+  const ends = document.createElement('div'); ends.className = 'ends'; ends.innerHTML = '<span></span><span></span>'; ends.children[0].textContent = lo; ends.children[1].textContent = hi;
+  const show = () => { out.textContent = inp.value; }; inp.addEventListener('input', show); show();
+  w.append(name, out, inp, ends); traitBox.append(w); sliders[key] = inp;
+}
+$('shuffle').addEventListener('click', () => { for (const k in sliders){ sliders[k].value = Math.round((15 + Math.random()*70)/5)*5; sliders[k].dispatchEvent(new Event('input')); } });
+
+const showAge = () => { $('ageOut').textContent = $('age').value; }; $('age').addEventListener('input', showAge); showAge();
+function setResident(male){
+  const prevDefault = NAMES[st.residentMale ? 'm' : 'f'].includes($('name').value) || !$('name').value;
+  st.residentMale = male;
+  $('rm').setAttribute('aria-pressed', String(male)); $('rf').setAttribute('aria-pressed', String(!male));
+  $('relTitle').textContent = male ? 'Кто он для вас' : 'Кто она для вас';
+  if (prevDefault) $('name').value = NAMES[male ? 'm' : 'f'][Math.floor(Math.random()*8)];
+}
+$('rm').addEventListener('click', () => setResident(true)); $('rf').addEventListener('click', () => setResident(false));
+function setGuest(male){ st.guestMale = male; $('gm').setAttribute('aria-pressed', String(male)); $('gf').setAttribute('aria-pressed', String(!male)); }
+$('gm').addEventListener('click', () => setGuest(true)); $('gf').addEventListener('click', () => setGuest(false));
+setResident(false);
+
+$('reg').addEventListener('submit', e => {
+  e.preventDefault();
+  const err = $('err'); err.textContent = '';
+  const fail = (msg, el) => { err.textContent = msg; if (el) el.focus(); };
+  if (!$('invite').value.trim()) return fail('Введите код из приглашения.', $('invite'));
+  if (st.guestMale === null) return fail('Укажите, вы мужчина или женщина — так жилец будет правильно к вам обращаться.');
+  if (!/^[A-Za-z0-9_.-]{3,32}$/.test($('login').value.trim())) return fail('Логин: 3–32 латинских буквы, цифры, точка, дефис или подчёркивание.', $('login'));
+  if ($('pw').value.length < 8) return fail('Пароль — не короче 8 символов.', $('pw'));
+  if ($('pw').value !== $('pw2').value) return fail('Пароли не совпадают.', $('pw2'));
+  if (!$('name').value.trim()) return fail('Как зовут жильца?', $('name'));
+  if (!st.rel) return fail('Выберите, кем жилец будет для вас.');
+  if (st.rel === 'romantic' && !$('adult').checked) return fail('Романтический вариант — только для тех, кому есть 18.', $('adult'));
+  const traits = {}; for (const k in sliders) if (k !== 'talk') traits[k] = Number(sliders[k].value);
+  const likes = [...st.likes].concat($('likesMore').value.split(',').map(x => x.trim()).filter(Boolean)).join(', ');
+  const body = {invite:$('invite').value.trim(), login:$('login').value.trim(), password:$('pw').value, adult:$('adult').checked,
+    guest_name:$('guestName').value.trim(), guest_male:st.guestMale,
+    character:{male:st.residentMale, name:$('name').value.trim(), age:Number($('age').value), profession:$('prof').value.trim(), interests:likes,
+      rel:st.rel, talk:Number(sliders.talk.value), traits}};
+  $('go').disabled = true; $('go').textContent = 'Заселяем…';
+  fetch('/api/register', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
+    .then(r => r.json().then(j => ({ok:r.ok, j})))
+    .then(({ok, j}) => { if (ok) location.href = '/'; else throw new Error(j.error || 'не получилось'); })
+    .catch(x => { fail('Не получилось: ' + x.message); $('go').disabled = false; $('go').textContent = 'Заселить'; });
+});
+})();
+</script>
+</body>
+</html>

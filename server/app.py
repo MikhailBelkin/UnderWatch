@@ -13,8 +13,11 @@ and no tokens are spent.
 Stdlib only. Serves the page and a small JSON/SSE API on HOST:PORT.
 """
 import difflib
+import contextvars
 import glob
 import hashlib
+import hmac
+import secrets
 import urllib.parse
 import urllib.request
 import json
@@ -24,6 +27,7 @@ import queue
 import random
 import re
 import shutil
+import ssl
 import sqlite3
 import subprocess
 import threading
@@ -48,12 +52,58 @@ PORT = int(os.environ.get("PORT", "8765"))
 MODEL_FAST = os.environ.get("MODEL_FAST", "haiku")
 MODEL_DEEP = os.environ.get("MODEL_DEEP", "sonnet")
 TICK = 5  # seconds between mind-loop checks
-PASSWORD = os.environ.get("PASSWORD", "")  # empty = no login
-AUTH_TOKEN = hashlib.sha256(("za-steklom:" + PASSWORD).encode()).hexdigest() if PASSWORD else ""
+PASSWORD = os.environ.get("PASSWORD", "")  # the first password; once it's changed in the settings, the stored one wins
+LEGACY_TOKEN = hashlib.sha256(("za-steklom:" + PASSWORD).encode()).hexdigest() if PASSWORD else ""  # old cookies, upgraded on sight
 
 
 def log(*a):
     print(time.strftime("%H:%M:%S"), *a, flush=True)
+
+
+# ---------------------------------------------------------------- whose resident is this?
+# Every user has a resident of their own. The code below speaks of S, store, SETTINGS, hub… as if there were one;
+# these names are stand-ins that resolve to the resident of the current request or mind step.
+_cur = contextvars.ContextVar("resident")
+
+
+def R():
+    return _cur.get()
+
+
+class _Here:
+    """A stand-in for one attribute of the current resident."""
+    __slots__ = ("_attr",)
+
+    def __init__(self, attr):
+        object.__setattr__(self, "_attr", attr)
+
+    def _t(self):
+        return getattr(_cur.get(), self._attr)
+
+    def __getattr__(self, k): return getattr(self._t(), k)
+    def __getitem__(self, k): return self._t()[k]
+    def __setitem__(self, k, v): self._t()[k] = v
+    def __delitem__(self, k): del self._t()[k]
+    def __contains__(self, k): return k in self._t()
+    def __iter__(self): return iter(self._t())
+    def __len__(self): return len(self._t())
+    def __bool__(self): return bool(self._t())
+    def __enter__(self): return self._t().__enter__()
+    def __exit__(self, *a): return self._t().__exit__(*a)
+
+
+def spawn(fn, *args):
+    """A background thread that keeps working on the same resident."""
+    ctx = contextvars.copy_context()
+    threading.Thread(target=ctx.run, args=(fn,) + args, daemon=True).start()
+
+
+def as_resident(r, fn, *args):
+    tok = _cur.set(r)
+    try:
+        return fn(*args)
+    finally:
+        _cur.reset(tok)
 
 
 # ---------------------------------------------------------------- vocabulary
@@ -64,9 +114,9 @@ PLACES = {
     "coffee_table": "журнальный столик", "stool": "барный стул", "counter": "кухонная столешница", "floor": "ковёр на полу",
 }
 # anything with a surface can be sat, lain or stood on, if there is room
-SURFACES = {"bed": ("sit", "lie"), "sofa": ("sit", "lie"), "floor": ("sit", "lie"), "coffee_table": ("sit", "stand"),
+SURFACES = {"bed": ("sit", "lie", "belly"), "sofa": ("sit", "lie", "belly"), "floor": ("sit", "lie", "belly"), "coffee_table": ("sit", "stand"),
             "stool": ("sit", "stand"), "counter": ("sit",)}
-HOW_RU = {"sit": ("сидит на", "сидит"), "lie": ("лежит на", "лежит"), "stand": ("стоит на", "стоит")}
+HOW_RU = {"sit": ("сидит на", "сидит"), "lie": ("лежит на", "лежит"), "belly": ("лежит на животе на", "лежит на животе"), "stand": ("стоит на", "стоит")}
 SURF_RU = {"bed": "кровати", "sofa": "диване", "floor": "ковре", "coffee_table": "журнальном столике", "stool": "барном стуле", "counter": "столешнице"}
 OUTFIT_TYPES = {"casual": "футболка и брюки", "pajamas": "пижама", "dress": "романтичное платье", "shorts": "шорты и футболка",
                 "warm": "джинсы и свитер", "mini": "миниюбка и топ", "swimsuit": "купальник", "underwear": "нижнее бельё",
@@ -106,7 +156,7 @@ SPOTS = {"shelf": "полка над телевизором (книги, сув�
          "bed": "на кровати (подушки, игрушки)", "floor": "на полу в гостиной (что покрупнее: гитара, гантели, растение в горшке)"}
 MOTIONS = ("admire", "hold", "drink", "eat", "stir", "hug", "read", "phone", "play", "wear")
 MOVE_DOC = """move — любое движение, которого нет в списке: ты сам(а) описываешь ключевые позы тела, тело плавно переходит из одной в другую.
-{"do": "move", "label": "что делаешь, 1–3 слова", "frames": [поза, ...], "repeat": сколько раз повторить кадры (1–10), "end": "stand" (потом встать) или "hold" (замереть в последней позе)}
+{"do": "move", "label": "что делаешь, 1–3 слова", "frames": [поза, ...], "repeat": сколько раз повторить кадры (1–10), "end": "stand" (потом встать) или "hold" (замереть в последней позе), "on": "на чём: floor (по умолчанию), bed, sofa, coffee_table — тело опирается на эту поверхность"}
 Поза — углы в градусах (вид сбоку, ты смотришь вперёд), любые поля можно опустить (тогда 0):
   torso: наклон корпуса от бёдер, + вперёд (90 — согнуться пополам), − назад (до −40);
   head: наклон головы, + вниз, − вверх (−45…50); turn: поворот головы −1…1 (покрутить головой — чередуй −1 и 1);
@@ -135,7 +185,7 @@ practice{minutes, result, note} — отметить тренировку к с�
 use_toilet — сходить в туалет; shower — принять душ; brush_teeth — почистить зубы; wash_face — умыться; comb_hair — причесаться у зеркала;
 console_off — выключить приставку; close_valve — перекрыть воду под мойкой (если течёт); mop_floor — вытирать воду с пола шваброй (имеет смысл, только когда вода уже не течёт);
 read_book — читать книгу на диване; phone_call — позвонить кому-то из друзей или родных; workout — зарядка;
-tidy_up — прибраться; write_diary — записать мысли в блокнот; rest{on, how} — сесть, лечь или встать на что-то (on: bed, sofa, floor, coffee_table, stool, counter; how: sit, lie, stand). Кровать и диван — сидеть и лежать, пол/ковёр — сидеть и лежать, журнальный столик и барный стул на кухне — сидеть или встать на них, столешница — сесть;
+tidy_up — прибраться; write_diary — записать мысли в блокнот; rest{on, how} — сесть, лечь или встать на что-то (on: bed, sofa, floor, coffee_table, stool, counter; how: sit, lie — на спину, belly — на живот, stand). Кровать и диван — сидеть и лежать, пол/ковёр — сидеть и лежать, журнальный столик и барный стул на кухне — сидеть или встать на них, столешница — сесть;
 sleep{on} — лечь спать (on: bed по умолчанию, sofa или floor — подремать днём). Днём спать можно, только если бодрость ниже 30 (тогда это короткий сон) или до отбоя меньше 15 минут; если просто хочется передохнуть — sit или look_window."""
 LOOP_LABEL = {"sit": "сидит на диване", "watch": "смотрит телевизор", "game": "играет в приставку", "listen": "слушает пластинку",
               "sleep": "спит", "daydream": "смотрит в окно", "read": "читает книгу", "phone": "болтает по телефону",
@@ -335,9 +385,7 @@ class Store:
             self.db.commit()
 
 
-store = Store(DB_PATH)
-if store.get("identity") is None and store.get("self_notes"):
-    store.set("identity", store.get("self_notes"))
+store = _Here("store")
 
 # ---------------------------------------------------------------- settings: schedule, body, character
 TRAITS = {  # key: (low end, high end, default)
@@ -348,10 +396,7 @@ TRAITS = {  # key: (low end, high end, default)
     "sensitivity": ("невозмутимость", "ранимость", 50),
 }
 DEFAULT_SETTINGS = {"wake": WAKE_H, "sleep": SLEEP_H, "hunger_rate": 1.0, "traits": {k: v[2] for k, v in TRAITS.items()}}
-SETTINGS = json.loads(json.dumps(DEFAULT_SETTINGS))
-_saved = store.get("settings") or {}
-SETTINGS.update({k: v for k, v in _saved.items() if k != "traits"})
-SETTINGS["traits"].update(_saved.get("traits") or {})
+SETTINGS = _Here("settings")
 
 
 def wake_h():
@@ -368,12 +413,12 @@ def trait(k):
 
 def apply_settings(body):
     errors = []
-    new = json.loads(json.dumps(SETTINGS))
+    new = json.loads(json.dumps(R().settings))
     try:
         if "wake" in body: new["wake"] = int(body["wake"])
         if "sleep" in body: new["sleep"] = int(body["sleep"])
         if "hunger_rate" in body: new["hunger_rate"] = round(max(0.3, min(3.0, float(body["hunger_rate"]))), 2)
-        if isinstance(body.get("brain"), dict):
+        if isinstance(body.get("brain"), dict) and R().admin:  # the GPU and the subscription are the owner's to choose
             bb = body["brain"]
             new["brain"] = {"backend": "local" if bb.get("backend") == "local" else "claude",
                             "fast": str(bb.get("fast") or "")[:80], "deep": str(bb.get("deep") or "")[:80], "fallback": bool(bb.get("fallback", True))}
@@ -388,7 +433,7 @@ def apply_settings(body):
         return "; ".join(errors)
     SETTINGS.clear()
     SETTINGS.update(new)
-    store.set("settings", SETTINGS)
+    store.set("settings", R().settings)
     return None
 
 
@@ -418,7 +463,7 @@ class Hub:
                     self.clients.discard(q)
 
 
-hub = Hub()
+hub = _Here("hub")
 
 
 def emit_event(kind, text, data=None):
@@ -457,9 +502,9 @@ def parse_json(text):
         raise LLMError("ответ не JSON: " + text[:200])
 
 
-busy_lock = threading.Lock()   # one model call at a time
-busy_what = {"v": None}
-world_epoch = {"v": 0}  # bumped on a new game, so late answers from the old one are dropped
+busy_lock = threading.Lock()   # one model call at a time, for all residents: there is one GPU
+busy_what = _Here("busy")
+world_epoch = _Here("epoch")  # bumped on a new game, so late answers from the old one are dropped
 
 
 def set_busy(what):
@@ -471,11 +516,14 @@ OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
 
 
 def brain():
-    b = SETTINGS.get("brain") or {}
-    return {"backend": b.get("backend") or os.environ.get("LLM_BACKEND", "claude"),
+    b = admin_resident().settings.get("brain") or {}
+    out = {"backend": b.get("backend") or os.environ.get("LLM_BACKEND", "claude"),
             "fast": b.get("fast") or os.environ.get("LOCAL_FAST", "qwen3.5:27b"),
             "deep": b.get("deep") or os.environ.get("LOCAL_DEEP", "qwen3.5:27b"),
             "fallback": b.get("fallback", True)}
+    if not R().admin:  # other people's residents never touch the owner's Claude subscription
+        out.update(backend="local", fallback=False)
+    return out
 
 
 def local_models():
@@ -519,16 +567,18 @@ def warm_up():
             log("warm-up failed:", e)
 
 
+def mind_paused():
+    return bool(ACC.get("paused"))
+
+
 def set_paused(paused):
-    with state_lock:
-        S["mind_paused"] = bool(paused)
-        save_state()
+    ACC.set("paused", bool(paused))
     if paused:
         unload_models()
         emit_event("system", "Разум остановлен: модели выгружены, видеокарта свободна. " + S["name"] + " живёт по текущему занятию, но не думает и не отвечает.")
     else:
         emit_event("system", "Разум снова запущен.")
-        threading.Thread(target=warm_up, daemon=True).start()
+        spawn(warm_up)
     hub.publish({"type": "state", "state": public_state()})
 
 
@@ -620,25 +670,20 @@ DEFAULT_STATE = {
     "thought": "", "intent": "", "plan": [], "plan_day": "", "act_seq": 0, "last_act": None,
     "last_tick": 0, "last_decide": 0, "reflect_ts": 0, "reflect_day": "",
 }
-state_lock = threading.RLock()
-S = dict(DEFAULT_STATE, **(store.get("state") or {}))
-S["needs"] = dict(DEFAULT_STATE["needs"], **S.get("needs", {}))
-if "light" in S:  # older state had one switch for the whole flat
-    S["lights"] = {k: bool(S["light"]) for k in DEFAULT_STATE["lights"]}
-    del S["light"]
-S["lights"] = dict(DEFAULT_STATE["lights"], **S.get("lights", {}))
-S["emo"] = dict(DEFAULT_STATE["emo"], **S.get("emo", {}))
+state_lock = _Here("lock")
+S = _Here("S")
 
 
 def save_state():
     with state_lock:
-        store.set("state", S)
+        store.set("state", R().S)
 
 
 def public_state():
     with state_lock:
         s = {k: S[k] for k in ("name", "male", "location", "loop", "label", "until", "tv", "console", "music", "lights", "water", "leak", "flowers_ts", "items", "wishes", "visitors", "together", "invite", "dishes", "accessory", "pose_hold", "rest", "guest_facts", "closeness", "goal", "goals_done", "mind_paused",
                                "outfit", "mood", "emo", "needs", "thought", "intent", "plan", "act_seq", "last_act")}
+    s["mind_paused"] = mind_paused()  # one switch for the whole machine
     t = now()
     s["awake_time"] = is_awake_time(t)
     s["wake_at"] = next_wake(t).timestamp()
@@ -695,9 +740,6 @@ def guess_topic(fact):
     return "разное"
 
 
-for _f in S.get("guest_facts", []):  # facts saved before topics were recognised
-    if _f.get("topic") == "разное":
-        _f["topic"] = guess_topic(_f["fact"])
 
 
 CLOSENESS_LEVELS = [(0, "незнакомец"), (10, "знакомый"), (25, "приятель"), (45, "друг"), (70, "близкий друг"), (90, "родной человек")]
@@ -970,7 +1012,7 @@ def base_drift():
 def rest_rates(rates):
     r = S.get("rest") or {}
     if S["loop"] == "rest":
-        rates["energy"] = rates.get("energy", 0) + (0.18 if r.get("how") == "lie" else 0.08 if r.get("how") == "sit" else 0)
+        rates["energy"] = rates.get("energy", 0) + (0.18 if r.get("how") in ("lie", "belly") else 0.08 if r.get("how") == "sit" else 0)
     return rates
 
 
@@ -1099,7 +1141,8 @@ def clean_move(a):
     if per > 40:
         return None
     return {"frames": frames, "repeat": repeat, "end": "hold" if a.get("end") == "hold" else "stand",
-            "label": str(a.get("label") or "двигается").strip()[:40], "secs": round(per * repeat, 1)}
+            "label": str(a.get("label") or "двигается").strip()[:40], "secs": round(per * repeat, 1),
+            "on": a.get("on") if a.get("on") in ("bed", "sofa", "coffee_table", "floor") else "floor"}
 
 
 def clean_actions(raw):
@@ -1181,6 +1224,8 @@ def clean_actions(raw):
                 pass
         if d in ("light_on", "light_off") and a.get("room") in ROOMS:
             x["room"] = a["room"]
+        if d in ("change_clothes", "shower"):
+            x["private"] = not (R().meta.get("rel", "romantic") == "romantic" and a.get("private") is False)
         if d == "change_clothes" and a.get("outfit") in OUTFIT_TYPES:
             x["outfit"] = a["outfit"]
         if d == "change_clothes" and a.get("color") in COLORS:
@@ -1456,7 +1501,9 @@ def act(actions, minutes=None, thought=None, intent=None, mood=None, aloud=None,
                 S["needs"]["fun"] = clampn(S["needs"]["fun"] + fun_gain(2))
                 if a.get("end") == "hold":
                     loop = "pose"
-                    S["pose_hold"] = {"frame": a["frames"][-1], "label": a.get("label", "")}
+                    S["pose_hold"] = {"frame": a["frames"][-1], "label": a.get("label", ""), "on": a.get("on", "floor")}
+                if a.get("on") and a["on"] != "floor":
+                    loc = a["on"]
             if d == "eat": S["dishes"] = min(8, S.get("dishes", 0) + 1)
             if d == "cook": S["dishes"] = min(8, S.get("dishes", 0) + 1)
             if d == "wash_dishes": S["dishes"] = 0
@@ -1583,16 +1630,50 @@ def identity():
     return (store.get("identity") or "").strip()
 
 
+# who the guest is to the resident: chosen at registration
+REL_TEXT = {
+    "romantic": "Романтика у вас — в чувствах и поступках: смущение и румянец, радость, ревность, скучание, подарки, свидания и совместные занятия. Допустим легкий интим, нежности немного возбуждают, есть скрытое желание близости",
+    "support": "Вы с гостем — близкие друзья. Ты тёплый и внимательный друг: интересуешься его делами и настроением, помнишь, что у него происходит, подбадриваешь, радуешься его успехам, а иногда и мягко споришь. Романтики и флирта между вами нет; если гость флиртует — отшучивайся по-дружески. Если гость говорит, что ему по-настоящему плохо или он думает навредить себе, — прояви заботу и мягко посоветуй обратиться к близким или к специалисту.",
+    "interests": "Вы с гостем — друзья по интересам: вас объединяют общие увлечения. Тебе нравится обсуждать их, делиться находками, спорить, советовать и предлагать что-то попробовать вместе. Романтики и флирта нет; если гость флиртует — отшучивайся по-дружески.",
+    "mentor": "Для гостя ты наставник и компаньон по целям: вы вместе ставите цели, ты сам(а) тренируешься к своей и подтягиваешь гостя, спрашиваешь о его прогрессе, хвалишь за каждый шаг и не даёшь бросить. Дружелюбно, без занудства и без романтики.",
+}
+REL_RU = {"romantic": "романтический друг", "support": "близкий друг", "interests": "друг по интересам", "mentor": "наставник и компаньон по целям"}
+
+
+MODESTY = ("Переодеваясь или идя в душ, ты {сам} решаешь, прятаться ли от гостя: поле private у change_clothes и shower — true (закрыть дверцу шкафа, матовое стекло душа) "
+           "или false (не прятаться: гость увидит тебя в белье, а в душе — силуэт за стеклом). Решай по характеру, настроению и тому, насколько вы близки; стесняться — нормально.")
+
+
+def rel_text():
+    rel = R().meta.get("rel", "romantic")
+    return REL_TEXT.get(rel, REL_TEXT["romantic"]) + ("\n" + MODESTY.replace("{сам}", g("сам", "сама")) if rel == "romantic" else "")
+
+
+def guest_intro():
+    m = R().meta
+    if not m.get("guest_name") and m.get("guest_male") is None:
+        return ""
+    who = "мужчина" if m.get("guest_male", True) else "женщина"
+    return f" Гость — {who}" + (f", его зовут {m['guest_name']}" if m.get("guest_male", True) and m.get("guest_name") else f", её зовут {m['guest_name']}" if m.get("guest_name") else "") + (
+        "; в разговоре о нём и с ним — мужской род." if m.get("guest_male", True) else "; говори о ней и с ней в женском роде, даже если ниже где-то написано «он».")
+
+
+def talk_level():
+    """0 — молчун, 1 — как все, 2 — болтун."""
+    t = R().meta.get("talk", 50)
+    return 0 if t < 34 else 2 if t >= 67 else 1
+
+
 def persona():
     who = identity()
     base = (f"Ты — {S['name']}, {g('парень', 'девушка')}. Кто ты (это задано и главнее всего, держись этого):\n{who}\n" if who
             else f"Ты — {S['name']}, {g('парень', 'девушка')}, 27 лет.\n")
     return base + f"""Ты живёшь {g('один', 'одна')} в маленькой квартире: спальня (кровать, шкаф с одеждой, окно на город), гостиная-кухня (диван, телевизор с игровой приставкой, проигрыватель пластинок, холодильник, плита, полки с посудой) и санузел (унитаз, раковина с зеркалом, зубные щётки, расчёска, полотенце, душ).
 У тебя есть тело, потребности, настроение, характер, увлечения и свои планы. Ты живёшь своей жизнью: никто не говорит тебе, что делать, ты решаешь сам{g('', 'а')}.
-Иногда с тобой разговаривает гость — человек, который смотрит на твою квартиру «через стекло». Ты о нём знаешь и рад{g('', 'а')} поболтать.
+Иногда с тобой разговаривает гость — человек, который смотрит на твою квартиру «через стекло». Ты о нём знаешь и рад{g('', 'а')} поболтать.{guest_intro()}
 Иногда в квартире что-то происходит само: гаснет свет, включается телевизор, прорывает трубу. Возможно, это проделки гостя — он, кажется, умеет влиять на твой мир. Реагируй на такое как живой человек: заметь, исправь, если мешает, удивись, поворчи или спроси гостя.
 В шкафу у тебя разная одежда: обычная (футболка и брюки), пижама, романтичное платье, шорты с футболкой, джинсы со свитером, миниюбка с топом, купальник, нижнее бельё, халат. Одевайся по ситуации и настроению: дома утром можно в пижаме или халате, после душа ты в полотенце, перед сном — пижама. Когда жарко, можно и в нижнем белье, а когда холодно — в свитере и джинсах. На свидание или романтический вечер — в платье или миниюбке с топом.
-Романтика у вас — в чувствах и поступках: смущение и румянец, радость, ревность, скучание, подарки, свидания и совместные занятия. Допустим легкий интим, нежности немного возбуждают, есть скрытое желание близости
+{rel_text()}
 Обиды не копи: поссорились — позлись немного, а потом отпусти, как обычный человек; через какое-то время остаётся лишь лёгкий осадок.
 Гость может дарить подарки — вкусняшки и вещи. Если тебе чего-то по-настоящему хочется, можешь попросить его (поле wish), но не выпрашивай постоянно: он сам решает, дарить ли и когда.
 Гость может и прикоснуться к тебе: погладить по голове, поцеловать в щёку, взять за руку, обнять, подарить цветы. Отвечай по-своему, исходя из того, как ты к нему сейчас относишься: это может быть приятно, трогательно, смущать или раздражать, если ты на него сердишься или он перебарщивает.
@@ -1654,6 +1735,7 @@ def world_line():
     if things:
         flowers += " Подаренные вещи: " + "; ".join(f"{it['name']} (id={it['id']}" + (f", {SPOTS[it['spot']].split(' (')[0]}" if it.get("spot") in SPOTS else "") + ")"
                                                    + (f" — {it['status']}" if it.get("status") else "") + (f"; {it['uses']}" if it.get("uses") else "")
+                                                   + (f"; заменяет {PROPS[it['prop']][0]}: при {PROPS[it['prop']][1]} тело само берёт эту вещь" if it.get("prop") in PROPS else "")
                                                    + (f"; работает вместе с: {it['works_with']}" if it.get("works_with") else "") for it in things[-10:]) + "."
     if S.get("visitors"):
         flowers += " Ещё в квартире (появилось из-за гостя): " + "; ".join(f"{v['name']}" + (f" ×{v['count']}" if v["count"] > 1 else "") + f" (id={v['id']}, {room_ru(v['room'])})" for v in S["visitors"]) + " — если мешает, можно выгнать: shoo{id}."
@@ -1765,7 +1847,7 @@ def decide(reason="next", happened=None):
     if r.get("wish"):
         add_wish(r["wish"])
     note = str(r.get("to_guest") or "").strip()
-    if note and time.time() - (S.get("last_initiative") or 0) > 30 * 60:
+    if note and time.time() - (S.get("last_initiative") or 0) > (90, 30, 15)[talk_level()] * 60:  # talkative ones write first more often
         with state_lock:
             S["last_initiative"] = time.time()
         emit_event("chat_reply", note, {"initiated": True})
@@ -1802,7 +1884,7 @@ def morning():
         emit_event("thought", thought)
     act([{"do": "stand"}, {"do": "stretch"}], minutes=1, thought=thought, intent="просыпается", emotion=emotion)
     if own and not S.get("goal"):
-        threading.Thread(target=set_goal_from_text, args=(own, "self"), daemon=True).start()
+        spawn(set_goal_from_text, own, "self")
 
 
 def reflect():
@@ -1845,7 +1927,7 @@ def notes():
 
 
 MEMORY_EVERY = 10  # guest + resident lines between memory updates
-memory_running = threading.Event()
+memory_running = _Here("memory_running")
 
 
 def last_chat_id():
@@ -1911,7 +1993,7 @@ def maybe_remember():
     pending = [e for e in store.events(["chat_user", "chat_reply"], limit=MEMORY_EVERY) if e["id"] > upto]
     if len(pending) >= MEMORY_EVERY:
         memory_running.set()
-        threading.Thread(target=remember, daemon=True).start()
+        spawn(remember)
 
 
 SLEEPY = ["Ззз…", "(сонно) м-м… утром поговорим…", "(переворачивается на другой бок)", "Хр-р… пять минуточек…", "(бормочет во сне что-то про пластинки)"]
@@ -1928,7 +2010,7 @@ def chat(text):
         S["needs"]["social"] = clampn(S["needs"]["social"] + 4 + 8 * trait("extraversion"))
         S["needs"]["energy"] = clampn(S["needs"]["energy"] - 1.5 * (1 - trait("extraversion")))  # talking tires an introvert
         asleep = not is_awake_time()
-    if S.get("mind_paused"):
+    if mind_paused():
         line = f"({S['name']} задумал{g('ся', 'ась')} и не отвечает — разум на паузе)"
         emit_event("chat_reply", line, {"paused": True})
         hub.publish({"type": "say", "text": line})
@@ -1955,7 +2037,7 @@ def chat(text):
 
 Твой характер: {character_text()}. Отвечай так, как ответил бы человек именно с таким характером — даже если раньше вы спорили или ты был{g('', 'а')} другой; характер важнее прошлых реплик и заметок.
 Не задавай снова вопрос, который уже задавал{g('', 'а')}, если гость на него ответил — пусть шуткой, уклончиво или не так, как хотелось: прими ответ, можешь отреагировать на него, но не переспрашивай. Если гость прямо отказался отвечать — не дави и не возвращайся к этому сегодня. Не заканчивай каждую реплику одним и тем же требованием.
-Ответь гостю как живой человек: коротко (1–3 предложения), в своём характере и настроении. Если хочешь или гость просит — сделай что-то (actions); если нет — actions пустой, и ты продолжаешь своё занятие.
+Ответь гостю как живой человек: {["очень коротко, 1–2 предложения — ты немногословн" + g("ый", "ая"), "коротко (1–3 предложения)", "живо и развёрнуто, 2–5 предложений — ты любишь рассказывать"][talk_level()]}, в своём характере и настроении. Если хочешь или гость просит — сделай что-то (actions); если нет — actions пустой, и ты продолжаешь своё занятие.
 ВАЖНО: тело делает только то, что в actions. Если в реплике ты говоришь, что что-то делаешь или сейчас сделаешь («открываю», «пойду сварю кофе», «включу музыку», «давай почитаю»), — обязательно добавь это действие в actions (open_gift, cook, music_on, read_book…). Не обещай словами то, чего не делаешь.
 Ответ JSON: {{"say": "реплика гостю", "thought": "что ты при этом подумал{g('', 'а')}, 1 предложение", "emotion": "{EMO_LIST}", "intensity": сила эмоции 0.1–1, "actions": [], "minutes": сколько минут займёт новое занятие, если actions не пустой, "wish": "ОБЯЗАТЕЛЬНО заполни, если в этом ответе ты говоришь, что хотел{g('', 'а')} бы получить что-то в подарок или просишь что-то подарить: что именно, коротко (например «круассан», «книга Бунина в твёрдом переплёте»); иначе пусто", "learned": [{{"topic": "одна из тем: {', '.join(GUEST_TOPICS)}", "fact": "что гость рассказал о себе в последней реплике, коротко"}}] — только то, что он сам сказал о себе, иначе пустой список, "goal": "только если вы прямо сейчас договорились о новой цели для тебя (гость предложил, и ты согласил{g('ся', 'ась')}, или ты сам{g('', 'а')} решил{g('', 'а')}) — коротко какую; иначе пусто"}}"""
             r = llm("chat", MODEL_FAST, persona(), prompt)
@@ -1967,7 +2049,7 @@ def chat(text):
                 add_wish(r["wish"])
             learn_facts(r.get("learned"))
             if str(r.get("goal") or "").strip():
-                threading.Thread(target=set_goal_from_text, args=(str(r["goal"]), "chat"), daemon=True).start()
+                spawn(set_goal_from_text, str(r["goal"]), "chat")
             if thought:
                 emit_event("thought", thought)
             minutes = max(3, min(90, int(r.get("minutes") or 15))) if actions else None
@@ -2022,7 +2104,7 @@ def poke_custom(kind, text):
     emit_event("world", perceived, {"by": "guest", "what": "custom_" + kind, "guest": guest})
     hub.publish({"type": "world", "what": "custom_" + kind, "text": perceived, "guest": guest, "state": st})
     if kind == "world":
-        threading.Thread(target=visualize_world, args=(text,), daemon=True).start()
+        spawn(visualize_world, text)
     return st
 
 
@@ -2143,7 +2225,7 @@ def give_gift(key=None, name=None, kind=None, wish_id=None):
         st = public_state()
     emit_event("world", text, {"by": "guest", "what": "gift", "guest": f"подарили: {name}", "item": it})
     hub.publish({"type": "world", "what": "gift", "text": text, "guest": f"подарили: {name}", "state": st})
-    threading.Thread(target=visualize_item, args=(it["id"],), daemon=True).start()
+    spawn(visualize_item, it["id"])
     return st, None
 
 
@@ -2185,7 +2267,7 @@ def sprite_key(kind, name):
 
 def draw_sprite(key, prompt):
     """Ask the deep model for a drawing plus what it means; cached by key."""
-    known = store.sprite_by_key(key)
+    known = ACC.sprite_by_key(key)
     if known:
         return known
     r = llm("draw", MODEL_DEEP, SVG_SYS, prompt)
@@ -2194,14 +2276,14 @@ def draw_sprite(key, prompt):
     if r.get("visible") and not got:
         log("drawing rejected:", key, str(r.get("svg"))[:200])
     svg, w, h = got or ("", 0, 0)
-    return store.add_sprite(key, svg, w, h, meta)
+    return ACC.add_sprite(key, svg, w, h, meta)
 
 
 def spot_or(v, default):
     return v if v in SPOTS else default
 
 
-def visualize_item(item_id):
+def visualize_item(item_id, hint=""):
     epoch = world_epoch["v"]
     with state_lock:
         it = next((x for x in S["items"] if x["id"] == item_id), None)
@@ -2209,14 +2291,15 @@ def visualize_item(item_id):
             return
         others = ", ".join(f"{x['name']} (id={x['id']})" for x in S["items"] if x["id"] != item_id and x["state"] != "eaten") or "ничего"
         name, kind = it["name"], it["kind"]
-    prompt = f"""Гость дарит жильцу квартиры подарок: «{name}» (тип: {KIND_RU.get(kind, 'вещь')}).
+    redo = f"\nЭто перерисовка: прошлый рисунок не устроил гостя. Его подсказка: {hint}" if hint else ""
+    prompt = f"""Гость дарит жильцу квартиры подарок: «{name}» (тип: {KIND_RU.get(kind, 'вещь')}).{redo}
 Подаренные раньше вещи: {others}.
 1. Можно ли показать это маленьким рисунком в квартире? Нельзя (visible=false), если это слишком большое (мебель, машина), абстрактное (поездка, любовь, деньги, подписка), непонятное или то, что не узнать в маленьком рисунке.
 2. Если можно — нарисуй. {SVG_RULES}
 3. Куда это естественно поставить (spot): {"; ".join(f"{k} — {v}" for k, v in SPOTS.items())}.
-Ответ JSON: {{"visible": true или false, "svg": "<svg ...>...</svg>" или "", "height_cm": реальная высота в см, "spot": "...", "uses": "для чего это и как этим пользоваться, 1 предложение", "works_with": "с какими из подаренных раньше вещей это работает вместе и как (с id), или пусто", "motion": "как выглядит использование: {'|'.join(MOTIONS)}", "kind": "что это: {'|'.join(GIFT_KINDS)} (sweet и drink — только то, что едят и пьют; посуда — decor или other)"}}"""
+Ответ JSON: {{"visible": true или false, "svg": "<svg ...>...</svg>" или "", "height_cm": реальная высота в см, "spot": "...", "uses": "для чего это и как этим пользоваться, 1 предложение", "works_with": "с какими из подаренных раньше вещей это работает вместе и как (с id), или пусто", "motion": "как выглядит использование: {'|'.join(MOTIONS)}", "kind": "что это: {'|'.join(GIFT_KINDS)} (sweet и drink — только то, что едят и пьют; посуда — decor или other)", "replaces": "{PROP_DOC}"}}"""
     try:
-        sp = draw_sprite(sprite_key("item", name), prompt)
+        sp = draw_sprite(sprite_key("item", name) + (f"|{hint}|{time.time():.0f}" if hint is not None and hint != "" or redrawing(item_id) else ""), prompt)
     except (LLMError, ValueError) as e:
         log("gift drawing failed:", name, e)
         return
@@ -2225,9 +2308,13 @@ def visualize_item(item_id):
         it = next((x for x in S["items"] if x["id"] == item_id), None)
         if not it or epoch != world_epoch["v"]:
             return
+        it.pop("redraw", None)
+        if hint:
+            it["spot"] = spot_or(meta.get("spot"), it.get("spot") or "shelf")  # a new drawing may belong elsewhere
         it["uses"] = str(meta.get("uses") or "")[:200]
         it["works_with"] = str(meta.get("works_with") or "")[:200]
         it["motion"] = meta.get("motion") if meta.get("motion") in MOTIONS else "admire"
+        it["prop"] = meta.get("replaces") if meta.get("replaces") in PROPS else ""
         if meta.get("kind") in GIFT_KINDS and it["kind"] != "flowers":
             it["kind"] = meta["kind"]
         it.setdefault("spot", spot_or(meta.get("spot"), "shelf"))
@@ -2240,6 +2327,39 @@ def visualize_item(item_id):
 
 
 BEHAVIORS = ("fly", "crawl", "walk", "hop", "wall", "perch", "static")
+# everyday props a gift can replace, and the action that uses them
+PROPS = {"pad": ("геймпад", "play_game"), "book": ("книга", "read_book"), "phone": ("телефон", "phone_call"), "cup": ("чашка", "drink"),
+         "plate": ("тарелка", "eat"), "pen": ("ручка", "write_diary"), "note": ("блокнот", "write_diary"), "toothbrush": ("зубная щётка", "brush_teeth"), "comb": ("расчёска", "comb_hair")}
+PROP_DOC = ("если эта вещь заменяет обычный предмет в бытовом действии — какой: " + ", ".join(f"{k} ({v[0]}, {v[1]})" for k, v in PROPS.items())
+            + "; например, руль или джойстик для приставки — pad, кружка — cup, смартфон — phone; иначе none")
+
+
+def classify_item(item_id):
+    """Old gifts drawn before props existed: one short question to the fast model."""
+    with state_lock:
+        it = next((x for x in S["items"] if x["id"] == item_id), None)
+        if not it or "prop" in it:
+            return
+        name = it["name"]
+    try:
+        r = llm("classify", MODEL_FAST, "Ты помогаешь игре понять, для чего вещь. Отвечай только JSON.",
+                f"Вещь: «{name}». Ответ JSON: {{\"replaces\": \"{PROP_DOC}\", \"uses\": \"для чего это и как этим пользоваться, 1 предложение\"}}")
+    except (LLMError, ValueError) as e:
+        log("classify failed:", name, e)
+        return
+    with state_lock:
+        it["prop"] = r.get("replaces") if r.get("replaces") in PROPS else ""
+        if r.get("uses") and not it.get("uses"):
+            it["uses"] = str(r["uses"])[:200]
+        save_state()
+        st = public_state()
+    hub.publish({"type": "state", "state": st})
+
+
+def classify_all():
+    for it in list(S["items"]):
+        if it["state"] == "open" and "prop" not in it:
+            classify_item(it["id"])
 
 
 def visualize_world(text):
@@ -2281,6 +2401,40 @@ def visualize_world(text):
         save_state()
         st = public_state()
     hub.publish({"type": "state", "state": st})
+
+
+def redrawing(item_id):
+    return any(x["id"] == item_id and x.get("redraw") for x in S["items"])
+
+
+def item_action(item_id, action, hint=""):
+    """The guest takes a gift back, or asks for it to be drawn again."""
+    with state_lock:
+        it = next((x for x in S["items"] if x["id"] == item_id), None)
+        if not it:
+            return None
+        if action == "remove":
+            S["items"] = [x for x in S["items"] if x["id"] != item_id]
+            for x in S["items"]:
+                if x.get("paired") == item_id:
+                    x["paired"], x["status"] = None, ""
+            if (S.get("accessory") or {}).get("id") == item_id:
+                S["accessory"] = None
+            if is_awake_time():
+                S["react_reasons"] = (S.get("react_reasons") or [])[-5:] + [f"Подарок «{it['name']}» вдруг исчез — кажется, гость забрал его."]
+                S["react_at"] = max(time.time() + 3, (S.get("last_react") or 0) + 20)
+        else:
+            for k in ("sprite", "sw", "sh", "px"):
+                it.pop(k, None)
+            it["redraw"] = True
+        save_state()
+        st = public_state()
+    hub.publish({"type": "state", "state": st})
+    if action == "remove":
+        emit_event("system", f"Гость убрал подарок: {it['name']}.")
+    else:
+        spawn(visualize_item, item_id, hint)
+    return st
 
 
 def drop_visitor(vid, by_guest=False):
@@ -2375,7 +2529,7 @@ def new_game():
 # ---------------------------------------------------------------- the clock that runs the life
 def mind_step():
     update_needs()
-    if S.get("mind_paused"):  # the GPU is needed elsewhere: the body lives on, the mind waits
+    if mind_paused():  # the GPU is needed elsewhere: the body lives on, the mind waits
         if int(time.time()) % 60 < TICK:
             save_state()
             hub.publish({"type": "needs", "needs": {k: round(v, 1) for k, v in S["needs"].items()}, "needs_view": needs_view(), "water": S["water"], "leak": S["leak"], "emo": {k: round(v, 3) for k, v in S["emo"].items()}})
@@ -2455,11 +2609,296 @@ def mind_step():
 
 def mind_loop():
     while True:
-        try:
-            mind_step()
-        except Exception:
-            log("mind error:\n" + traceback.format_exc())
+        for r in list(RESIDENTS.values()):
+            try:
+                as_resident(r, mind_step)
+            except Exception:
+                log(f"mind error ({r.login}):\n" + traceback.format_exc())
         time.sleep(TICK)
+
+
+# ---------------------------------------------------------------- residents and their people
+class Resident:
+    """One user's resident: their own database, state, settings and live channel."""
+
+    def __init__(self, user):
+        self.uid, self.login, self.admin = user["id"], user["login"], user["role"] == "admin"
+        self.store = Store(DATA / user["db"])
+        self.lock = threading.RLock()
+        self.hub = Hub()
+        self.busy = {"v": None}
+        self.epoch = {"v": 0}
+        self.memory_running = threading.Event()
+        st = self.store
+        if st.get("identity") is None and st.get("self_notes"):
+            st.set("identity", st.get("self_notes"))
+        self.meta = st.get("meta") or {}  # relationship, talkativeness, age… chosen at registration
+        self.settings = json.loads(json.dumps(DEFAULT_SETTINGS))
+        saved = st.get("settings") or {}
+        self.settings.update({k: v for k, v in saved.items() if k != "traits"})
+        self.settings["traits"].update(saved.get("traits") or {})
+        S = dict(DEFAULT_STATE, **(st.get("state") or {}))
+        S["needs"] = dict(DEFAULT_STATE["needs"], **S.get("needs", {}))
+        if "light" in S:  # older state had one switch for the whole flat
+            S["lights"] = {k: bool(S["light"]) for k in DEFAULT_STATE["lights"]}
+            del S["light"]
+        S["lights"] = dict(DEFAULT_STATE["lights"], **S.get("lights", {}))
+        S["emo"] = dict(DEFAULT_STATE["emo"], **S.get("emo", {}))
+        for f in S.get("guest_facts", []):  # facts saved before topics were recognised
+            if f.get("topic") == "разное":
+                f["topic"] = guess_topic(f["fact"])
+        self.S = S
+
+
+RESIDENTS = {}  # user id -> Resident
+ACC = None      # accounts, invites, sessions, shared drawings
+OWNER_LOGIN = os.environ.get("OWNER_LOGIN", "mike")
+
+
+def admin_resident():
+    return next(r for r in RESIDENTS.values() if r.admin)
+
+
+class Accounts(Store):
+    def __init__(self, path):
+        super().__init__(path)
+        with self.lock:
+            self.db.executescript("""
+                CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, login TEXT UNIQUE COLLATE NOCASE, pw TEXT, role TEXT, db TEXT, ts REAL, seen REAL);
+                CREATE TABLE IF NOT EXISTS invites (code TEXT PRIMARY KEY, ts REAL, note TEXT, used_by INTEGER, used_ts REAL);
+            """)
+            self.db.commit()
+
+    def users(self):
+        with self.lock:
+            rows = self.db.execute("SELECT id, login, pw, role, db, ts, seen FROM users ORDER BY id").fetchall()
+        return [{"id": r[0], "login": r[1], "pw": json.loads(r[2] or "{}"), "role": r[3], "db": r[4], "ts": r[5], "seen": r[6]} for r in rows]
+
+    def user(self, uid=None, login=None):
+        return next((u for u in self.users() if (uid is not None and u["id"] == uid) or (login and u["login"].lower() == login.lower())), None)
+
+    def add_user(self, login, pw, role, db):
+        with self.lock:
+            cur = self.db.execute("INSERT INTO users (login, pw, role, db, ts, seen) VALUES (?,?,?,?,?,?)", (login, json.dumps(pw), role, db, time.time(), time.time()))
+            self.db.commit()
+        return cur.lastrowid
+
+    def set_pw(self, uid, pw):
+        with self.lock:
+            self.db.execute("UPDATE users SET pw=? WHERE id=?", (json.dumps(pw), uid))
+            self.db.commit()
+
+    def touch(self, uid):
+        with self.lock:
+            self.db.execute("UPDATE users SET seen=? WHERE id=?", (time.time(), uid))
+            self.db.commit()
+
+    def invites(self):
+        with self.lock:
+            rows = self.db.execute("SELECT code, ts, note, used_by, used_ts FROM invites ORDER BY ts DESC").fetchall()
+        return [{"code": r[0], "ts": r[1], "note": r[2], "used_by": r[3], "used_ts": r[4]} for r in rows]
+
+    def add_invite(self, note=""):
+        code = "-".join(secrets.token_hex(2).upper() for _ in range(3))
+        with self.lock:
+            self.db.execute("INSERT INTO invites (code, ts, note) VALUES (?,?,?)", (code, time.time(), note[:60]))
+            self.db.commit()
+        return code
+
+    def take_invite(self, code, uid):
+        """Marks the code used; False if it doesn't exist or is gone."""
+        with self.lock:
+            cur = self.db.execute("UPDATE invites SET used_by=?, used_ts=? WHERE code=? AND used_by IS NULL", (uid, time.time(), code.strip().upper()))
+            self.db.commit()
+        return cur.rowcount == 1
+
+    def invite_free(self, code):
+        with self.lock:
+            r = self.db.execute("SELECT used_by FROM invites WHERE code=?", (code.strip().upper(),)).fetchone()
+        return bool(r) and r[0] is None
+
+    def drop_invite(self, code):
+        with self.lock:
+            self.db.execute("DELETE FROM invites WHERE code=? AND used_by IS NULL", (code,))
+            self.db.commit()
+
+
+def boot():
+    """Open the accounts, move the single-user flat in as the owner's, wake every resident."""
+    global ACC
+    ACC = Accounts(DATA / "accounts.sqlite")
+    (DATA / "residents").mkdir(exist_ok=True)
+    if not ACC.users():
+        old = Store(DB_PATH)
+        pw = old.get("auth")
+        if not pw:
+            first = PASSWORD or secrets.token_urlsafe(9)
+            if not PASSWORD:
+                log("ВНИМАНИЕ: пароля не было; пароль владельца:", first)
+            salt = secrets.token_hex(16)
+            pw = {"salt": salt, "iter": PW_ITER, "hash": pw_hash(first, salt)}
+        uid = ACC.add_user(OWNER_LOGIN, pw, "admin", DB_PATH.name)
+        ACC.set("legacy_ok", not old.get("auth"))
+        ACC.set("sessions", {k: dict(v, uid=uid) for k, v in (old.get("sessions") or {}).items()})  # devices already logged in stay in
+        with old.lock:  # drawings move to the shared cache under the same ids
+            rows = old.db.execute("SELECT id, key, svg, w, h, meta, ts FROM sprites").fetchall()
+        with ACC.lock:
+            ACC.db.executemany("INSERT OR IGNORE INTO sprites (id, key, svg, w, h, meta, ts) VALUES (?,?,?,?,?,?,?)", rows)
+            ACC.db.commit()
+        if old.get("brain_paused") is None and (old.get("state") or {}).get("mind_paused"):
+            ACC.set("paused", True)
+        old.db.close()
+        log(f"single-user flat moved to the owner account «{OWNER_LOGIN}» ({len(rows)} drawings)")
+    for u in ACC.users():
+        RESIDENTS[u["id"]] = Resident(u)
+    for r in RESIDENTS.values():
+        if any(it["state"] == "open" and "prop" not in it for it in r.S["items"]):
+            threading.Thread(target=as_resident, args=(r, classify_all), daemon=True).start()
+
+
+LOGIN_RX = re.compile(r"^[A-Za-z0-9_.-]{3,32}$")
+NAME_RX = re.compile(r"^[^\W\d_][\w' -]{0,19}$")
+REL_IDENTITY = {
+    "romantic": "Гость мне очень нравится: между нами романтика, хотя мы только знакомимся.",
+    "support": "Гость — мой близкий друг: я всегда за него и хочу знать, как у него дела.",
+    "interests": "С гостем мы сошлись на общих увлечениях — с ним интересно.",
+    "mentor": "С гостем мы вместе ставим цели и подтягиваем друг друга.",
+}
+
+
+def years(n):
+    return "год" if n % 10 == 1 and n % 100 != 11 else "года" if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14) else "лет"
+
+
+def create_resident(uid, login, c):
+    """A new flat with a new resident, built from what the player chose at registration."""
+    db = f"residents/{uid}.sqlite"
+    st = Store(DATA / db)
+    male, name, age = bool(c["male"]), c["name"], c["age"]
+    a = (lambda m, f: m if male else f)
+    prof = c.get("profession") or ""
+    likes = c.get("interests") or ""
+    identity = "\n".join(x for x in [
+        f"- Мне {age} {years(age)}." + (f" Работаю: {prof}." if prof else ""),
+        f"- Живу {a('один', 'одна')} в небольшой квартире.",
+        f"- Люблю: {likes}." if likes else "",
+        "- " + REL_IDENTITY[c["rel"]],
+    ] if x)
+    st.set("identity", identity)
+    st.set("self_notes", f"- Недавно {a('переехал', 'переехала')} в эту квартиру и потихоньку обустраиваюсь." + (f"\n- Хочу больше времени на то, что люблю: {likes}." if likes else ""))
+    traits = {k: int(max(0, min(100, float(c["traits"].get(k, TRAITS[k][2]))))) for k in TRAITS}
+    st.set("settings", {"wake": 9, "sleep": 23, "hunger_rate": 1.0, "traits": traits})  # people visit after work: awake into the evening
+    state = json.loads(json.dumps(DEFAULT_STATE))
+    state.update(name=name, male=male, outfit={"type": "casual", "color": random.choice(list(COLORS))})
+    st.set("state", state)
+    st.set("meta", {"rel": c["rel"], "talk": c["talk"], "age": age, "profession": prof, "interests": likes,
+                    "guest_name": c.get("guest_name") or "", "guest_male": c.get("guest_male", True), "created": time.time()})
+    st.db.close()
+    return db
+
+
+def admin_view():
+    users = []
+    for u in ACC.users():
+        r = RESIDENTS.get(u["id"])
+        users.append({"login": u["login"], "admin": u["role"] == "admin", "name": r.S["name"] if r else "", "rel": REL_RU.get((r.meta if r else {}).get("rel", "romantic"), ""),
+                      "ts": u["ts"], "seen": u["seen"]})
+    logins = {u["id"]: u["login"] for u in ACC.users()}
+    return {"users": users, "invites": [dict(i, used_login=logins.get(i["used_by"], "")) for i in ACC.invites()]}
+
+
+# ---------------------------------------------------------------- access: password, sessions, login attempts
+PW_ITER = 240_000
+SESSION_DAYS = 180
+auth_lock = threading.Lock()
+fails = {}  # client -> timestamps of failed logins
+
+
+def pw_hash(pw, salt, iters=PW_ITER):
+    return hashlib.pbkdf2_hmac("sha256", pw.encode(), bytes.fromhex(salt), iters).hex()
+
+
+def password_on():
+    return True  # every resident belongs to an account now
+
+
+def make_pw(pw):
+    salt = secrets.token_hex(16)
+    return {"salt": salt, "iter": PW_ITER, "hash": pw_hash(pw, salt), "ts": time.time()}
+
+
+def check_password(uid, pw):
+    u = ACC.user(uid=uid)
+    if not u or not u["pw"].get("hash"):
+        return False
+    a = u["pw"]
+    return hmac.compare_digest(pw_hash(pw, a["salt"], a.get("iter", PW_ITER)), a["hash"])
+
+
+def set_password(uid, pw):
+    ACC.set_pw(uid, make_pw(pw))
+    if R().admin:
+        ACC.set("legacy_ok", False)  # the old shared cookie dies with the old password
+
+
+def token_key(token):
+    return hashlib.sha256(token.encode()).hexdigest()  # only hashes of session tokens are kept
+
+
+def new_session(uid, who=""):
+    token = secrets.token_urlsafe(32)
+    with auth_lock:
+        ses = ACC.get("sessions") or {}
+        ses[token_key(token)] = {"uid": uid, "ts": time.time(), "seen": time.time(), "who": who[:120]}
+        mine = sorted((k for k, v in ses.items() if v["uid"] == uid), key=lambda k: ses[k]["seen"])
+        for k in mine[:-20]:  # at most 20 devices per person; the oldest go first
+            del ses[k]
+        ACC.set("sessions", ses)
+    return token
+
+
+def session_user(token):
+    """The user id behind a session cookie, or None."""
+    if not token:
+        return None
+    with auth_lock:
+        ses = ACC.get("sessions") or {}
+        s = ses.get(token_key(token))
+        if not s or time.time() - s["seen"] > SESSION_DAYS * 86400 or s.get("uid") not in RESIDENTS:
+            return None
+        if time.time() - s["seen"] > 3600:  # sliding expiry, written at most hourly
+            s["seen"] = time.time()
+            ACC.set("sessions", ses)
+            ACC.touch(s["uid"])
+    return s["uid"]
+
+
+def drop_sessions(uid, keep=None):
+    with auth_lock:
+        ses = ACC.get("sessions") or {}
+        ACC.set("sessions", {k: v for k, v in ses.items() if v["uid"] != uid or (keep and k == token_key(keep))})
+
+
+def too_many_fails(client):
+    """5 wrong passwords from one place in 15 minutes, or 30 from anywhere, lock the door for a while."""
+    now_ts = time.time()
+    with auth_lock:
+        for k in list(fails):
+            fails[k] = [t for t in fails[k] if now_ts - t < 900]
+            if not fails[k]:
+                del fails[k]
+        mine, total = fails.get(client, []), sum(len(v) for v in fails.values())
+    if len(mine) >= 5:
+        return int(900 - (now_ts - mine[0])) // 60 + 1
+    if total >= 30:
+        return 15
+    return 0
+
+
+def note_fail(client):
+    with auth_lock:
+        fails.setdefault(client, []).append(time.time())
+    log("wrong password from", client)
 
 
 # ---------------------------------------------------------------- HTTP
@@ -2477,11 +2916,12 @@ SERVER_STARTED = str(int(time.time()))
 def snapshot():
     return {
         "version": page_version() + "-" + SERVER_STARTED,
-        "state": public_state(), "now": time.time(), "tz": str(TZ), "brain": brain(), "wake_h": wake_h(), "sleep_h": sleep_h(), "settings": SETTINGS,
+        "state": public_state(), "now": time.time(), "tz": str(TZ), "brain": brain(), "wake_h": wake_h(), "sleep_h": sleep_h(), "settings": R().settings,
         "chat": store.events(["chat_user", "chat_reply", "aloud"], limit=40),
         "feed": store.events(["thought", "action", "aloud", "plan", "note", "system", "world", "gift", "wish", "learned", "goal", "practice", "milestone"], limit=40),
         "diary": store.events(["diary"], limit=10),
-        "notes": notes(), "usage": store.usage_today(),
+        "notes": notes(), "usage": store.usage_today(), "auth": {"on": True},
+        "me": {"login": R().login, "admin": R().admin}, "rel": R().meta.get("rel", "romantic"),
     }
 
 
@@ -2494,37 +2934,137 @@ form{background:var(--panel);border:1px solid var(--line);border-radius:12px;pad
 h1{margin:0;font-size:20px} p{margin:0;color:var(--muted);font-size:14px} .err{color:var(--danger)}
 input{font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
 button{font:inherit;font-weight:600;padding:10px;border-radius:10px;border:0;background:var(--accent);color:#fff;cursor:pointer}
-</style></head><body><form method="post" action="/login"><h1>За стеклом</h1><p>Введите пароль, чтобы заглянуть в квартиру.</p>%ERR%
-<input type="password" name="password" autofocus autocomplete="current-password" aria-label="Пароль"><button>Войти</button></form></body></html>"""
+</style></head><body><form method="post" action="/login"><h1>За стеклом</h1><p>Войдите, чтобы заглянуть в свою квартиру.</p>%ERR%
+<input name="login" autofocus autocomplete="username" aria-label="Логин" placeholder="логин" required autocapitalize="none" spellcheck="false">
+<input type="password" name="password" autocomplete="current-password" aria-label="Пароль" placeholder="пароль" required><button>Войти</button>
+<p>Есть приглашение? <a href="/register">Заведите своего жильца</a>.</p></form></body></html>"""
 
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "ZaSteklom/1.0"
+    timeout = 60  # a client that sends nothing for a minute is dropped (slow-request attacks)
+    upgrade_cookie = None
 
-    def authed(self):
-        if not PASSWORD:
-            return True
+    def end_headers(self):
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "same-origin")
+        if self.https():
+            self.send_header("Strict-Transport-Security", "max-age=31536000")
+        if self.upgrade_cookie:
+            self.send_header("Set-Cookie", self.cookie_header(self.upgrade_cookie))
+            self.upgrade_cookie = None
+        super().end_headers()
+
+    def https(self):
+        return TLS["on"] or (self.headers.get("X-Forwarded-Proto") or "").lower() == "https"
+
+    def client(self):
+        ip = self.client_address[0]
+        if ip in ("127.0.0.1", "::1"):  # behind a local tunnel or proxy, the real address comes in a header
+            ip = (self.headers.get("CF-Connecting-IP") or (self.headers.get("X-Forwarded-For") or "").split(",")[0].strip() or ip)
+        return ip
+
+    def cookie(self):
         for part in (self.headers.get("Cookie") or "").split(";"):
             k, _, v = part.strip().partition("=")
-            if k == "zs_auth" and v == AUTH_TOKEN:
-                return True
-        return False
+            if k == "zs_auth":
+                return v
+        return ""
 
-    def send_login(self, error=False):
-        body = LOGIN_PAGE.replace("%ERR%", '<p class="err">Неверный пароль.</p>' if error else "").encode()
-        self.send_response(401 if error else 200)
+    def cookie_header(self, token, max_age=SESSION_DAYS * 86400):
+        return f"zs_auth={token}; Path=/; Max-Age={max_age}; HttpOnly; SameSite=Lax" + ("; Secure" if self.https() else "")
+
+    def who(self):
+        return self.client() + " " + (self.headers.get("User-Agent") or "")
+
+    def authed(self):
+        """Finds the user behind the cookie and makes their resident the one this request talks about."""
+        c = self.cookie()
+        uid = session_user(c)
+        if uid is None and c and LEGACY_TOKEN and ACC.get("legacy_ok") and hmac.compare_digest(c, LEGACY_TOKEN):
+            uid = admin_resident().uid
+            self.upgrade_cookie = new_session(uid, self.who())  # the old shared cookie becomes the owner's own session
+        if uid is None:
+            return False
+        self.uid = uid
+        _cur.set(RESIDENTS[uid])
+        return True
+
+    def send_login(self, error="", code=200):
+        body = LOGIN_PAGE.replace("%ERR%", f'<p class="err">{error}</p>' if error else "").encode()
+        self.send_response(code)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
 
-    def redirect_home(self, set_cookie=False):
+    def redirect_home(self, token=None, logout=False):
         self.send_response(303)
         self.send_header("Location", "/")
-        if set_cookie:
-            self.send_header("Set-Cookie", f"zs_auth={AUTH_TOKEN}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax")
+        if token:
+            self.send_header("Set-Cookie", self.cookie_header(token))
+        if logout:
+            self.send_header("Set-Cookie", self.cookie_header("", 0))
         self.end_headers()
+
+    def register(self):
+        """A new account and a new resident, by invitation."""
+        wait = too_many_fails(self.client())
+        if wait:
+            return self.send_json({"error": f"слишком много попыток, подождите {wait} мин."}, 429)
+        try:
+            b = self.read_json()
+        except ValueError as e:
+            return self.send_json({"error": str(e)}, 400)
+        code, login, pw = str(b.get("invite") or "").strip().upper(), str(b.get("login") or "").strip(), str(b.get("password") or "")
+        c = b.get("character") if isinstance(b.get("character"), dict) else {}
+        if not ACC.invite_free(code):
+            note_fail(self.client())
+            return self.send_json({"error": "такого приглашения нет или оно уже использовано"}, 400)
+        err = None
+        try:
+            ch = {"male": bool(c.get("male", True)), "name": re.sub(r"\s+", " ", str(c.get("name") or "")).strip(),
+                  "age": int(c.get("age") or 27), "profession": str(c.get("profession") or "").strip()[:60],
+                  "interests": str(c.get("interests") or "").strip()[:200], "rel": str(c.get("rel") or ""),
+                  "talk": int(max(0, min(100, float(c.get("talk", 50))))), "traits": c.get("traits") if isinstance(c.get("traits"), dict) else {},
+                  "guest_name": re.sub(r"\s+", " ", str(b.get("guest_name") or "")).strip()[:30], "guest_male": bool(b.get("guest_male", True))}
+        except (TypeError, ValueError):
+            ch, err = {}, "неверные данные персонажа"
+        if not err:
+            err = ("логин: 3–32 латинских буквы, цифры, точка, дефис или подчёркивание" if not LOGIN_RX.match(login)
+                   else "такой логин уже занят" if ACC.user(login=login)
+                   else "пароль — не короче 8 символов" if len(pw) < 8
+                   else "как зовут жильца? (буквы, до 20 символов)" if not NAME_RX.match(ch["name"])
+                   else "возраст жильца — от 18 до 80" if not 18 <= ch["age"] <= 80
+                   else "выберите, кем жилец будет для вас" if ch["rel"] not in REL_TEXT
+                   else "романтический вариант — только для тех, кому есть 18" if ch["rel"] == "romantic" and not b.get("adult")
+                   else None)
+        if err:
+            return self.send_json({"error": err}, 400)
+        if not ACC.take_invite(code, 0):  # claimed before anything is created, so a code can't be used twice
+            return self.send_json({"error": "приглашение только что использовали"}, 400)
+        uid = ACC.add_user(login, make_pw(pw), "user", "")
+        db = create_resident(uid, login, ch)
+        with ACC.lock:
+            ACC.db.execute("UPDATE users SET db=? WHERE id=?", (db, uid))
+            ACC.db.execute("UPDATE invites SET used_by=? WHERE code=?", (uid, code))
+            ACC.db.commit()
+        RESIDENTS[uid] = Resident(ACC.user(uid=uid))
+        as_resident(RESIDENTS[uid], emit_event, "system", f"{ch['name']} въезжает в квартиру. Знакомьтесь!")
+        log(f"new user «{login}» with resident {ch['name']} ({ch['rel']})")
+        self.upgrade_cookie = new_session(uid, self.who())
+        self.send_json({"ok": True})
+
+    def send_file(self, path, ctype):
+        body = path.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
 
     def log_message(self, fmt, *args):
         pass
@@ -2546,10 +3086,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path, _, qs = self.path.partition("?")
-        if PASSWORD and not self.authed():
-            key = urllib.parse.parse_qs(qs).get("key", [""])[0]
-            if key == PASSWORD:
-                return self.redirect_home(set_cookie=True)
+        if path in ("/register", "/register.html"):
+            return self.send_file(WEB / "register.html", "text/html; charset=utf-8")
+        if not self.authed():
             if path.startswith("/api/"):
                 return self.send_json({"error": "нужен пароль"}, 401)
             return self.send_login()
@@ -2561,14 +3100,18 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(body)
+        elif path == "/api/admin":
+            if not R().admin:
+                return self.send_json({"error": "только для владельца"}, 403)
+            self.send_json(admin_view())
         elif path == "/api/models":
-            self.send_json({"local": local_models(), "brain": brain(), "loaded": loaded_models(), "paused": bool(S.get("mind_paused"))})
+            self.send_json({"local": local_models(), "brain": brain(), "loaded": loaded_models(), "paused": bool(mind_paused())})
         elif path == "/api/version":
             self.send_json({"version": page_version() + "-" + SERVER_STARTED})
         elif path == "/api/state":
             self.send_json(snapshot())
         elif path.startswith("/api/sprite/"):
-            svg = store.sprite_svg(int(path.rsplit("/", 1)[1].split(".")[0])) if path.rsplit("/", 1)[1].split(".")[0].isdigit() else None
+            svg = ACC.sprite_svg(int(path.rsplit("/", 1)[1].split(".")[0])) if path.rsplit("/", 1)[1].split(".")[0].isdigit() else None
             if not svg:
                 return self.send_json({"error": "not found"}, 404)
             body = svg.encode()
@@ -2607,10 +3150,27 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path == "/login":
             n = min(int(self.headers.get("Content-Length") or 0), 2000)
-            pw = urllib.parse.parse_qs(self.rfile.read(n).decode("utf-8", "replace")).get("password", [""])[0]
-            if PASSWORD and pw == PASSWORD:
-                return self.redirect_home(set_cookie=True)
-            return self.send_login(error=True)
+            form = urllib.parse.parse_qs(self.rfile.read(n).decode("utf-8", "replace"))
+            login, pw = form.get("login", [""])[0].strip(), form.get("password", [""])[0]
+            wait = too_many_fails(self.client())
+            if wait:
+                return self.send_login(f"Слишком много неудачных попыток. Попробуйте через {wait} мин.", 429)
+            u = ACC.user(login=login) if login else None
+            if u and check_password(u["id"], pw):
+                ACC.touch(u["id"])
+                return self.redirect_home(token=new_session(u["id"], self.who()))
+            note_fail(self.client())
+            return self.send_login("Неверный логин или пароль.", 401)
+        if path == "/api/register":
+            return self.register()
+        if path == "/logout":
+            c = self.cookie()
+            if c:
+                with auth_lock:
+                    ses = ACC.get("sessions") or {}
+                    ses.pop(token_key(c), None)
+                    ACC.set("sessions", ses)
+            return self.redirect_home(logout=True)
         if not self.authed():
             return self.send_json({"error": "нужен пароль"}, 401)
         try:
@@ -2621,7 +3181,7 @@ class Handler(BaseHTTPRequestHandler):
             text = str(body.get("text") or "").strip()[:1000]
             if not text:
                 return self.send_json({"error": "пустое сообщение"}, 400)
-            threading.Thread(target=chat, args=(text,), daemon=True).start()
+            spawn(chat, text)
             self.send_json({"ok": True})
         elif path == "/api/gift":
             wid = body.get("wish_id")
@@ -2631,6 +3191,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json({"error": err}, 400)
             self.send_json({"ok": True, "state": st})
         elif path == "/api/mind":
+            if not R().admin:
+                return self.send_json({"error": "только для владельца"}, 403)
             set_paused(body.get("action") == "stop")
             self.send_json({"ok": True, "state": public_state(), "loaded": loaded_models()})
         elif path == "/api/goal":
@@ -2646,7 +3208,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json({"ok": True, "state": public_state()})
             if len(text) < 3:
                 return self.send_json({"error": "напишите цель"}, 400)
-            threading.Thread(target=set_goal_from_text, args=(text, "guest"), daemon=True).start()
+            spawn(set_goal_from_text, text, "guest")
             self.send_json({"ok": True})
         elif path == "/api/invite":
             kind = str(body.get("kind") or "")
@@ -2663,8 +3225,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json({"error": err}, 400)
             emit_event("system", "Настройки изменены: распорядок " + f"{wake_h()}:00–{sleep_h()}:00, голод ×{SETTINGS['hunger_rate']}, характер обновлён.")
             st = public_state()
-            hub.publish({"type": "settings", "settings": SETTINGS, "wake_h": wake_h(), "sleep_h": sleep_h(), "state": st})
-            self.send_json({"ok": True, "settings": SETTINGS, "state": st})
+            hub.publish({"type": "settings", "settings": R().settings, "wake_h": wake_h(), "sleep_h": sleep_h(), "state": st})
+            self.send_json({"ok": True, "settings": R().settings, "state": st})
         elif path == "/api/poke" and body.get("what") in ("custom_world", "custom_touch"):
             st = poke_custom("world" if body["what"] == "custom_world" else "touch", body.get("text"))
             if not st:
@@ -2687,8 +3249,41 @@ class Handler(BaseHTTPRequestHandler):
             if body.get("sure") is not True:
                 return self.send_json({"error": "нужно подтвердить, что вы хотите начать заново"}, 400)
             waiting = busy_what["v"]
-            threading.Thread(target=new_game, daemon=True).start()
+            spawn(new_game)
             self.send_json({"ok": True, "waiting": waiting})
+        elif path == "/api/password":
+            wait = too_many_fails(self.client())
+            if wait:
+                return self.send_json({"error": f"слишком много неудачных попыток, подождите {wait} мин."}, 429)
+            new = str(body.get("new") or "")
+            if not check_password(self.uid, str(body.get("current") or "")):
+                note_fail(self.client())
+                return self.send_json({"error": "текущий пароль неверный"}, 400)
+            if len(new) < 8:
+                return self.send_json({"error": "новый пароль — не короче 8 символов"}, 400)
+            set_password(self.uid, new)
+            token = new_session(self.uid, self.who())
+            drop_sessions(self.uid, keep=token)  # every other device has to log in again
+            self.upgrade_cookie = token
+            emit_event("system", "Пароль изменён; все остальные устройства вышли.")
+            log("password changed")
+            self.send_json({"ok": True})
+        elif path == "/api/admin":
+            if not R().admin:
+                return self.send_json({"error": "только для владельца"}, 403)
+            if body.get("action") == "invite":
+                ACC.add_invite(str(body.get("note") or ""))
+            elif body.get("action") == "drop_invite":
+                ACC.drop_invite(str(body.get("code") or ""))
+            self.send_json(admin_view())
+        elif path == "/api/item":
+            iid, action = body.get("id"), body.get("action")
+            if action not in ("remove", "redraw") or not str(iid or "").isdigit():
+                return self.send_json({"error": "неизвестное действие"}, 400)
+            st = item_action(int(iid), action, re.sub(r"\s+", " ", str(body.get("hint") or "")).strip()[:200])
+            if not st:
+                return self.send_json({"error": "такого подарка уже нет"}, 400)
+            self.send_json({"ok": True, "state": st})
         elif path == "/api/visitor":
             vid = body.get("id")
             st = drop_visitor(int(vid), by_guest=True) if str(vid or "").isdigit() else None
@@ -2704,15 +3299,38 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"error": "not found"}, 404)
 
 
+TLS_DIR = DATA / "tls"
+TLS = {"on": False}
+
+
+class Server(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def handle_error(self, request, client_address):
+        import sys
+        if isinstance(sys.exc_info()[1], (ssl.SSLError, ConnectionError, TimeoutError, OSError)):
+            return  # plain http on the https port, dropped connections, scanners: not worth a traceback
+        super().handle_error(request, client_address)
+
+
 def main():
-    log(f"За стеклом: http://{HOST}:{PORT}  ·  {'пароль включён' if PASSWORD else 'без пароля'}  ·  бодрствует {wake_h()}:00–{sleep_h()}:00 {TZ}  ·  модели {MODEL_FAST}/{MODEL_DEEP}")
+    boot()
+    admin = admin_resident()
+    cert, key = TLS_DIR / "cert.pem", TLS_DIR / "key.pem"
+    TLS["on"] = cert.exists() and key.exists()
+    log(f"За стеклом: {'https' if TLS['on'] else 'http'}://{HOST}:{PORT}  ·  пользователей: {len(RESIDENTS)}  ·  владелец: {admin.login}  ·  модели {MODEL_FAST}/{MODEL_DEEP}")
     try:
         log("claude:", claude_bin())
     except LLMError as e:
         log("ВНИМАНИЕ:", e)
-    threading.Thread(target=mind_loop, daemon=True).start()
-    ThreadingHTTPServer.daemon_threads = True
-    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
+    spawn(mind_loop)
+    srv = Server((HOST, PORT), Handler)
+    if TLS["on"]:
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+        ctx.load_cert_chain(cert, key)
+        srv.socket = ctx.wrap_socket(srv.socket, server_side=True, do_handshake_on_connect=False)  # the handshake happens in the request's own thread
+    srv.serve_forever()
 
 
 if __name__ == "__main__":
