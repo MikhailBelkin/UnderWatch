@@ -202,6 +202,8 @@ dialog#settings::backdrop,dialog#resetDlg::backdrop,dialog#memDlg::backdrop,dial
 .pwGrid input{font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
 .pwRow{display:flex;align-items:center;gap:12px;margin-top:8px}
 .pwRow .note{margin:0}
+.pwRow .note.bad{color:var(--danger);font-weight:600}
+.pwRow .note.good{color:var(--ok);font-weight:600}
 #setForm .secondary{font:inherit;font-weight:600;font-size:14px;padding:7px 14px;border-radius:10px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer}
 @media (max-width:520px){.pwGrid{grid-template-columns:1fr}}
 .memBox{display:grid;gap:2px;padding:18px 20px}
@@ -474,11 +476,11 @@ dialog#resetDlg{width:min(460px, calc(100vw - 32px))}
     <section id="accessBox"><h3>Доступ</h3>
       <div class="pwGrid">
         <label id="pwCurWrap">Текущий пароль <input type="password" id="pwCur" autocomplete="current-password"></label>
-        <label>Новый пароль <input type="password" id="pwNew" autocomplete="new-password" minlength="8"></label>
-        <label>Ещё раз <input type="password" id="pwNew2" autocomplete="new-password" minlength="8"></label>
+        <label>Новый пароль <input type="password" id="pwNew" autocomplete="new-password"></label>
+        <label>Ещё раз <input type="password" id="pwNew2" autocomplete="new-password"></label>
       </div>
       <div class="pwRow"><button type="button" id="pwBtn" class="secondary">Сменить пароль</button><span id="pwMsg" class="note" role="status"></span></div>
-      <p class="note">Не короче 8 символов. После смены все остальные устройства выйдут, и войти на них нужно будет заново.</p>
+      <p class="note">Не короче 8 символов. Можно нажать «Сменить пароль» или просто «Сохранить» внизу. После смены все остальные устройства выйдут, и войти на них нужно будет заново.</p>
     </section>
     <footer><button type="button" id="setReset" class="linkBtn">Вернуть по умолчанию</button><span id="setMsg" class="note" role="status"></span><button type="submit" id="setSave" class="primary">Сохранить</button></footer>
   </form>
@@ -2472,11 +2474,18 @@ function fillSettings(st){
   setWake.value = st.wake; setSleep.value = st.sleep; setHunger.value = st.hunger_rate; showHunger();
   for (const k in traitInputs) traitInputs[k].value = st.traits[k] ?? 50;
 }
-document.getElementById('settingsBtn').addEventListener('click', () => { fillSettings(LIFE && LIFE.settings); setMsg.textContent = ''; dlg.showModal(); });
+document.getElementById('settingsBtn').addEventListener('click', () => { fillSettings(LIFE && LIFE.settings); setMsg.textContent = ''; resetPasswordFields(); dlg.showModal(); });
 document.getElementById('setClose').addEventListener('click', () => dlg.close());
 document.getElementById('setReset').addEventListener('click', () => { setWake.value = 8; setSleep.value = 17; setHunger.value = 1; showHunger(); for (const k in traitInputs) traitInputs[k].value = TRAIT_DEFAULTS[k]; setMsg.textContent = 'Нажмите «Сохранить», чтобы применить.'; });
 document.getElementById('setForm').addEventListener('submit', e => {
   e.preventDefault();
+  if (pwWanted()){  // the guest filled in a new password and pressed «Сохранить»: change it first, and keep the window open if it fails
+    changePassword().then(() => saveSettings(true)).catch(() => { setMsg.textContent = 'Пароль не изменён — см. раздел «Доступ».'; });
+    return;
+  }
+  saveSettings(false);
+});
+function saveSettings(pwChanged){
   const traits = {}; for (const k in traitInputs) traits[k] = Number(traitInputs[k].value);
   setMsg.textContent = 'Сохраняю…';
   const n = (LIFE && LIFE.notes) || {}, persona = {};
@@ -2484,9 +2493,9 @@ document.getElementById('setForm').addEventListener('submit', e => {
   const brainSel = {backend:document.getElementById('brainLocal').checked ? 'local' : 'claude', fast:document.getElementById('brainFast').value, deep:document.getElementById('brainDeep').value, fallback:document.getElementById('brainFallback').checked};
   api('/api/settings', {wake:Number(setWake.value), sleep:Number(setSleep.value), hunger_rate:Number(setHunger.value), traits, brain:brainSel})
     .then(r => { applySettings(r.settings, r.state); return Object.keys(persona).length ? api('/api/persona', persona).then(x => renderNotes(x.notes)) : null; })
-    .then(() => { setMsg.textContent = 'Сохранено.'; setTimeout(() => dlg.close(), 500); })
+    .then(() => { setMsg.textContent = pwChanged ? 'Сохранено, пароль изменён.' : 'Сохранено.'; setTimeout(() => dlg.close(), pwChanged ? 1600 : 500); })
     .catch(err => { setMsg.textContent = 'Не сохранилось: ' + err.message; });
-});
+}
 function applySettings(settings, st){
   if (!LIFE) return;
   if (settings.brain) LIFE.brain = Object.assign({}, LIFE.brain || {}, settings.brain);
@@ -2641,15 +2650,31 @@ document.getElementById('inviteForm').addEventListener('submit', e => {
   e.preventDefault(); const note = document.getElementById('inviteNote');
   api('/api/admin', {action:'invite', note:note.value.trim()}).then(v => { note.value = ''; renderAdmin(v); }).catch(err => addSys('Не получилось: ' + err.message));
 });
-document.getElementById('pwBtn').addEventListener('click', () => {
+function pwSay(text, kind){ pwMsg.textContent = text; pwMsg.className = 'note ' + (kind || ''); }
+const pwWanted = () => !!(document.getElementById('pwNew').value || document.getElementById('pwNew2').value);
+// changes the password if the new-password fields are filled; resolves true when changed, rejects with a reason shown in red
+let pwBusy = null;  // a double click must not send the change twice
+function changePassword(){
+  if (pwBusy) return pwBusy;
   const cur = document.getElementById('pwCur'), a = document.getElementById('pwNew'), b = document.getElementById('pwNew2');
-  if (a.value.length < 8){ pwMsg.textContent = 'Новый пароль — не короче 8 символов.'; return; }
-  if (a.value !== b.value){ pwMsg.textContent = 'Пароли не совпадают.'; return; }
-  pwMsg.textContent = 'Меняю…';
-  api('/api/password', {current:cur.value, new:a.value})
-    .then(() => { cur.value = a.value = b.value = ''; pwMsg.textContent = 'Пароль изменён. Остальные устройства вышли.'; if (LIFE){ LIFE.auth = {on:true}; renderAccess(); } })
-    .catch(err => { pwMsg.textContent = 'Не получилось: ' + err.message; });
-});
+  const stop = (msg, el) => { pwSay(msg, 'bad'); if (el) el.focus(); document.getElementById('accessBox').scrollIntoView({block:'nearest'}); return Promise.reject(new Error(msg)); };
+  if (!cur.value && !document.getElementById('pwCurWrap').hidden) return stop('Введите текущий пароль — тот, которым вы входите сейчас.', cur);
+  if (a.value.length < 8) return stop('Новый пароль — не короче 8 символов.', a);
+  if (a.value !== b.value) return stop('Новый пароль и повтор не совпадают.', b);
+  pwSay('Меняю пароль…');
+  const body = {current:cur.value, new:a.value};
+  cur.value = a.value = b.value = '';  // cleared at once: nothing to resend or reuse later
+  pwBusy = api('/api/password', body)
+    .then(() => { pwSay('Пароль изменён. Остальные устройства вышли — на них войдите заново.', 'good'); if (LIFE){ LIFE.auth = {on:true}; renderAccess(); } return true; })
+    .catch(err => stop('Пароль не изменён: ' + err.message))
+    .finally(() => { pwBusy = null; });
+  return pwBusy;
+}
+function resetPasswordFields(){  // every opening of the settings starts clean: no leftovers from an abandoned attempt
+  for (const id of ['pwCur', 'pwNew', 'pwNew2']) document.getElementById(id).value = '';
+  pwSay('');
+}
+document.getElementById('pwBtn').addEventListener('click', () => { changePassword().catch(() => {}); });
 document.getElementById('logoutBtn').addEventListener('click', () => { fetch('/logout', {method:'POST'}).finally(() => location.reload()); });
 
 /* ---------- phone tabs ---------- */
