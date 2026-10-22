@@ -2,11 +2,9 @@
 import re
 import time
 
-from ..config import MODEL_FAST, log
 from ..context import S, emit_event, g, hub, save_state, spawn, state_lock
 from ..clock import is_awake_time
-from ..brain import LLMError, llm
-from . import bonds, drawings, emotions, needs, state
+from . import bonds, drawings, emotions, needs, state, wardrobe
 
 
 GIFT_CATALOG = {
@@ -126,7 +124,12 @@ def resolve_gifts(actions):
             out.append(dict(info, do="cozy"))
         elif how == "light":
             out.append(dict(info, do="light_candle"))
+        elif how == "wear" and it.get("outfit"):  # clothing worn as an outfit, at the wardrobe
+            from .body.clothes import wants_privacy  # the body imports gifts; this one call goes the other way
+            out.append({"do": "change_clothes", "outfit": f"gift:{it['id']}", "private": wants_privacy()})
         elif how == "wear":
+            if it["kind"] == "clothes" and "outfit" not in it:
+                spawn(wardrobe.design_outfit, it["id"])  # next time it may be a whole outfit
             out.append(dict(info, do="wear_item"))
         elif d == "use_item" and it["kind"] == "book":
             out.append(dict(info, do="read_book"))
@@ -240,34 +243,6 @@ PROP_DOC = ("если эта вещь заменяет обычный предм
             + "; например, руль или джойстик для приставки — pad, кружка — cup, смартфон — phone; иначе none")
 
 
-def classify_item(item_id):
-    """Old gifts drawn before props existed: one short question to the fast model."""
-    with state_lock:
-        it = next((x for x in S["items"] if x["id"] == item_id), None)
-        if not it or "prop" in it:
-            return
-        name = it["name"]
-    try:
-        r = llm("classify", MODEL_FAST, "Ты помогаешь игре понять, для чего вещь. Отвечай только JSON.",
-                f"Вещь: «{name}». Ответ JSON: {{\"replaces\": \"{PROP_DOC}\", \"uses\": \"для чего это и как этим пользоваться, 1 предложение\"}}")
-    except (LLMError, ValueError) as e:
-        log("classify failed:", name, e)
-        return
-    with state_lock:
-        it["prop"] = r.get("replaces") if r.get("replaces") in PROPS else ""
-        if r.get("uses") and not it.get("uses"):
-            it["uses"] = str(r["uses"])[:200]
-        save_state()
-        st = state.public_state()
-    hub.publish({"type": "state", "state": st})
-
-
-def classify_all():
-    for it in list(S["items"]):
-        if it["state"] == "open" and "prop" not in it:
-            classify_item(it["id"])
-
-
 def redrawing(item_id):
     return any(x["id"] == item_id and x.get("redraw") for x in S["items"])
 
@@ -285,6 +260,8 @@ def item_action(item_id, action, hint=""):
                     x["paired"], x["status"] = None, ""
             if (S.get("accessory") or {}).get("id") == item_id:
                 S["accessory"] = None
+            if state.outfit_of()["type"] == f"gift:{item_id}":  # taken back while she wears it
+                S["outfit"] = {"type": "casual", "color": "blue"}
             if is_awake_time():
                 S["react_reasons"] = (S.get("react_reasons") or [])[-5:] + [f"Подарок «{it['name']}» вдруг исчез — кажется, гость забрал его."]
                 S["react_at"] = max(time.time() + 3, (S.get("last_react") or 0) + 20)

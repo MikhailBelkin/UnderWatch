@@ -7,7 +7,7 @@ from ..context import ACC, S, hub, save_state, state_lock, world_epoch
 from ..clock import is_awake_time
 from ..world import MOTIONS, ROOMS, SPOTS
 from ..brain import LLMError, llm
-from . import gifts, state
+from . import gifts, state, wardrobe
 
 
 SVG_TAGS = {"svg", "g", "path", "rect", "circle", "ellipse", "polygon", "polyline", "line"}
@@ -106,6 +106,8 @@ def visualize_item(item_id, hint=""):
         save_state()
         st = state.public_state()
     hub.publish({"type": "state", "state": st})
+    if it["kind"] == "clothes" and "outfit" not in it:
+        wardrobe.design_outfit(item_id)
 
 
 BEHAVIORS = ("fly", "crawl", "walk", "hop", "wall", "perch", "static")

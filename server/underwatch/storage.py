@@ -1,4 +1,5 @@
-"""SQLite stores: one per resident (state, events, usage) and one for accounts, invites, sessions and shared drawings."""
+"""SQLite stores: one per resident (key–value state, the life feed, model usage) and one shared
+(accounts, invites, sessions and the drawings everyone's gifts and creatures use)."""
 import json
 import secrets
 import sqlite3
@@ -10,19 +11,15 @@ from datetime import datetime
 from .config import TZ
 
 
-class Store:
+class _DB:
+    """A SQLite file with a key–value table; each kind of database adds its own tables."""
+    TABLES = ""
+
     def __init__(self, path):
         self.lock = threading.RLock()
         self.db = sqlite3.connect(path, check_same_thread=False)
         self.db.execute("PRAGMA journal_mode=WAL")
-        self.db.executescript("""
-            CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT);
-            CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY, ts REAL, kind TEXT, text TEXT, data TEXT);
-            CREATE INDEX IF NOT EXISTS events_ts ON events(ts);
-            CREATE TABLE IF NOT EXISTS usage (id INTEGER PRIMARY KEY, ts REAL, day TEXT, purpose TEXT, model TEXT,
-                input_tokens INTEGER, output_tokens INTEGER, cost REAL, seconds REAL, ok INTEGER);
-            CREATE TABLE IF NOT EXISTS sprites (id INTEGER PRIMARY KEY, key TEXT UNIQUE, svg TEXT, w REAL, h REAL, meta TEXT, ts REAL);
-        """)
+        self.db.executescript("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT);" + self.TABLES)
 
     def get(self, k, default=None):
         with self.lock:
@@ -33,6 +30,17 @@ class Store:
         with self.lock:
             self.db.execute("INSERT OR REPLACE INTO kv VALUES (?,?)", (k, json.dumps(v, ensure_ascii=False)))
             self.db.commit()
+
+
+
+class Store(_DB):
+    """One resident's database: kv (state, settings, notes, memory), the life feed and model usage."""
+    TABLES = """
+        CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY, ts REAL, kind TEXT, text TEXT, data TEXT);
+        CREATE INDEX IF NOT EXISTS events_ts ON events(ts);
+        CREATE TABLE IF NOT EXISTS usage (id INTEGER PRIMARY KEY, ts REAL, day TEXT, purpose TEXT, model TEXT,
+            input_tokens INTEGER, output_tokens INTEGER, cost REAL, seconds REAL, ok INTEGER);
+    """
 
     def add_event(self, kind, text, data=None):
         ts = time.time()
@@ -70,6 +78,22 @@ class Store:
             by = self.db.execute("SELECT purpose, COUNT(*) FROM usage WHERE day=? GROUP BY purpose", (datetime.now(TZ).strftime("%Y-%m-%d"),)).fetchall()
         return {"calls": r[0], "local_calls": loc[0], "input": r[1], "output": r[2], "cost": round(r[3], 4), "by": dict(by)}
 
+    def forget_life(self):
+        """New game: drop everything that happened and the resident's own memory. Settings, identity and usage stay."""
+        with self.lock:
+            self.db.execute("DELETE FROM events")
+            self.db.execute("DELETE FROM kv WHERE k IN ('self_notes', 'guest_notes', 'day_memory', 'memory_upto')")
+            self.db.commit()
+
+
+class Accounts(_DB):
+    """The shared database: users, invites, sessions (in kv) and the drawings cache."""
+    TABLES = """
+        CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, login TEXT UNIQUE COLLATE NOCASE, pw TEXT, role TEXT, db TEXT, ts REAL, seen REAL);
+        CREATE TABLE IF NOT EXISTS invites (code TEXT PRIMARY KEY, ts REAL, note TEXT, used_by INTEGER, used_ts REAL);
+        CREATE TABLE IF NOT EXISTS sprites (id INTEGER PRIMARY KEY, key TEXT UNIQUE, svg TEXT, w REAL, h REAL, meta TEXT, ts REAL);
+    """
+
     def sprite_by_key(self, key):
         with self.lock:
             r = self.db.execute("SELECT id, w, h, meta FROM sprites WHERE key=?", (key,)).fetchone()
@@ -86,24 +110,6 @@ class Store:
         with self.lock:
             r = self.db.execute("SELECT svg FROM sprites WHERE id=?", (sid,)).fetchone()
         return r[0] if r else None
-
-    def forget_life(self):
-        """New game: drop everything that happened and the resident's own memory. Settings, identity and usage stay."""
-        with self.lock:
-            self.db.execute("DELETE FROM events")
-            self.db.execute("DELETE FROM kv WHERE k IN ('self_notes', 'guest_notes', 'day_memory', 'memory_upto')")
-            self.db.commit()
-
-
-class Accounts(Store):
-    def __init__(self, path):
-        super().__init__(path)
-        with self.lock:
-            self.db.executescript("""
-                CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, login TEXT UNIQUE COLLATE NOCASE, pw TEXT, role TEXT, db TEXT, ts REAL, seen REAL);
-                CREATE TABLE IF NOT EXISTS invites (code TEXT PRIMARY KEY, ts REAL, note TEXT, used_by INTEGER, used_ts REAL);
-            """)
-            self.db.commit()
 
     def users(self):
         with self.lock:

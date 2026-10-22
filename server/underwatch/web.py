@@ -1,5 +1,4 @@
 """The HTTP side: pages, the JSON/SSE API, HTTPS on the same port as a plain-http redirect."""
-import hmac
 import json
 import queue
 import re
@@ -16,7 +15,7 @@ from .context import ACC, R, RESIDENTS, S, SETTINGS, _cur, admin_resident, busy_
 from .settings import apply_settings, sleep_h, wake_h
 from .world import TOGETHER
 from .brain import LLMError, brain, claude_bin, loaded_models, local_models, mind_paused, set_paused
-from .accounts import register as register_user, LEGACY_TOKEN, SESSION_DAYS, admin_view, auth_lock, check_password, drop_sessions, new_session, note_fail, session_user, set_password, token_key, too_many_fails
+from .accounts import register as register_user, SESSION_DAYS, admin_view, auth_lock, check_password, drop_sessions, new_session, note_fail, session_user, set_password, token_key, too_many_fails
 from .life.drawings import drop_visitor
 from .life.gifts import drop_wishes, give_gift, item_action
 from .life.goals import set_goal_from_text
@@ -44,8 +43,7 @@ def snapshot():
         "chat": store.events(["chat_user", "chat_reply", "aloud"], limit=40),
         "feed": store.events(["thought", "action", "aloud", "plan", "note", "system", "world", "gift", "wish", "learned", "goal", "practice", "milestone"], limit=40),
         "diary": store.events(["diary"], limit=10),
-        "notes": notes(), "usage": store.usage_today(), "auth": {"on": True},
-        "me": {"login": R().login, "admin": R().admin}, "rel": R().meta.get("rel", "romantic"),
+        "notes": notes(), "usage": store.usage_today(), "me": {"login": R().login, "admin": R().admin}, "rel": R().meta.get("rel", "romantic"),
     }
 
 
@@ -106,9 +104,6 @@ class Handler(BaseHTTPRequestHandler):
         """Finds the user behind the cookie and makes their resident the one this request talks about."""
         c = self.cookie()
         uid = session_user(c)
-        if uid is None and c and LEGACY_TOKEN and ACC.get("legacy_ok") and hmac.compare_digest(c, LEGACY_TOKEN):
-            uid = admin_resident().uid
-            self.upgrade_cookie = new_session(uid, self.who())  # the old shared cookie becomes the owner's own session
         if uid is None:
             return False
         self.uid = uid

@@ -363,7 +363,7 @@ dialog#resetDlg{width:min(460px, calc(100vw - 32px))}
         <p class="note vram" id="vramNote" hidden></p>
         <button type="button" class="menuItem" id="memBtn" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M6 2h11a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm0 2v16h11V4H6zm2 3h7v2H8V7zm0 4h7v2H8v-2zm0 4h5v2H8v-2z"/></svg> Память…</button>
         <button type="button" class="menuItem" id="settingsBtn" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.3 7.3 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.3 7.3 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.3 7.3 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.3 7.3 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg> Настройки…</button>
-        <button type="button" class="menuItem" id="logoutBtn" hidden><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M10 3h9a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-9v-2h9V5h-9V3zm-.5 4.5L11 9l-2 2h8v2H9l2 2-1.5 1.5L5 12l4.5-4.5z"/></svg> Выйти</button>
+        <button type="button" class="menuItem" id="logoutBtn"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M10 3h9a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-9v-2h9V5h-9V3zm-.5 4.5L11 9l-2 2h8v2H9l2 2-1.5 1.5L5 12l4.5-4.5z"/></svg> Выйти</button>
         <button type="button" class="menuItem" id="resetBtn"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg> Начать заново…</button>
       </div>
     </div>
@@ -567,11 +567,20 @@ const OUTFITS = {
 const OUTFIT_KEYS = Object.keys(OUTFITS);
 const OUTFIT_TYPES = {casual:'футболка и брюки', pajamas:'пижама', dress:'романтичное платье', shorts:'шорты и футболка', warm:'джинсы и свитер', mini:'миниюбка и топ', swimsuit:'купальник', underwear:'нижнее бельё', bathrobe:'халат', towel:'полотенце'};
 function normOutfit(o){ return typeof o === 'string' ? {type:'casual', color:o} : Object.assign({type:'casual', color:'blue'}, o || {}); }
-function outfitName(o){ o = normOutfit(o); const n = o.type === 'swimsuit' && ID.male ? 'плавки' : OUTFIT_TYPES[o.type] || 'одежда'; return n + (o.color && OUTFITS[o.color] && o.type !== 'towel' ? ', цвет ' + OUTFITS[o.color].ru.replace(/ее$/, 'ий').replace(/ое$/, 'ый') : ''); }
+// a gifted garment worn as an outfit: "gift:<item id>", described by the model in the same terms as the built-in outfits
+function giftOutfit(type){ const m = /^gift:(\d+)$/.exec(type || ''); return m ? S.items.find(it => it.id === +m[1] && it.outfit) : null; }
+function outfitName(o){ o = normOutfit(o); const g = giftOutfit(o.type); if (g) return g.outfit.label || g.name;
+  const n = o.type === 'swimsuit' && ID.male ? 'плавки' : OUTFIT_TYPES[o.type] || 'одежда'; return n + (o.color && OUTFITS[o.color] && o.type !== 'towel' ? ', цвет ' + OUTFITS[o.color].ru.replace(/ее$/, 'ий').replace(/ое$/, 'ый') : ''); }
 // what the body wears: colours, sleeves/legs coverage, skirt, shoes, extras
 function outfitSpec(raw){
   const o = normOutfit(raw), col = OUTFITS[o.color] ? OUTFITS[o.color].shirt : null, male = ID.male;
   const base = {top:'#3e6fd8', bottom:'#2d3340', sleeves:'short', legs:'long', skirt:null, skirtLen:1, shoes:C.shoe, dots:false, turban:false, belt:null};
+  const gift = giftOutfit(o.type);
+  if (gift){
+    const sp = Object.assign(base, gift.outfit);
+    if (!male && !sp.top) sp.top = sp.bottom || '#f3f2ec';  // her top is always covered, at least by underwear
+    return sp;
+  }
   switch (o.type){
     case 'pajamas': return Object.assign(base, {top:col || '#9cc3e6', bottom:col || '#9cc3e6', sleeves:'long', legs:'long', shoes:'#f2b8c6', dots:true});
     case 'dress': return male ? Object.assign(base, {top:col || '#2f3036', bottom:'#2f3036', sleeves:'long', shoes:'#1b1b1f'}) : Object.assign(base, {top:col || '#c43d5a', bottom:col || '#c43d5a', sleeves:'none', legs:'none', skirt:col || '#c43d5a', skirtLen:1.05, shoes:'#2a2a30'});
@@ -585,7 +594,6 @@ function outfitSpec(raw){
     default: { const c = OUTFITS[o.color] || OUTFITS.blue; return Object.assign(base, {top:c.shirt, bottom:c.pants}); }
   }
 }
-const COLOR_RU = [[/красн/,'red'],[/син|голуб/,'blue'],[/зел[её]н/,'green'],[/ж[её]лт/,'yellow'],[/фиолет|сирен/,'purple'],[/оранж/,'orange'],[/розов/,'pink'],[/ч[её]рн/,'black'],[/бел/,'white']];
 
 /* ---------- places ---------- */
 const PL = {
@@ -605,7 +613,7 @@ const S = {
   hold:{L:null,R:null},
   tv:'show', console:false, music:false, lights:{bed:true, night:false, liv:true, floor:false, kit:true, bath:false}, stove:false, wardrobe:false, fridge:false,
   water:0, waterTarget:0, leak:false, items:[],
-  queue:[], cur:null, loop:'watch', prevLoop:'watch', loopT:0, loopDur:30, idleT:0,
+  queue:[], cur:null, loop:'watch', prevLoop:'watch', loopT:0,
   walking:false, walkPhase:0, pending:false, lastUser:-999,
   speech:null, blinkT:2.5, blink:0, lookX:0.4, lookY:0, lookT:0, lookTX:0.4, lookTY:0,
   pose:Object.assign({}, ZERO), fog:0,
@@ -613,7 +621,6 @@ const S = {
 };
 
 /* ---------- identity: gender + name ---------- */
-const DEFAULT_NAME = {m:'Лёва', f:'Лена'};
 const ID = {male:true, name:'Лёва'};
 function gx(m, f){ return ID.male ? m : f; }
 function cleanName(n){ return String(n || '').replace(/[^\p{L}\p{M}\s'-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 20); }
@@ -646,7 +653,6 @@ const TZ_FMT = new Intl.DateTimeFormat('en-GB', {timeZone:'Europe/Ljubljana', ho
 function now(t){ const p = {}; for (const x of TZ_FMT.formatToParts(t ? new Date(t) : new Date())) p[x.type] = +x.value; return {getHours:() => p.hour % 24, getMinutes:() => p.minute, getSeconds:() => p.second}; }
 function hourF(){ const d = now(); return d.getHours() + d.getMinutes()/60; }
 function phase(){ const h = hourF(); if (h >= 7 && h < 18) return 'day'; if (h >= 18 && h < 21.5) return 'evening'; if (h >= 5.5 && h < 7) return 'dawn'; return 'night'; }
-function isNight(){ return LIFE ? !LIFE.state.awake_time : false; }
 function hhmm(t){ const d = now(t); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
 function shade(hex, k){ k = k || 0.78; const n = parseInt(hex.slice(1),16); const r=(n>>16)&255, g=(n>>8)&255, b=n&255; return 'rgb(' + Math.round(r*k) + ',' + Math.round(g*k) + ',' + Math.round(b*k) + ')'; }
 function rr(x,y,w,h,r,fill,stroke,lw){ ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x,y,w,h,r) : ctx.rect(x,y,w,h); if (fill){ ctx.fillStyle = fill; ctx.fill(); } if (stroke){ ctx.strokeStyle = stroke; ctx.lineWidth = lw || 1; ctx.stroke(); } }
@@ -735,7 +741,7 @@ const GEST = {
 const walk = name => ({k:'walk', x:PL[name].x, face:PL[name].face, place:name});
 const gest = (name, extra) => Object.assign({k:'gest', g:name}, extra || {});
 const fx = fn => ({k:'fx', fn});
-const loop = (name, dur) => ({k:'loop', g:name, dur});
+const loop = name => ({k:'loop', g:name});
 const wait = d => ({k:'wait', d});
 
 const ACT_RU = {
@@ -786,7 +792,7 @@ function expand(a, plan){
     case 'move': { const sf = a.on && a.on !== 'floor' && SURF[a.on];  // on the bed, the sofa…: go there and lean on its surface
       return (sf ? [{k:'walk', x:sf.lieX || PL[a.on].x, face:1, place:a.on}] : []).concat([{k:'move', frames:a.frames || [], repeat:a.repeat || 1, end:a.end, label:a.label || 'двигается', top:sf ? sf.top : undefined}]); }
     case 'cozy': return [walk('sofa'), fx(() => { S.hold.L = S.hold.R = null; }), loop('cozy')];
-    case 'light_candle': return [walk('tv'), gest('reachup', {end:() => { S.candleLit = a.id; }})];
+    case 'light_candle': return [walk('tv'), gest('reachup')];
     case 'wear_item': return [fx(() => { S.hold.R = 'thing:clothes'; }), gest('admire', {end:() => { S.hold.R = null; S.accessory = {id:a.id, name:a.name}; }})];
     case 'dance_together': return [walk('center'), loop('dancing')];
     case 'use_toilet': return [walk('toilet'), loop('toilet'), wait(60)];
@@ -801,7 +807,7 @@ function expand(a, plan){
     case 'music_off': return [walk('music'), gest('reach', {end:() => { S.music = false; }}), loop(null)];
     case 'cook': plan.plate = true;
       return [walk('fridge'), gest('reach', {start:() => { S.fridge = true; }, end:() => { S.hold.L = 'groceries'; }}), fx(() => { S.fridge = false; }),
-        walk('stove'), gest('reachup', {end:() => { S.panOut = true; }}),
+        walk('stove'), gest('reachup'),
         fx(() => { S.stove = true; S.hold.R = 'spoon'; S.hold.L = null; }), gest('stir', {dur:30}),
         fx(() => { S.stove = false; }), gest('reachup', {end:() => { S.hold.R = null; S.hold.L = 'plate'; }})];
     case 'wash_dishes': return [walk('ksink'), gest('scrub', {dur:22, end:() => { S.dishes = 0; }})];
@@ -815,7 +821,7 @@ function expand(a, plan){
     case 'sleep': { const on = ['sofa', 'floor'].includes(a.on) ? a.on : 'bed';
       return [fx(() => { S.tv = 'off'; S.music = false; S.hold.L = S.hold.R = null; }), {k:'walk', x:SURF[on].lieX, face:1, place:on}, fx(() => { S.rest = {on, how:'lie'}; S.face = 1; }), loop('sleep')]; }
     case 'change_clothes': {
-      const col = OUTFITS[a.color] ? a.color : null, typ = OUTFIT_TYPES[a.outfit] ? a.outfit : null;
+      const col = OUTFITS[a.color] ? a.color : null, typ = OUTFIT_TYPES[a.outfit] || giftOutfit(a.outfit) ? a.outfit : null;  // a gifted outfit too
       const next = {type:typ || 'casual', color:col || (typ ? null : nextOutfit())};
       if (a.private === false) return changeInTheOpen(next);
       return [walk('wardrobe'), fx(() => { S.wardrobe = true; }), gest('browse'),
@@ -887,7 +893,7 @@ function run(actions, opts){
   const plan = {plate:false}, steps = [];
   if (S.loop === 'sleep' && actions.length && actions[0].do !== 'sleep') steps.push(loop(null), wait(0.5));
   for (const a of actions.slice(0, 6)) steps.push(...expand(a, plan));
-  S.queue = steps; S.idleT = 0;
+  S.queue = steps;
 }
 
 function startStep(c){
@@ -918,7 +924,7 @@ function stepUpdate(dt){
       return;
     }
     if (c.k === 'fx'){ c.fn(); S.cur = null; continue; }
-    if (c.k === 'loop'){ S.loop = c.g; S.loopT = 0; S.loopDur = c.dur || rand(28, 50); S.cur = null; continue; }
+    if (c.k === 'loop'){ S.loop = c.g; S.loopT = 0; S.cur = null; continue; }
     if (c.k === 'wait'){ c.t += dt; if (c.t >= c.d) { S.cur = null; continue; } return; }
     if (c.k === 'move'){
       S.loop = null;
@@ -949,38 +955,34 @@ function onLoopChange(prev, next){
 }
 
 /* ---------- activity description ---------- */
+// what she is doing, in a few words, for the status line
 function activity(){
   const c = S.cur;
-  if (S.pending && S.loop !== 'sleep') return ['думает над ответом', 'думаешь над ответом'];
-  if (c && c.k === 'walk') return ['идёт: ' + PL[c.place].ru, 'идёшь к месту «' + PL[c.place].ru + '»'];
-  if (c && c.k === 'gest') { const r = GEST[c.g].ru; return [r, r]; }
-  if (c && c.k === 'move') return [c.label, ''];
-  if (S.loop === 'pose') return ['в позе: ' + (S.freeLabel || ''), ''];
-  if (S.loop === 'rest' && S.rest) return [({sit:'сидит', lie:'лежит', belly:'лежит на животе', stand:'стоит'}[S.rest.how] || '') + ': ' + ((PL[S.rest.on] || {}).ru || ''), ''];
+  if (S.pending && S.loop !== 'sleep') return 'думает над ответом';
+  if (c && c.k === 'walk') return 'идёт: ' + PL[c.place].ru;
+  if (c && c.k === 'gest') return GEST[c.g].ru;
+  if (c && c.k === 'move') return c.label;
+  if (S.loop === 'pose') return 'в позе: ' + (S.freeLabel || '');
+  if (S.loop === 'rest' && S.rest) return ({sit:'сидит', lie:'лежит', belly:'лежит на животе', stand:'стоит'}[S.rest.how] || '') + ': ' + ((PL[S.rest.on] || {}).ru || '');
   switch (S.loop){
-    case 'watch': return ['смотрит телек', 'сидишь на диване и смотришь телевизор'];
-    case 'game': return ['играет в приставку', 'сидишь на диване с геймпадом и играешь в приставку'];
-    case 'sit': return ['сидит на диване', 'сидишь на диване'];
-    case 'sleep': return ['спит', 'спишь в кровати'];
-    case 'listen': return ['слушает музыку', 'стоишь у проигрывателя и слушаешь музыку'];
-    case 'read': return ['читает книгу', ''];
-    case 'write': return ['пишет в блокнот', ''];
-    case 'phone': return ['болтает по телефону', ''];
-    case 'workout': return ['делает зарядку', ''];
-    case 'mop': return ['вытирает пол', ''];
-    case 'date': return [(LIFE && LIFE.state.together && LIFE.state.together.kind === 'custom') ? 'вместе с вами' : 'на свидании с вами', ''];
-    case 'cozy': return ['сидит, укутавшись в плед', ''];
-    case 'dancing': return ['танцует с вами', ''];
-    case 'toilet': return ['в туалете', ''];
-    case 'shower': return ['принимает душ', ''];
-    case 'daydream': return ['смотрит в окно', ''];
+    case 'watch': return 'смотрит телек';
+    case 'game': return 'играет в приставку';
+    case 'sit': return 'сидит на диване';
+    case 'sleep': return 'спит';
+    case 'listen': return 'слушает музыку';
+    case 'read': return 'читает книгу';
+    case 'write': return 'пишет в блокнот';
+    case 'phone': return 'болтает по телефону';
+    case 'workout': return 'делает зарядку';
+    case 'mop': return 'вытирает пол';
+    case 'date': return (LIFE && LIFE.state.together && LIFE.state.together.kind === 'custom') ? 'вместе с вами' : 'на свидании с вами';
+    case 'cozy': return 'сидит, укутавшись в плед';
+    case 'dancing': return 'танцует с вами';
+    case 'toilet': return 'в туалете';
+    case 'shower': return 'принимает душ';
+    case 'daydream': return 'смотрит в окно';
   }
-  return ['стоит, ' + roomAt(S.x), 'просто стоишь'];
-}
-function describeState(){
-  const a = activity()[1];
-  return 'Время ' + hhmm() + '. Ты: ' + a + ' (' + roomAt(S.x) + '). Телевизор: ' + (S.tv === 'off' ? 'выключен' : S.tv === 'game' ? 'игра на приставке' : 'включён') +
-    '. Музыка: ' + (S.music ? 'играет' : 'нет') + '. Свет: ' + (Object.values(S.lights).some(Boolean) ? 'горит' : 'выключен') + '. На тебе ' + outfitName(S.outfit) + '. Настроение: ' + S.mood + '.';
+  return 'стоит, ' + roomAt(S.x);
 }
 
 /* ---------- speech ---------- */
@@ -2059,7 +2061,7 @@ function frame(ts){
   // watchdog: a step that runs far too long means the page and the server disagree
   if (S.cur){ S.stepAge = (S.stepRef === S.cur ? (S.stepAge || 0) : 0) + dt; S.stepRef = S.cur; if (S.stepAge > 200){ S.stepAge = 0; clearQueue(); if (typeof resync === 'function') resync(true); } }
   if (narrow && !userScrolling){ const target = S.x*cssScale - stage.clientWidth/2; stage.scrollLeft += (target - stage.scrollLeft)*0.08; }
-  const st = activity()[0];
+  const st = activity();
   if (st !== lastStatus){ lastStatus = st; stAct.lastChild.textContent = st; }
   renderLiveStatus(st);
   requestAnimationFrame(frame);
@@ -2114,7 +2116,7 @@ function redress(st){
     if (PL[st.location]) steps.push(walk(st.location));
     steps.push(fx(() => { S.hold = Object.assign({L:null, R:null}, HOLD_FOR[st.loop] || {}); }), loop(st.loop || null));
   }
-  S.queue = steps; S.idleT = 0;
+  S.queue = steps;
 }
 // the server says she's in a towel, but the page never showed the shower: she goes there and dries off, then back to what she was doing
 function towelUp(st){
@@ -2124,7 +2126,7 @@ function towelUp(st){
     if (PL[st.location]) steps.push(walk(st.location));
     steps.push(fx(() => { S.hold = Object.assign({L:null, R:null}, HOLD_FOR[st.loop] || {}); }), loop(st.loop || null));
   }
-  S.queue = steps; S.idleT = 0;
+  S.queue = steps;
 }
 function placeFromServer(st){
   clearQueue();
@@ -2689,9 +2691,7 @@ giftForm.addEventListener('submit', () => setTimeout(closeMenus, 50));
 /* ---------- access: password change and logout ---------- */
 const pwMsg = document.getElementById('pwMsg');
 function renderAccess(){
-  const on = !!(LIFE && LIFE.auth && LIFE.auth.on), admin = !!(LIFE && LIFE.me && LIFE.me.admin);
-  document.getElementById('pwCurWrap').hidden = !on;
-  document.getElementById('logoutBtn').hidden = !on;
+  const admin = !!(LIFE && LIFE.me && LIFE.me.admin);
   for (const id of ['adminBtn', 'mindBtn', 'vramNote', 'brainBox']) document.getElementById(id).hidden = !admin;  // the GPU and the subscription are the owner's
   const romantic = !LIFE || !LIFE.rel || LIFE.rel === 'romantic';
   document.querySelectorAll('#tender [data-what="kiss"], #togetherRow [data-kind="date"]').forEach(b => { b.hidden = !romantic; });
@@ -2744,14 +2744,14 @@ function changePassword(){
   if (pwBusy) return pwBusy;
   const cur = document.getElementById('pwCur'), a = document.getElementById('pwNew'), b = document.getElementById('pwNew2');
   const stop = (msg, el) => { pwSay(msg, 'bad'); if (el) el.focus(); document.getElementById('accessBox').scrollIntoView({block:'nearest'}); return Promise.reject(new Error(msg)); };
-  if (!cur.value && !document.getElementById('pwCurWrap').hidden) return stop('Введите текущий пароль — тот, которым вы входите сейчас.', cur);
+  if (!cur.value) return stop('Введите текущий пароль — тот, которым вы входите сейчас.', cur);
   if (a.value.length < 8) return stop('Новый пароль — не короче 8 символов.', a);
   if (a.value !== b.value) return stop('Новый пароль и повтор не совпадают.', b);
   pwSay('Меняю пароль…');
   const body = {current:cur.value, new:a.value};
   cur.value = a.value = b.value = '';  // cleared at once: nothing to resend or reuse later
   pwBusy = api('/api/password', body)
-    .then(() => { pwSay('Пароль изменён. Остальные устройства вышли — на них войдите заново.', 'good'); if (LIFE){ LIFE.auth = {on:true}; renderAccess(); } return true; })
+    .then(() => { pwSay('Пароль изменён. Остальные устройства вышли — на них войдите заново.', 'good'); return true; })
     .catch(err => stop('Пароль не изменён: ' + err.message))
     .finally(() => { pwBusy = null; });
   return pwBusy;

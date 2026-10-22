@@ -7,12 +7,10 @@ import time
 
 from .config import DATA, DB_PATH, OWNER_LOGIN, PASSWORD, log
 from .storage import Store
-from .passwords import PW_ITER, pw_hash
-from .context import ACC, Hub, RESIDENTS, S, as_resident, busy_lock, emit_event, hub, save_state, set_busy, state_lock, store, world_epoch
+from .passwords import make_pw
+from .context import ACC, Hub, RESIDENTS, S, busy_lock, emit_event, hub, save_state, set_busy, state_lock, store, world_epoch
 from .settings import DEFAULT_SETTINGS, TRAITS
 from .world import COLORS
-from .life.bonds import guess_topic
-from .life.gifts import classify_all
 from .life.state import DEFAULT_STATE, identity
 
 
@@ -48,8 +46,6 @@ class Resident:
         self.epoch = {"v": 0}
         self.memory_running = threading.Event()
         st = self.store
-        if st.get("identity") is None and st.get("self_notes"):
-            st.set("identity", st.get("self_notes"))
         self.meta = st.get("meta") or {}  # relationship, talkativeness, age… chosen at registration
         self.settings = json.loads(json.dumps(DEFAULT_SETTINGS))
         saved = st.get("settings") or {}
@@ -57,46 +53,23 @@ class Resident:
         self.settings["traits"].update(saved.get("traits") or {})
         S = dict(DEFAULT_STATE, **(st.get("state") or {}))
         S["needs"] = dict(DEFAULT_STATE["needs"], **S.get("needs", {}))
-        if "light" in S:  # older state had one switch for the whole flat
-            S["lights"] = {k: bool(S["light"]) for k in DEFAULT_STATE["lights"]}
-            del S["light"]
         S["lights"] = dict(DEFAULT_STATE["lights"], **S.get("lights", {}))
         S["emo"] = dict(DEFAULT_STATE["emo"], **S.get("emo", {}))
-        for f in S.get("guest_facts", []):  # facts saved before topics were recognised
-            if f.get("topic") == "разное":
-                f["topic"] = guess_topic(f["fact"])
         self.S = S
 
 
 def boot():
-    """Open the accounts, move the single-user flat in as the owner's, wake every resident."""
+    """Wake every resident. On a fresh install the owner's account comes first: its flat is data/mind.sqlite,
+    its password PASSWORD (or a random one, printed to the log)."""
     (DATA / "residents").mkdir(exist_ok=True)
     if not ACC.users():
-        old = Store(DB_PATH)
-        pw = old.get("auth")
-        if not pw:
-            first = PASSWORD or secrets.token_urlsafe(9)
-            if not PASSWORD:
-                log("ВНИМАНИЕ: пароля не было; пароль владельца:", first)
-            salt = secrets.token_hex(16)
-            pw = {"salt": salt, "iter": PW_ITER, "hash": pw_hash(first, salt)}
-        uid = ACC.add_user(OWNER_LOGIN, pw, "admin", DB_PATH.name)
-        ACC.set("legacy_ok", not old.get("auth"))
-        ACC.set("sessions", {k: dict(v, uid=uid) for k, v in (old.get("sessions") or {}).items()})  # devices already logged in stay in
-        with old.lock:  # drawings move to the shared cache under the same ids
-            rows = old.db.execute("SELECT id, key, svg, w, h, meta, ts FROM sprites").fetchall()
-        with ACC.lock:
-            ACC.db.executemany("INSERT OR IGNORE INTO sprites (id, key, svg, w, h, meta, ts) VALUES (?,?,?,?,?,?,?)", rows)
-            ACC.db.commit()
-        if old.get("brain_paused") is None and (old.get("state") or {}).get("mind_paused"):
-            ACC.set("paused", True)
-        old.db.close()
-        log(f"single-user flat moved to the owner account «{OWNER_LOGIN}» ({len(rows)} drawings)")
+        first = PASSWORD or secrets.token_urlsafe(9)
+        if not PASSWORD:
+            log("ВНИМАНИЕ: PASSWORD не задан; пароль владельца:", first)
+        ACC.add_user(OWNER_LOGIN, make_pw(first), "admin", DB_PATH.name)
+        log(f"owner account «{OWNER_LOGIN}» created")
     for u in ACC.users():
         RESIDENTS[u["id"]] = Resident(u)
-    for r in RESIDENTS.values():
-        if any(it["state"] == "open" and "prop" not in it for it in r.S["items"]):
-            threading.Thread(target=as_resident, args=(r, classify_all), daemon=True).start()
 
 
 REL_IDENTITY = {

@@ -28,7 +28,6 @@ def change_clothes(a, body):
     col = a.get("color") or (random.choice([c for c in COLORS if c != state.outfit_of().get("color")]) if typ == "casual" else None)
     S["outfit"] = {"type": typ, "color": col}
     a["outfit"], a["color"] = typ, col  # the page dresses her in exactly this
-    
 
 
 EFFECTS = {"change_clothes": change_clothes}

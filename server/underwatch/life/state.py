@@ -2,9 +2,9 @@
 
 from ..context import S, busy_what, state_lock, store
 from ..clock import is_awake_time, next_wake, now, today_sleep
-from ..world import COLORS, OUTFIT_TYPES
+from ..world import COLORS
 from ..brain import mind_paused
-from . import needs
+from . import needs, wardrobe
 
 
 SEED_SELF = """- Мне 27. Работаю удалённо иллюстратором, сейчас между заказами, так что времени много.
@@ -21,7 +21,7 @@ DEFAULT_STATE = {
     "lights": {"bed": True, "night": False, "liv": True, "floor": False, "kit": True, "bath": False}, "water": 0.0, "leak": False,
     "react_at": 0, "react_reasons": [], "last_react": 0, "touch_log": [], "flowers_ts": 0,
     "items": [], "wishes": [], "visitors": [], "next_id": 1, "dishes": 0, "accessory": None, "pose_hold": None, "rest": None,
-    "mind_paused": False, "guest_facts": [], "closeness": 0.0, "closeness_day": "", "closeness_today": 0.0, "goal": None, "goals_done": [],
+    "guest_facts": [], "closeness": 0.0, "closeness_day": "", "closeness_today": 0.0, "goal": None, "goals_done": [],
     "needs": {"hunger": 70, "energy": 85, "fun": 55, "social": 50, "hygiene": 70, "bladder": 80},
     "thought": "", "intent": "", "plan": [], "plan_day": "", "act_seq": 0, "last_act": None,
     "last_tick": 0, "last_decide": 0, "reflect_ts": 0, "reflect_day": "",
@@ -30,7 +30,7 @@ DEFAULT_STATE = {
 
 def public_state():
     with state_lock:
-        s = {k: S[k] for k in ("name", "male", "location", "loop", "label", "until", "tv", "console", "music", "lights", "water", "leak", "flowers_ts", "items", "wishes", "visitors", "together", "invite", "dishes", "accessory", "pose_hold", "rest", "guest_facts", "closeness", "goal", "goals_done", "mind_paused",
+        s = {k: S[k] for k in ("name", "male", "location", "loop", "label", "until", "tv", "console", "music", "lights", "water", "leak", "flowers_ts", "items", "wishes", "visitors", "together", "invite", "dishes", "accessory", "pose_hold", "rest", "guest_facts", "closeness", "goal", "goals_done",
                                "outfit", "mood", "emo", "needs", "thought", "intent", "plan", "act_seq", "last_act")}
     s["mind_paused"] = mind_paused()  # one switch for the whole machine
     t = now()
@@ -54,7 +54,7 @@ def outfit_text():
     if S.get("loop") == "shower":
         return "ничего — ты в душе, одежда аккуратно сложена рядом; выйдешь в полотенце"
     o = outfit_of()
-    name = "плавки" if o["type"] == "swimsuit" and S["male"] else OUTFIT_TYPES.get(o["type"], "одежда")
+    name = "плавки" if o["type"] == "swimsuit" and S["male"] else wardrobe.label(o["type"])
     return name + (f", цвет {COLORS[o['color']]}" if o.get("color") in COLORS and o["type"] != "towel" else "")
 
 

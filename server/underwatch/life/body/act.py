@@ -3,8 +3,8 @@ this file walks the chain, keeps track of where the body ends up, and tells the 
 import time
 
 from ...context import S, emit_event, g, hub, save_state, state_lock
-from ...world import ACTIONS, CHAIN_HOLD, HOW_RU, LOOP_LABEL, OUTFIT_TYPES, PLACES, SURF_RU
-from .. import emotions, gifts, goals, needs, state
+from ...world import ACTIONS, CHAIN_HOLD, HOW_RU, LOOP_LABEL, PLACES, SURF_RU
+from .. import emotions, gifts, goals, needs, state, wardrobe
 from . import clothes, company, devices, house, hygiene, kitchen, moves, rest
 
 
@@ -95,7 +95,7 @@ def action_text(a):
     if a.get("place"):
         text += " → " + PLACES[a["place"]]
     if d == "change_clothes" and a.get("outfit"):
-        text += f" ({OUTFIT_TYPES.get(a['outfit'], '')})"
+        text += f" ({wardrobe.label(a['outfit'])})"
     if d == "move":
         text += f": {a.get('label')}"
     return text

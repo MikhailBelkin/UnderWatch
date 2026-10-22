@@ -1,10 +1,10 @@
 """Reading what the model wants the body to do: cleaning a chain of actions and filling in what is obvious."""
 import re
 
-from ...context import R, S, emit_event, g
+from ...context import S, emit_event, g
 from ...clock import is_awake_time, now, today_sleep
-from ...world import ACTIONS, COLORS, MOTIONS, MOVE_RANGES, NATURAL, OUTFIT_TYPES, PLACES, ROOMS, SPOTS, SURFACES, TOGETHER
-from .. import gifts, goals, state
+from ...world import ACTIONS, COLORS, MOTIONS, MOVE_RANGES, NATURAL, PLACES, ROOMS, SPOTS, SURFACES, TOGETHER
+from .. import gifts, goals, state, wardrobe
 from . import clothes
 
 
@@ -66,7 +66,7 @@ def clean_actions(raw):
                 a.setdefault("kind", arg)
             elif arg in COLORS:
                 a.setdefault("color", arg)
-            elif arg.split(",")[0].strip() in OUTFIT_TYPES:
+            elif wardrobe.known(arg.split(",")[0].strip()):
                 parts = [x.strip() for x in arg.split(",")]
                 a.setdefault("outfit", parts[0])
                 if len(parts) > 1 and parts[1] in COLORS:
@@ -122,7 +122,7 @@ def clean_actions(raw):
             x["room"] = a["room"]
         if d in ("change_clothes", "shower"):
             x["private"] = clothes.wants_privacy(a.get("private"))
-        if d == "change_clothes" and a.get("outfit") in OUTFIT_TYPES:
+        if d == "change_clothes" and wardrobe.known(a.get("outfit")):
             x["outfit"] = a["outfit"]
         if d == "change_clothes" and a.get("color") in COLORS:
             x["color"] = a["color"]

@@ -5,7 +5,7 @@ from ..context import R, S, g, state_lock, store
 from ..settings import EYES, HAIR, TRAITS, sleep_h, trait, wake_h
 from ..clock import hhmm, human_date, now, today_sleep
 from ..world import ACTIONS_DOC, COLORS, MOVE_DOC, PLACES, ROOMS, SPOTS, TOGETHER, room_of, room_ru
-from . import bonds, emotions, gifts, goals, guest, needs, state
+from . import bonds, emotions, gifts, goals, guest, needs, state, wardrobe
 
 
 TRAIT_WORDS = {  # five bands per trait: (masculine, feminine)
@@ -127,6 +127,7 @@ def world_line():
         flowers += " На полке горит: " + ", ".join(lit) + "."
     if S.get("accessory"):
         flowers += f" На тебе подаренная вещь: {S['accessory']['name']}."
+    flowers += wardrobe.line()
     if S["loop"] == "cozy":
         flowers += " Ты сидишь на диване, укутавшись в плед."
     if S.get("dishes"):

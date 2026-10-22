@@ -6,7 +6,7 @@ import secrets
 import threading
 import time
 
-from .config import PASSWORD, log
+from .config import log
 from .passwords import PW_ITER, make_pw, pw_hash
 from .context import as_resident, emit_event, ACC, RESIDENTS
 from .life.prompts import REL_RU, REL_TEXT
@@ -15,7 +15,6 @@ from .passwords import make_pw
 from .residents import Resident, create_resident
 
 
-LEGACY_TOKEN = hashlib.sha256(("za-steklom:" + PASSWORD).encode()).hexdigest() if PASSWORD else ""  # old cookies, upgraded on sight
 
 LOGIN_RX = re.compile(r"^[A-Za-z0-9_.-]{3,32}$")
 
@@ -39,10 +38,6 @@ auth_lock = threading.Lock()
 fails = {}  # client -> timestamps of failed logins
 
 
-def password_on():
-    return True  # every resident belongs to an account now
-
-
 def check_password(uid, pw):
     u = ACC.user(uid=uid)
     if not u or not u["pw"].get("hash"):
@@ -53,10 +48,7 @@ def check_password(uid, pw):
 
 def set_password(uid, pw):
     """New password: every session made before this moment stops working (checked in session_user), so no shared list needs editing."""
-    u = ACC.user(uid=uid)
     ACC.set_pw(uid, make_pw(pw))
-    if u and u["role"] == "admin":
-        ACC.set("legacy_ok", False)  # the old shared cookie dies with the old password
 
 
 def token_key(token):

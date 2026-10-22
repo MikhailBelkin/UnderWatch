@@ -5,8 +5,6 @@ from ..context import S, state_lock
 from ..settings import trait
 
 
-MOODS = {"happy", "neutral", "sad", "surprised", "angry", "sleepy", "love"}
-
 # Ekman's basic emotions. Each fades on its own clock (minutes); opposites damp each other.
 EMOTIONS = {"joy": "радость", "sadness": "грусть", "fear": "страх", "anger": "злость", "surprise": "удивление",
             "disgust": "отвращение", "contempt": "презрение",
