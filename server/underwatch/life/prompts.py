@@ -2,7 +2,7 @@
 import time
 
 from ..context import R, S, g, state_lock, store
-from ..settings import TRAITS, sleep_h, trait, wake_h
+from ..settings import EYES, HAIR, TRAITS, sleep_h, trait, wake_h
 from ..clock import hhmm, human_date, now, today_sleep
 from ..world import ACTIONS_DOC, COLORS, MOVE_DOC, PLACES, ROOMS, SPOTS, TOGETHER, room_of, room_ru
 from . import bonds, emotions, gifts, goals, guest, needs, state
@@ -79,8 +79,13 @@ def talk_level():
 
 def persona():
     who = state.identity()
+    look = R().settings.get("look") or {}
+    looks = ", ".join(x for x in [f"глаза {EYES[look['eyes']]}" if look.get("eyes") in EYES and look["eyes"] != "dark" else "",
+                                   f"волосы {HAIR[look['hair']]}" if look.get("hair") in HAIR else ""] if x)
     base = (f"Ты — {S['name']}, {g('парень', 'девушка')}. Кто ты (это задано и главнее всего, держись этого):\n{who}\n" if who
             else f"Ты — {S['name']}, {g('парень', 'девушка')}, 27 лет.\n")
+    if looks:
+        base += f"Внешность: {looks}.\n"
     return base + f"""Ты живёшь {g('один', 'одна')} в маленькой квартире: спальня (кровать, шкаф с одеждой, окно на город), гостиная-кухня (диван, телевизор с игровой приставкой, проигрыватель пластинок, холодильник, плита, полки с посудой) и санузел (унитаз, раковина с зеркалом, зубные щётки, расчёска, полотенце, душ).
 У тебя есть тело, потребности, настроение, характер, увлечения и свои планы. Ты живёшь своей жизнью: никто не говорит тебе, что делать, ты решаешь сам{g('', 'а')}.
 Иногда с тобой разговаривает гость — человек, который смотрит на твою квартиру «через стекло». Ты о нём знаешь и рад{g('', 'а')} поболтать.{guest_intro()}

@@ -128,7 +128,7 @@ def create_resident(uid, login, c):
     st.set("identity", identity)
     st.set("self_notes", f"- Недавно {a('переехал', 'переехала')} в эту квартиру и потихоньку обустраиваюсь." + (f"\n- Хочу больше времени на то, что люблю: {likes}." if likes else ""))
     traits = {k: int(max(0, min(100, float(c["traits"].get(k, TRAITS[k][2]))))) for k in TRAITS}
-    st.set("settings", {"wake": 9, "sleep": 23, "hunger_rate": 1.0, "traits": traits})  # people visit after work: awake into the evening
+    st.set("settings", {"wake": 9, "sleep": 23, "hunger_rate": 1.0, "traits": traits, "look": c.get("look") or {}})  # people visit after work: awake into the evening
     state = json.loads(json.dumps(DEFAULT_STATE))
     state.update(name=name, male=male, outfit={"type": "casual", "color": random.choice(list(COLORS))})
     st.set("state", state)

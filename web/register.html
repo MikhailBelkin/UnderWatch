@@ -41,6 +41,12 @@ input[type=text], input[type=password], input:not([type]){font:inherit;font-size
 .seg{display:inline-grid;grid-auto-flow:column;border:1px solid var(--line);border-radius:999px;padding:2px;gap:2px;justify-self:start}
 .seg button{font:inherit;font-size:14px;padding:6px 16px;border-radius:999px;border:0;background:transparent;color:var(--fg);cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.look{display:grid;grid-template-columns:4.5rem minmax(0,1fr);align-items:center;gap:10px;font-size:13.5px;color:var(--muted)}
+.look .seg{display:flex;flex-wrap:wrap;justify-self:start;border-radius:16px}
+.look .seg button{padding:6px 12px;font-size:13.5px}
+.swatches{display:flex;flex-wrap:wrap;gap:6px}
+.swatches button{width:30px;height:30px;border-radius:50%;border:2px solid var(--panel);box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
+.swatches button[aria-checked="true"]{box-shadow:0 0 0 2px var(--accent)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chips button{font:inherit;font-size:13.5px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
 .chips button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb, var(--accent) 10%, var(--panel))}
@@ -105,6 +111,9 @@ a{color:var(--accent)}
       <label class="field">Имя <input id="name" maxlength="20" autocomplete="off" required></label>
       <div class="slider"><span>Возраст</span><output id="ageOut"></output><input type="range" id="age" min="18" max="70" value="27" aria-label="Возраст"></div>
     </div>
+    <div class="look"><span>Глаза</span><div class="swatches" id="eyes" role="radiogroup" aria-label="Цвет глаз"></div></div>
+    <div class="look"><span>Волосы</span><div class="swatches" id="hair" role="radiogroup" aria-label="Цвет волос"></div></div>
+    <div class="look" id="bustRow"><span>Грудь</span><div class="seg" id="bust" role="radiogroup" aria-label="Размер груди"><button type="button" data-v="0" aria-pressed="false">маленькая</button><button type="button" data-v="1" aria-pressed="true">средняя</button><button type="button" data-v="2" aria-pressed="false">большая</button></div></div>
     <label class="field">Профессия <input id="prof" maxlength="60" list="profList" placeholder="кем работает или учится"></label>
     <datalist id="profList"></datalist>
     <div class="field" style="display:grid;gap:6px;font-size:13.5px;color:var(--muted)">Чем увлекается
@@ -136,7 +145,15 @@ a{color:var(--accent)}
 (() => {
 "use strict";
 const $ = id => document.getElementById(id);
-const st = {residentMale:false, guestMale:null, rel:null, likes:new Set()};
+const st = {residentMale:false, guestMale:null, rel:null, likes:new Set(), eyes:'dark', hair:'chestnut', bust:1};
+const EYE_C = {dark:['#22252b','тёмные'], brown:['#5a3a22','карие'], hazel:['#8a6a2c','ореховые'], green:['#3f7d4a','зелёные'], blue:['#3f7fc4','голубые'], gray:['#7d8790','серые']};
+const HAIR_C = {black:['#1d1a19','чёрные'], dark:['#3b2a20','тёмно-каштановые'], chestnut:['#6a3420','каштановые'], red:['#b5532a','рыжие'], light:['#a07c52','русые'], blond:['#e0bf72','светлые'], gray:['#bdbdbd','седые'], pink:['#e27aa6','розовые']};
+function swatches(id, colors, key){
+  const box = document.getElementById(id);
+  const draw = () => box.querySelectorAll('button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.k === st[key])));
+  box.replaceChildren(...Object.entries(colors).map(([k, [hex, ru]]) => { const b = document.createElement('button'); b.type = 'button'; b.dataset.k = k; b.style.background = hex; b.title = ru; b.setAttribute('aria-label', ru); b.setAttribute('role', 'radio'); b.addEventListener('click', () => { st[key] = k; draw(); }); return b; }));
+  draw(); return draw;
+}
 const NAMES = {m:['Артём','Лёва','Миша','Костя','Даня','Ваня','Тимур','Саша'], f:['Лена','Аня','Маша','Катя','Вера','Соня','Алиса','Даша']};
 const PROFS = ['иллюстратор','программист','бариста','учитель','врач','звукорежиссёр','фотограф','повар','студент','архитектор','журналист','фитнес-тренер','дизайнер','переводчик','инженер','психолог','флорист','музыкант'];
 const LIKES = ['музыка','кино и сериалы','книги','видеоигры','спорт','велосипед','горы и походы','готовка','путешествия','рисование','фотография','наука','танцы','животные','мода','технологии','настольные игры','йога'];
@@ -187,8 +204,12 @@ function setResident(male){
   st.residentMale = male;
   $('rm').setAttribute('aria-pressed', String(male)); $('rf').setAttribute('aria-pressed', String(!male));
   $('relTitle').textContent = male ? 'Кто он для вас' : 'Кто она для вас';
+  $('bustRow').hidden = male;
+  if (typeof drawHair === 'function' && (st.hair === 'dark' || st.hair === 'chestnut')){ st.hair = male ? 'dark' : 'chestnut'; drawHair(); }
   if (prevDefault) $('name').value = NAMES[male ? 'm' : 'f'][Math.floor(Math.random()*8)];
 }
+const drawEyes = swatches('eyes', EYE_C, 'eyes'), drawHair = swatches('hair', HAIR_C, 'hair');
+document.querySelectorAll('#bust button').forEach(b => b.addEventListener('click', () => { st.bust = Number(b.dataset.v); document.querySelectorAll('#bust button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); }));
 $('rm').addEventListener('click', () => setResident(true)); $('rf').addEventListener('click', () => setResident(false));
 function setGuest(male){ st.guestMale = male; $('gm').setAttribute('aria-pressed', String(male)); $('gf').setAttribute('aria-pressed', String(!male)); }
 $('gm').addEventListener('click', () => setGuest(true)); $('gf').addEventListener('click', () => setGuest(false));
@@ -211,7 +232,7 @@ $('reg').addEventListener('submit', e => {
   const body = {invite:$('invite').value.trim(), login:$('login').value.trim(), password:$('pw').value, adult:$('adult').checked,
     guest_name:$('guestName').value.trim(), guest_male:st.guestMale,
     character:{male:st.residentMale, name:$('name').value.trim(), age:Number($('age').value), profession:$('prof').value.trim(), interests:likes,
-      rel:st.rel, talk:Number(sliders.talk.value), traits}};
+      rel:st.rel, talk:Number(sliders.talk.value), traits, look:{eyes:st.eyes, hair:st.hair, bust:st.residentMale ? undefined : st.bust}}};
   $('go').disabled = true; $('go').textContent = 'Заселяем…';
   fetch('/api/register', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
     .then(r => r.json().then(j => ({ok:r.ok, j})))

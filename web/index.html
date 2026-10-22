@@ -206,6 +206,11 @@ dialog#settings::backdrop,dialog#resetDlg::backdrop,dialog#memDlg::backdrop,dial
 .pwRow .note.good{color:var(--ok);font-weight:600}
 #setForm .secondary{font:inherit;font-weight:600;font-size:14px;padding:7px 14px;border-radius:10px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer}
 @media (max-width:520px){.pwGrid{grid-template-columns:1fr}}
+.lookRow{display:grid;grid-template-columns:4.5rem minmax(0,1fr);align-items:center;gap:10px;font-size:14px;margin-bottom:8px}
+.swatches{display:flex;flex-wrap:wrap;gap:6px}
+.lookRow .seg{justify-self:start;display:flex;flex-wrap:wrap;border-radius:16px}
+.swatches button{width:30px;height:30px;border-radius:50%;border:2px solid var(--panel);box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
+.swatches button[aria-checked="true"]{box-shadow:0 0 0 2px var(--accent)}
 .memBox{display:grid;gap:2px;padding:18px 20px}
 .adminList{list-style:none;margin:4px 0 8px;padding:0;display:grid;gap:6px;font-size:14px}
 .adminList li{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px}
@@ -449,6 +454,11 @@ dialog#resetDlg{width:min(460px, calc(100vw - 32px))}
       </div>
       <label class="check"><input type="checkbox" id="soundBtn"> Звук пластинки</label>
     </section>
+    <section><h3>Внешность</h3>
+      <div class="lookRow"><span>Глаза</span><div class="swatches" id="lookEyes" role="radiogroup" aria-label="Цвет глаз"></div></div>
+      <div class="lookRow"><span>Волосы</span><div class="swatches" id="lookHair" role="radiogroup" aria-label="Цвет волос"></div></div>
+      <div class="lookRow" id="lookBustRow"><span>Грудь</span><div class="seg" id="lookBust" role="radiogroup" aria-label="Размер груди"><button type="button" data-v="0">маленькая</button><button type="button" data-v="1">средняя</button><button type="button" data-v="2">большая</button></div></div>
+    </section>
     <section id="brainBox" hidden><h3>Разум</h3>
       <div class="radios">
         <label><input type="radio" name="brain" value="local" id="brainLocal"> Локальная модель (Ollama, на этой машине — бесплатно)</label>
@@ -607,7 +617,14 @@ const DEFAULT_NAME = {m:'Лёва', f:'Лена'};
 const ID = {male:true, name:'Лёва'};
 function gx(m, f){ return ID.male ? m : f; }
 function cleanName(n){ return String(n || '').replace(/[^\p{L}\p{M}\s'-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 20); }
-function hairCol(){ return ID.male ? C.hair : '#6a3420'; }
+// looks chosen in the settings / at registration; unset ones follow the gender's default
+const EYE_C = {dark:['#22252b','тёмные'], brown:['#5a3a22','карие'], hazel:['#8a6a2c','ореховые'], green:['#3f7d4a','зелёные'], blue:['#3f7fc4','голубые'], gray:['#7d8790','серые']};
+const HAIR_C = {black:['#1d1a19','чёрные'], dark:['#3b2a20','тёмно-каштановые'], chestnut:['#6a3420','каштановые'], red:['#b5532a','рыжие'], light:['#a07c52','русые'], blond:['#e0bf72','светлые'], gray:['#bdbdbd','седые'], pink:['#e27aa6','розовые']};
+function lookOf(){
+  const l = (LIFE && LIFE.settings && LIFE.settings.look) || {};
+  return {eyes:EYE_C[l.eyes] ? l.eyes : 'dark', hair:HAIR_C[l.hair] ? l.hair : (ID.male ? 'dark' : 'chestnut'), bust:[0, 1, 2].includes(l.bust) ? l.bust : 1};
+}
+function hairCol(){ return HAIR_C[lookOf().hair][0]; }
 // Russian case forms for one-word Cyrillic names; anything else stays as typed (indeclinable)
 function decl(name, kase){
   if (!/^[А-Яа-яЁё-]+$/.test(name)) return name;
@@ -1568,7 +1585,7 @@ function drawHead(hc, ang){
     const ry = 3.2*sc*eo, pr = Math.min(1.7*sc*(1 - 0.3*Math.max(0, F.lidUp)), ry*0.95);
     ellipse(ex, ey, 2.9*sc, ry, '#ffffff');
     const py = clamp(S.lookY*1.1*sc, -ry + pr, ry - pr);
-    circle(ex + S.lookX*1.2*sc, ey + py, pr, C.eye);
+    circle(ex + S.lookX*1.2*sc, ey + py, pr, EYE_C[lookOf().eyes][0]);
     circle(ex + S.lookX*1.2*sc + 0.6, ey + py - 0.7, 0.55*sc, '#ffffff');
     if (F.cheek > 0.05) ellipse(ex, ey + ry + 1.4, 3.3*sc, F.cheek*2.2, C.skin);
     if (!ID.male){ line(ex + 2.2*sc, ey - ry*0.75, ex + 3.6*sc, ey - ry*1.1, 1, C.eye); line(ex + 0.6*sc, ey - ry*0.95, ex + 1.4*sc, ey - ry*1.4, 1, C.eye); }
@@ -1646,6 +1663,10 @@ function drawPerson(){
   const tb = {x:Math.sin(lean)*5, y:-Math.cos(lean)*5};
   line(tb.x, tb.y, neck.x, neck.y + 3, 17, topC);
   if (!o.top && o.bottom) circle(0, 0, 9, botC);
+  if (!ID.male){
+    const r = [2.4, 3.4, 4.5][lookOf().bust], c = {x:tb.x + (neck.x - tb.x)*0.62, y:tb.y + (neck.y - tb.y)*0.62};
+    ctx.beginPath(); ctx.ellipse(c.x + Math.cos(lean)*6.8, c.y + Math.sin(lean)*6.8, r, r*1.12, lean, 0, PI*2); ctx.fillStyle = topC; ctx.fill();
+  }
   if (o.dots) for (let i = 0; i < 5; i++) circle(neck.x*(0.2 + i*0.15) + (i % 2 ? 3 : -3), neck.y*(0.2 + i*0.15), 1.1, '#ffffff');
   if (!o.skirt && o.legs !== 'none') rect(-8, -3, 16, 3, shade(botC, 0.6));
   const kN = leg(p.hipR, p.kneeR, false);
@@ -2510,7 +2531,25 @@ async function fillBrain(){
   document.getElementById('brainLocal').disabled = !models.length;
   document.getElementById('brainFallback').checked = b.fallback !== false;
 }
+const lookPick = {eyes:null, hair:null, bust:null};
+function lookSwatches(boxId, colors, key){
+  const box = document.getElementById(boxId);
+  box.replaceChildren(...Object.entries(colors).map(([k, [hex, ru]]) => {
+    const b = document.createElement('button'); b.type = 'button'; b.style.background = hex; b.title = ru; b.setAttribute('aria-label', ru); b.setAttribute('role', 'radio');
+    b.setAttribute('aria-checked', String(lookPick[key] === k));
+    b.addEventListener('click', () => { lookPick[key] = k; box.querySelectorAll('button').forEach(x => x.setAttribute('aria-checked', String(x === b))); });
+    return b;
+  }));
+}
+document.querySelectorAll('#lookBust button').forEach(b => b.addEventListener('click', () => { lookPick.bust = Number(b.dataset.v); document.querySelectorAll('#lookBust button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); }));
+function fillLook(){
+  Object.assign(lookPick, lookOf());
+  lookSwatches('lookEyes', EYE_C, 'eyes'); lookSwatches('lookHair', HAIR_C, 'hair');
+  document.querySelectorAll('#lookBust button').forEach(x => x.setAttribute('aria-pressed', String(Number(x.dataset.v) === lookPick.bust)));
+  document.getElementById('lookBustRow').hidden = ID.male;
+}
 function fillSettings(st){
+  fillLook();
   fillBrain();
   const n = (LIFE && LIFE.notes) || {};
   document.getElementById('setIdentity').value = n.identity || '';
@@ -2538,7 +2577,7 @@ function saveSettings(pwChanged){
   const n = (LIFE && LIFE.notes) || {}, persona = {};
   [['identity','setIdentity'], ['self_notes','setSelf'], ['guest_notes','setGuest']].forEach(([k, id]) => { const v = document.getElementById(id).value.trim(); const old = (k === 'identity' ? n.identity : k === 'self_notes' ? n.self : n.guest) || ''; if (v !== old.trim()) persona[k] = v; });
   const brainSel = {backend:document.getElementById('brainLocal').checked ? 'local' : 'claude', fast:document.getElementById('brainFast').value, deep:document.getElementById('brainDeep').value, fallback:document.getElementById('brainFallback').checked};
-  api('/api/settings', {wake:Number(setWake.value), sleep:Number(setSleep.value), hunger_rate:Number(setHunger.value), traits, brain:brainSel})
+  api('/api/settings', {wake:Number(setWake.value), sleep:Number(setSleep.value), hunger_rate:Number(setHunger.value), traits, brain:brainSel, look:Object.assign({}, lookPick)})
     .then(r => { applySettings(r.settings, r.state); return Object.keys(persona).length ? api('/api/persona', persona).then(x => renderNotes(x.notes)) : null; })
     .then(() => { setMsg.textContent = pwChanged ? 'Сохранено, пароль изменён.' : 'Сохранено.'; setTimeout(() => dlg.close(), pwChanged ? 1600 : 500); })
     .catch(err => { setMsg.textContent = 'Не сохранилось: ' + err.message; });

@@ -10,6 +10,7 @@ from .config import PASSWORD, log
 from .passwords import PW_ITER, make_pw, pw_hash
 from .context import as_resident, emit_event, ACC, RESIDENTS
 from .life.prompts import REL_RU, REL_TEXT
+from .settings import clean_look
 from .passwords import make_pw
 from .residents import Resident, create_resident
 
@@ -153,6 +154,7 @@ def register(b, client, who):
               "age": int(c.get("age") or 27), "profession": str(c.get("profession") or "").strip()[:60],
               "interests": str(c.get("interests") or "").strip()[:200], "rel": str(c.get("rel") or ""),
               "talk": int(max(0, min(100, float(c.get("talk", 50))))), "traits": c.get("traits") if isinstance(c.get("traits"), dict) else {},
+              "look": clean_look(c.get("look")),
               "guest_name": re.sub(r"\s+", " ", str(b.get("guest_name") or "")).strip()[:30], "guest_male": bool(b.get("guest_male", True))}
     except (TypeError, ValueError):
         ch, err = {}, "неверные данные персонажа"

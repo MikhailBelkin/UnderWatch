@@ -1,4 +1,4 @@
-"""The resident's settings: schedule, hunger, character traits."""
+"""The resident's settings: schedule, hunger, character traits, looks."""
 import json
 
 from .config import SLEEP_H, WAKE_H
@@ -13,7 +13,26 @@ TRAITS = {  # key: (low end, high end, default)
     "sensitivity": ("невозмутимость", "ранимость", 50),
 }
 
-DEFAULT_SETTINGS = {"wake": WAKE_H, "sleep": SLEEP_H, "hunger_rate": 1.0, "traits": {k: v[2] for k, v in TRAITS.items()}}
+# looks: key -> how the model hears it (the page has the colours)
+EYES = {"dark": "тёмные", "brown": "карие", "hazel": "ореховые", "green": "зелёные", "blue": "голубые", "gray": "серые"}
+HAIR = {"black": "чёрные", "dark": "тёмно-каштановые", "chestnut": "каштановые", "red": "рыжие", "light": "русые",
+        "blond": "светлые", "gray": "седые", "pink": "розовые"}
+BUST = (0, 1, 2)  # small, medium, large; drawn only for a female resident
+
+DEFAULT_SETTINGS = {"wake": WAKE_H, "sleep": SLEEP_H, "hunger_rate": 1.0, "traits": {k: v[2] for k, v in TRAITS.items()}, "look": {}}
+
+
+def clean_look(raw):
+    """Only known colours and sizes get through; anything else is left to the gender's default."""
+    raw = raw if isinstance(raw, dict) else {}
+    look = {}
+    if raw.get("eyes") in EYES:
+        look["eyes"] = raw["eyes"]
+    if raw.get("hair") in HAIR:
+        look["hair"] = raw["hair"]
+    if raw.get("bust") in BUST:
+        look["bust"] = raw["bust"]
+    return look
 
 
 def wake_h():
@@ -39,6 +58,8 @@ def apply_settings(body):
             bb = body["brain"]
             new["brain"] = {"backend": "local" if bb.get("backend") == "local" else "claude",
                             "fast": str(bb.get("fast") or "")[:80], "deep": str(bb.get("deep") or "")[:80], "fallback": bool(bb.get("fallback", True))}
+        if "look" in body:
+            new["look"] = clean_look(body["look"])
         for k, v in (body.get("traits") or {}).items():
             if k in TRAITS:
                 new["traits"][k] = int(max(0, min(100, float(v))))
