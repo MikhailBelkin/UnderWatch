@@ -2040,11 +2040,13 @@ function syncDevices(st){
   if ('dishes' in st) S.dishes = st.dishes;
   if ('accessory' in st) S.accessory = st.accessory;
   if (st.outfit){
-    // clothes change at the wardrobe; only a towel after the shower and pyjamas in bed may just appear
+    // clothes never change while she is busy (the server writes the new outfit the moment she decides, before the
+    // walk to the wardrobe or the shower even starts). Once she is free: pyjamas under the blanket just appear,
+    // a towel means a shower the page didn't show — she goes and dries off — anything else, the wardrobe.
     const o = normOutfit(st.outfit), cur = normOutfit(S.outfit);
     if (o.type !== cur.type || o.color !== cur.color){
-      if (o.type === 'towel' || st.loop === 'sleep' || S.loop === 'sleep' || st.loop === 'shower') S.outfit = o;
-      else if (!S.cur && !S.queue.length) redress(st);
+      if (st.loop === 'sleep' || S.loop === 'sleep') S.outfit = o;
+      else if (!S.cur && !S.queue.length && st.loop !== 'shower') o.type === 'towel' ? towelUp(st) : redress(st);
     }
   }
   for (const k in st.lights) S.lights[k] = st.lights[k];
@@ -2052,6 +2054,16 @@ function syncDevices(st){
 // the server says she's wearing something else (a change got interrupted): walk to the wardrobe, change, go back to what she was doing
 function redress(st){
   const o = normOutfit(st.outfit), steps = expand({do:'change_clothes', outfit:o.type, color:o.color}, {});
+  if (st.loop === 'rest' && st.rest) steps.push(...expand({do:'rest', on:st.rest.on, how:st.rest.how}, {}));
+  else {
+    if (PL[st.location]) steps.push(walk(st.location));
+    steps.push(fx(() => { S.hold = Object.assign({L:null, R:null}, HOLD_FOR[st.loop] || {}); }), loop(st.loop || null));
+  }
+  S.queue = steps; S.idleT = 0;
+}
+// the server says she's in a towel, but the page never showed the shower: she goes there and dries off, then back to what she was doing
+function towelUp(st){
+  const steps = [walk('shower'), fx(() => { S.outfit = {type:'towel', color:null}; }), gest('towel_dry')];
   if (st.loop === 'rest' && st.rest) steps.push(...expand({do:'rest', on:st.rest.on, how:st.rest.how}, {}));
   else {
     if (PL[st.location]) steps.push(walk(st.location));
