@@ -709,6 +709,8 @@ const GEST = {
   phoneg:{d:5, ru:'говорит по телефону', f:(p,t) => { p.shR = 1.25; p.elR = 2.45; p.head = 0.05*Math.sin(t*0.9) - 0.05; }},
   playg:{d:6, ru:'играет', f:(p,t) => { p.shR = 1.0 + 0.06*Math.sin(t*13); p.elR = 0.8; p.shL = 0.95; p.elL = 0.85; p.head = 0.15; p.lean = 0.1; }},
   shoo:{d:2.6, ru:'выгоняет', f:(p,t) => { p.shR = 2.2 + 0.5*Math.sin(t*10); p.elR = 0.4; p.shL = 1.6 + 0.4*Math.sin(t*10 + 1); p.elL = 0.4; p.lean = 0.08; }},
+  pull_over:{d:1.6, ru:'переодевается', f:(p,t) => { const k = Math.sin(PI*clamp(t/1.6,0,1)); p.shL = p.shR = 0.2 + 2.8*k; p.elL = p.elR = 1.3*k; p.head = 0.18*k; p.lean = 0.04*k; }},
+  step_out:{d:1.8, ru:'переодевается', f:(p,t) => { const k = Math.sin(PI*clamp(t/1.8,0,1)); p.lean = 0.6*k; p.head = 0.3*k; p.hipR = 0.25*k; p.kneeR = -0.4*k; p.hipL = 0.55*k + 0.25*Math.max(0, Math.sin(t*5))*k; p.kneeL = -0.9*k; p.shL = p.shR = 0.95*k; p.elL = p.elR = 0.25; p.dy = 7*k; }},
   look:{d:4, ru:'смотрит в окно', f:(p) => { p.head = -0.25; p.shL = -0.35; p.elL = 0.4; p.shR = -0.35; p.elR = 0.4; S.lookTX = 0.3; S.lookTY = -1; }}
 };
 
@@ -798,9 +800,10 @@ function expand(a, plan){
     case 'change_clothes': {
       const col = OUTFITS[a.color] ? a.color : null, typ = OUTFIT_TYPES[a.outfit] ? a.outfit : null;
       const next = {type:typ || 'casual', color:col || (typ ? null : nextOutfit())};
+      if (a.private === false) return changeInTheOpen(next);
       return [walk('wardrobe'), fx(() => { S.wardrobe = true; }), gest('browse'),
         gest('reach', {end:() => { S.taken = next.type; S.hold.R = 'garment:' + next.type; }}),
-        fx(() => { S.changing = a.private !== false; S.dropped = normOutfit(S.outfit).type; if (a.private === false) S.outfit = {type:'underwear', color:null}; }),
+        fx(() => { S.changing = true; S.dropped = normOutfit(S.outfit).type; }),
         gest('changing', {midAt:3.5, mid:() => { S.outfit = next; S.hold.R = null; }}),
         fx(() => { S.changing = false; S.taken = null; S.dropped = null; }), wait(0.6), fx(() => { S.wardrobe = false; })];
     }
@@ -814,12 +817,41 @@ function expand(a, plan){
   }
   return [];
 }
+// changing without hiding: the top over the head, the bottom stepped out of (a dress or a robe in one go),
+// a moment in underwear, the new bottom, the new top; the old clothes lie on the floor until she puts them away
+const TOP_PARTS = ['top', 'sleeves', 'dots', 'belt', 'turban'], BOTTOM_PARTS = ['bottom', 'legs', 'skirt', 'skirtLen', 'shoes'];
+const onePiece = sp => !!sp.skirt && sp.skirtLen >= 1;
+const mix = (base, from, keys) => { const o = Object.assign({}, base); for (const k of keys) o[k] = from[k]; return o; };
+function changeInTheOpen(next){
+  let from = null;
+  const under = () => outfitSpec({type:'underwear', color:null}), to = () => outfitSpec(next);
+  const steps = [walk('wardrobe'), fx(() => { S.wardrobe = true; }), gest('browse'),
+    gest('reach', {end:() => { S.taken = next.type; S.hold.R = null; }}),
+    fx(() => { from = outfitSpec(S.outfit); S.spec = from; S.accessory = null; })];
+  steps.push(gest('pull_over', {midAt:0.8, mid:() => {  // the top, or a whole dress, over the head
+    S.spec = onePiece(from) ? under() : mix(from, under(), TOP_PARTS); S.pile = {top:from.top || from.skirt, bottom:null}; }}));
+  steps.push(fx(() => { if (onePiece(from)) S.pile.bottom = from.skirt; }));
+  steps.push({k:'gest', g:'step_out', midAt:0.9, mid:() => { S.spec = under(); S.pile.bottom = S.pile.bottom || from.bottom || from.skirt; }, skipIf:() => onePiece(from)});
+  steps.push(wait(0.9));  // a moment in underwear
+  steps.push({k:'gest', g:'step_out', midAt:0.9, mid:() => { S.spec = mix(under(), to(), BOTTOM_PARTS); }, skipIf:() => onePiece(to())});
+  steps.push(gest('pull_over', {midAt:0.8, mid:() => { S.spec = null; S.outfit = next; S.taken = null; }}));
+  steps.push(gest('reach', {end:() => { S.pile = null; }}), wait(0.4), fx(() => { S.wardrobe = false; }));
+  return steps;
+}
+function drawPile(){  // the clothes she just took off, on the floor by the wardrobe
+  if (!S.pile) return;
+  const x = PL.wardrobe.x - 30, y = GROUND - 1;
+  if (S.pile.bottom) rr(x - 9, y - 4, 18, 4, 2, S.pile.bottom);
+  if (S.pile.top) rr(x - 7 + 3, y - 7, 14, 4, 2, S.pile.top);
+}
+
 const ROOM_LAMPS = {bedroom:['bed','night'], living:['liv','floor'], kitchen:['kit'], bathroom:['bath'], all:['bed','night','liv','floor','kit','bath']};
 function roomKey(x){ return x < 338 ? 'bedroom' : x < 800 ? 'living' : x < 982 ? 'kitchen' : 'bathroom'; }
 function setRoomLights(room, on){ for (const k of ROOM_LAMPS[room] || []) S.lights[k] = on; }
 function nextOutfit(){ const cur = normOutfit(S.outfit).color; return pick(OUTFIT_KEYS.filter(k => k !== cur)); }
 
 function clearQueue(){
+  S.spec = null; S.pile = null;  // an interrupted change leaves no half-dressed stage behind
   if (S.cur && S.cur.k === 'gest' && S.cur.g === 'reach' && S.fridge) S.fridge = false;
   if (S.cur && S.cur.k === 'gest' && S.cur.g === 'cook') S.stove = false;
   if (S.cur && S.cur.k === 'gest' && GEST[S.cur.g].end) GEST[S.cur.g].end(S.cur);
@@ -855,7 +887,9 @@ function stepUpdate(dt){
   while (guard++ < 12){
     if (!S.cur){
       if (!S.queue.length) return;
-      S.cur = S.queue.shift(); startStep(S.cur);
+      S.cur = S.queue.shift();
+      if (S.cur.skipIf && S.cur.skipIf()){ S.cur = null; continue; }
+      startStep(S.cur);
     }
     const c = S.cur;
     if (c.k === 'walk'){
@@ -1578,7 +1612,7 @@ function drawHead(hc, ang){
 }
 function drawPerson(){
   const p = S.pose, f = S.face, showering = S.loop === 'shower' && Math.abs(S.x - PL.shower.x) < 6;
-  const o = showering ? {top:null, bottom:null, sleeves:'none', legs:'none', skirt:null, shoes:null} : outfitSpec(S.outfit);
+  const o = showering ? {top:null, bottom:null, sleeves:'none', legs:'none', skirt:null, shoes:null} : (S.spec || outfitSpec(S.outfit));
   const skin = showering ? '#cdb7a6' : C.skin, skinD = showering ? '#c2ab99' : C.skinD, topC = o.top || skin, botC = o.bottom || skin;
   S.silhouette = showering;
   const hipX = S.x + p.dx, hipY = GROUND - 50 + p.dy + p.jy;
@@ -1987,7 +2021,7 @@ function draw(){
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   const ph = phase();
   drawOutside(ph); drawShell(); drawBedroom(ph); drawLiving(); drawKitchen(); drawBathroom();
-  drawGifts(); drawThings(); drawTogether(); drawKitchenSinkDishes(); if (S.drawStool) S.drawStool(); drawPerson(); drawPlaid(); drawScarf(); drawBlanketOver(); drawBathFront(); drawVisitors(); drawTouch(1/60); drawWater();
+  drawGifts(); drawThings(); drawPile(); drawTogether(); drawKitchenSinkDishes(); if (S.drawStool) S.drawStool(); drawPerson(); drawPlaid(); drawScarf(); drawBlanketOver(); drawBathFront(); drawVisitors(); drawTouch(1/60); drawWater();
   drawLighting(ph); drawParticles(); drawBubble();
 }
 let last = performance.now(), lastStatus = '';
@@ -2073,6 +2107,7 @@ function towelUp(st){
 }
 function placeFromServer(st){
   clearQueue();
+  S.spec = null;
   S.outfit = normOutfit(st.outfit);  // a fresh look: no walk to the wardrobe
   const pl = PL[st.location] || PL.sofa;
   S.x = pl.x; S.face = pl.face || 1;
