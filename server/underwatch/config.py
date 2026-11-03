@@ -34,6 +34,8 @@ MODEL_DEEP = os.environ.get("MODEL_DEEP", "sonnet")
 
 TICK = 5  # seconds between mind-loop checks
 
+DORMANT_DAYS = float(os.environ.get("DORMANT_DAYS", "3"))  # the guest stayed away this long: the resident sleeps until they come back
+
 PASSWORD = os.environ.get("PASSWORD", "")  # the first password; once it's changed in the settings, the stored one wins
 
 

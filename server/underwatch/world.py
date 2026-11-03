@@ -19,7 +19,7 @@ SURF_RU = {"bed": "кровати", "sofa": "диване", "floor": "ковре
 
 OUTFIT_TYPES = {"casual": "футболка и брюки", "pajamas": "пижама", "dress": "романтичное платье", "shorts": "шорты и футболка",
                 "warm": "джинсы и свитер", "mini": "миниюбка и топ", "swimsuit": "купальник", "underwear": "нижнее бельё",
-                "bathrobe": "халат", "towel": "полотенце"}
+                "bathrobe": "халат", "towel": "полотенце", "nude": "голое тело"}
 
 COLORS = {"red": "красное", "blue": "синее", "green": "зелёное", "yellow": "жёлтое", "purple": "фиолетовое",
           "orange": "оранжевое", "pink": "розовое", "black": "чёрное", "white": "белое"}
@@ -37,7 +37,7 @@ ACTIONS = {
     "date": ("sofa", "date", "ужинает с гостем при свечах"), "dance_together": ("center", "dancing", "танцует с гостем"),
     "tv_off": (None, "", "выключает телевизор"), "play_game": ("sofa", "game", "играет в приставку"),
     "music_on": ("music", "listen", "слушает пластинку"), "music_off": ("music", None, "выключает музыку"),
-    "cook": ("stove", None, "готовит"), "eat": (None, "", "ест"), "drink": ("fridge", None, "пьёт"),
+    "cook": ("stove", None, "готовит"), "eat": (None, "", "ест"), "drink": ("fridge", None, "пьёт"), "coffee": ("stove", None, "варит и пьёт кофе"),
     "open_fridge": ("fridge", None, "заглядывает в холодильник"), "sleep": ("bed", "sleep", "спит"),
     "change_clothes": ("wardrobe", None, "переодевается"), "light_on": (None, "", "включает свет"),
     "light_off": (None, "", "выключает свет"), "look_window": ("window", "daydream", "смотрит в окно"),
@@ -80,8 +80,8 @@ MOVE_DOC = """move — любое движение, которого нет в �
 ACTIONS_DOC = """walk_to{place} — пойти к месту; wave, nod, shake_head, shrug, jump, dance, think, laugh, bow, stretch — жесты (несколько секунд);
 sit — сесть на диван (сесть на что-то другое — rest{on, sit}, например rest{stool, sit} — на барный стул); stand — встать; watch_tv — сесть и смотреть телевизор; tv_off — выключить телевизор;
 play_game — играть в приставку; music_on — поставить пластинку и слушать; music_off — выключить музыку;
-cook — приготовить еду на плите; eat — поесть (после cook или из холодильника); drink — попить из холодильника; open_fridge — заглянуть в холодильник;
-change_clothes{outfit, color} — переодеться (outfit: casual — футболка и брюки, pajamas — пижама, dress — романтичное платье, shorts — шорты и футболка, warm — джинсы и свитер, mini — миниюбка и топ, swimsuit — купальник, underwear — нижнее бельё, bathrobe — халат, towel — полотенце; подаренная одежда — outfit gift:<id>, список в описании квартиры; color — по желанию); light_on{room} / light_off{room} — свет (room: bedroom, living, kitchen, bathroom, all; без room — там, где ты); look_window — смотреть в окно, мечтать;
+cook — приготовить еду на плите; coffee — сварить и выпить кофе, бодрит (вторая чашка за день действует вдвое слабее, третья почти никак); eat — поесть (после cook или из холодильника); drink — попить из холодильника; open_fridge — заглянуть в холодильник;
+change_clothes{outfit, color} — переодеться (outfit: casual — футболка и брюки, pajamas — пижама, dress — романтичное платье, shorts — шорты и футболка, warm — джинсы и свитер, mini — миниюбка и топ, swimsuit — купальник, underwear — нижнее бельё, bathrobe — халат, towel — полотенце, nude — голое тело; подаренная одежда — outfit gift:<id>, список в описании квартиры; color — по желанию); light_on{room} / light_off{room} — свет (room: bedroom, living, kitchen, bathroom, all; без room — там, где ты); look_window — смотреть в окно, мечтать;
 together{kind} — провести время вместе с гостем (kind: date — свидание, ужин при свечах; movie — кино вдвоём; dance — танцевать вместе; cook — приготовить ужин вместе); соглашайся, только если правда хочется; предлагать можно и самому — первым;
 open_gift{id} — открыть подарок в обёртке; eat_treat{id} — съесть вкусняшку из подарков; use_item{id, with, at, motion, put, status, label} — воспользоваться подаренной вещью по назначению (плед — укутаться на диване, свечу — зажечь, шарф и одежду — надеть, книгу — читать, пластинку — слушать, игрушку — обнять). Вещи можно сочетать: with — id второй вещи, которую используешь вместе (телефон поставить на зарядку, кофе сварить в турке и налить в чашку); at — место, куда для этого подойти (stove, sofa, bed, window, center, fridge…); motion — как это выглядит: admire, hold, drink, eat, stir (помешивать у плиты), hug, read, phone, play, wear; put — куда положить вещи потом (shelf, windowsill, nightstand, coffee_table, kitchen, stove, bathroom, wardrobe, bed, floor), если нужно переставить; status — состояние, если оно длится (например «заряжается»), иначе пусто; label — что делаешь, 1–3 слова;
 shoo{id} — выгнать или убрать то, что появилось в квартире (птицу, паука, кота…), если мешает;
@@ -97,6 +97,9 @@ LOOP_LABEL = {"sit": "сидит на диване", "watch": "смотрит т
               "sleep": "спит", "daydream": "смотрит в окно", "read": "читает книгу", "phone": "болтает по телефону",
               "workout": "делает зарядку", "write": "пишет в блокнот", "mop": "вытирает пол", "toilet": "сидит в туалете", "shower": "принимает душ",
               "date": "на свидании с гостем", "dancing": "танцует с гостем", "cozy": "сидит, укутавшись в плед", "pose": "замер(ла) в позе", "rest": "отдыхает"}
+
+# things every resident has from the start (the flat is the same for everyone; gifts come on top)
+HOUSEHOLD = {"turka": "медная турка у плиты", "cups": "чашки на полке над мойкой"}
 
 ROOMS = {"bedroom": ("bed", "night"), "living": ("liv", "floor"), "kitchen": ("kit",), "bathroom": ("bath",),
          "all": ("bed", "night", "liv", "floor", "kit", "bath")}
@@ -115,7 +118,7 @@ NATURAL = {"tv": "watch_tv", "sofa": "sit", "music": "music_on", "stove": "cook"
            "stool": {"do": "rest", "on": "stool", "how": "sit"}, "coffee_table": {"do": "rest", "on": "coffee_table", "how": "sit"},
            "counter": {"do": "rest", "on": "counter", "how": "sit"}, "floor": {"do": "rest", "on": "floor", "how": "sit"}}
 
-CHAIN_HOLD = {"use_toilet": 60, "shower": 156, "change_clothes": 16, "cook": 55, "wash_dishes": 28}  # seconds these take for the body
+CHAIN_HOLD = {"use_toilet": 60, "shower": 156, "change_clothes": 16, "cook": 55, "wash_dishes": 28, "coffee": 18}  # seconds these take for the body
 
 TOGETHER = {"date": "свидание: ужин при свечах", "movie": "кино вдвоём", "dance": "танцы вместе", "cook": "приготовить ужин вместе", "custom": "своё занятие вдвоём"}
 

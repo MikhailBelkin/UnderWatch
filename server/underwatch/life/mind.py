@@ -5,8 +5,8 @@ import re
 import time
 import traceback
 
-from ..config import MODEL_DEEP, MODEL_FAST, TICK, log
-from ..context import RESIDENTS, S, as_resident, busy_lock, emit_event, g, hub, save_state, set_busy, spawn, state_lock, store
+from ..config import DORMANT_DAYS, MODEL_DEEP, MODEL_FAST, TICK, log
+from ..context import R, RESIDENTS, S, as_resident, busy_lock, emit_event, g, hub, save_state, set_busy, spawn, state_lock, store
 from ..settings import sleep_h, trait, wake_h
 from ..clock import day_key, hhmm, is_awake_time, next_wake, now, today_sleep
 from ..brain import LLMError, llm, mind_paused
@@ -194,7 +194,45 @@ def chat(text):
     memory.maybe_remember()
 
 
+def to_bed(thought):
+    """Into pyjamas at the wardrobe, not by magic, and to bed."""
+    dress = [] if state.outfit_of()["type"] == "pajamas" else [{"do": "change_clothes", "outfit": "pajamas", "private": body.clothes.wants_privacy()}]
+    body.act(dress + [{"do": "sleep"}], thought=thought, intent="спит", mood="sleepy", aloud="Спокойной ночи.")
+
+
+def guest_gone():
+    """Nobody has the flat open and the guest hasn't been here for days."""
+    return not hub.clients and time.time() - R().guest_seen > DORMANT_DAYS * 86400
+
+
+def doze():
+    """The guest stays away: the resident sleeps through it and her time stands still, so the model isn't called for an empty flat."""
+    if not S.get("dormant"):
+        if S["loop"] != "sleep":
+            to_bed("Гостя всё нет… Лягу-ка я спать, пока гость не вернётся.")
+        with state_lock:
+            S["dormant"] = True
+            save_state()
+        emit_event("system", f"Гость не заходит уже {DORMANT_DAYS:g} дн. — {S['name']} спит, пока гость не зайдёт; разум не работает.")
+        log(f"{R().login}: the guest stays away, the resident sleeps")
+    with state_lock:
+        S["last_tick"] = time.time()  # needs and feelings wait too
+
+
+def wake_from_doze():
+    with state_lock:
+        S["dormant"] = False
+        S["last_tick"] = S["until"] = time.time()
+        save_state()
+    emit_event("system", f"Гость вернулся — {S['name']} просыпается.")
+    log(f"{R().login}: the guest is back, the resident wakes up")
+
+
 def mind_step():
+    if guest_gone():
+        return doze()
+    if S.get("dormant"):
+        wake_from_doze()
     needs.update_needs()
     if mind_paused():  # the GPU is needed elsewhere: the body lives on, the mind waits
         if int(time.time()) % 60 < TICK:
@@ -222,8 +260,7 @@ def mind_step():
                         S["reflect_day"] = day_key(t)
                     set_busy(None)
         if S["loop"] != "sleep":
-            dress = [] if state.outfit_of()["type"] == "pajamas" else [{"do": "change_clothes", "outfit": "pajamas", "private": body.clothes.wants_privacy()}]  # at the wardrobe, not by magic
-            body.act(dress + [{"do": "sleep"}], thought="Всё, на сегодня хватит. Переоденусь в пижаму — и спать.", intent="спит", mood="sleepy", aloud="Спокойной ночи.")
+            to_bed("Всё, на сегодня хватит. Переоденусь в пижаму — и спать.")
         with state_lock:
             S["until"] = next_wake(t).timestamp()
         if S["leak"] or int(time.time()) % 60 < TICK:

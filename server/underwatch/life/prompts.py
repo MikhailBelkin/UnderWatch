@@ -4,7 +4,7 @@ import time
 from ..context import R, S, g, state_lock, store
 from ..settings import EYES, HAIR, TRAITS, sleep_h, trait, wake_h
 from ..clock import hhmm, human_date, now, today_sleep
-from ..world import ACTIONS_DOC, COLORS, MOVE_DOC, PLACES, ROOMS, SPOTS, TOGETHER, room_of, room_ru
+from ..world import ACTIONS_DOC, HOUSEHOLD, COLORS, MOVE_DOC, PLACES, ROOMS, SPOTS, TOGETHER, room_of, room_ru
 from . import bonds, emotions, gifts, goals, guest, needs, state, wardrobe
 
 
@@ -130,6 +130,7 @@ def world_line():
     flowers += wardrobe.line()
     if S["loop"] == "cozy":
         flowers += " Ты сидишь на диване, укутавшись в плед."
+    flowers += " На кухне свои " + " и ".join(HOUSEHOLD.values()) + " — можно сварить кофе (coffee)."
     if S.get("dishes"):
         flowers += f" В кухонной мойке грязная посуда: {S['dishes']} шт."
     wrapped = [it for it in S["items"] if it["state"] == "wrapped"]
@@ -176,7 +177,7 @@ def situation():
         left = max(0, int((today_sleep(t) - t).total_seconds() // 60))
         hints = []
         if n["hunger"] < 30: hints.append(g("ты проголодался", "ты проголодалась"))
-        if n["energy"] < 25: hints.append(g("ты устал", "ты устала"))
+        if n["energy"] < 35: hints.append(g("ты устал", "ты устала") + " — можно выпить кофе (coffee), посидеть или прилечь" + (", а если совсем без сил — вздремнуть (sleep)" if n["energy"] < 30 else ""))
         if n["fun"] < 25: hints.append("тебе скучно")
         if n["social"] < 25: hints.append("хочется с кем-нибудь поговорить")
         if n["hygiene"] < 35: hints.append("хочется освежиться — в душ или хотя бы умыться")

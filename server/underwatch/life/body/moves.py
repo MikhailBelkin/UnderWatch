@@ -7,7 +7,7 @@ def move(a, body):
     """Tires her a little by how long it lasts, amuses her a little. "end": "hold" freezes her in the last pose;
     "on" (bed, sofa, table) is the surface the body rests on instead of the floor."""
     effort = a.get("secs", 0) / 10
-    S["needs"]["energy"] = needs.clampn(S["needs"]["energy"] - 0.8 * effort)
+    S["needs"]["energy"] = needs.clampn(S["needs"]["energy"] - 0.6 * effort)
     S["needs"]["hygiene"] = needs.clampn(S["needs"]["hygiene"] - 0.4 * effort)
     S["needs"]["fun"] = needs.clampn(S["needs"]["fun"] + needs.fun_gain(2))
     if a.get("end") == "hold":

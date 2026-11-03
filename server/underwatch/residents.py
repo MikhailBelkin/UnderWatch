@@ -39,6 +39,7 @@ class Resident:
 
     def __init__(self, user):
         self.uid, self.login, self.admin = user["id"], user["login"], user["role"] == "admin"
+        self.guest_seen = user["seen"] or user["ts"] or time.time()  # the guest's last request, kept fresh by the sessions
         self.store = Store(DATA / user["db"])
         self.lock = threading.RLock()
         self.hub = Hub()

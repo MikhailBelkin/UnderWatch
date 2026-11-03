@@ -17,7 +17,7 @@ DEFAULT_STATE = {
     "until": 0, "tv": "off", "console": False, "music": False, "outfit": "blue", "mood": "joy",
     "emo": {"joy": 0.35, "sadness": 0, "fear": 0, "anger": 0, "surprise": 0, "disgust": 0, "contempt": 0,
             "shyness": 0, "jealousy": 0, "longing": 0},
-    "last_guest_ts": 0, "last_initiative": 0, "together": None, "invite": None,
+    "last_guest_ts": 0, "last_initiative": 0, "dormant": False, "together": None, "invite": None,
     "lights": {"bed": True, "night": False, "liv": True, "floor": False, "kit": True, "bath": False}, "water": 0.0, "leak": False,
     "react_at": 0, "react_reasons": [], "last_react": 0, "touch_log": [], "flowers_ts": 0,
     "items": [], "wishes": [], "visitors": [], "next_id": 1, "dishes": 0, "accessory": None, "pose_hold": None, "rest": None,

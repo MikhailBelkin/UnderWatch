@@ -10,21 +10,21 @@ from . import emotions
 
 
 INSTANT = {  # need changes applied when the action happens
-    "eat": {"hunger": 55, "fun": 4, "bladder": -12}, "drink": {"hunger": 6, "energy": 4, "bladder": -30}, "dance": {"fun": 10, "energy": -3, "hygiene": -5},
-    "workout": {"energy": -4}, "change_clothes": {"fun": 3}, "laugh": {"fun": 3},
-    "use_toilet": {"bladder": 100}, "brush_teeth": {"hygiene": 15}, "wash_face": {"hygiene": 6, "energy": 3}, "comb_hair": {"fun": 2},
+    "eat": {"hunger": 55, "fun": 4, "bladder": -12, "energy": 4}, "drink": {"hunger": 6, "energy": 4, "bladder": -30}, "dance": {"fun": 10, "energy": -1.5, "hygiene": -5},
+    "workout": {"energy": -3}, "change_clothes": {"fun": 3}, "laugh": {"fun": 3}, "shower": {"energy": 5},
+    "use_toilet": {"bladder": 100}, "brush_teeth": {"hygiene": 15}, "wash_face": {"hygiene": 6, "energy": 2}, "comb_hair": {"fun": 2},
     "cook": {"hygiene": -4}, "tidy_up": {"hygiene": -6}, "open_fridge": {},
 }
 
 PER_MIN = {  # need drift per awake minute, by loop
-    None: {}, "sit": {"energy": 0.08}, "watch": {"fun": 0.7}, "game": {"fun": 0.8, "energy": -0.05},
-    "listen": {"fun": 0.6}, "read": {"fun": 0.5}, "write": {"fun": 0.35}, "daydream": {"fun": 0.25, "energy": 0.05},
+    None: {}, "sit": {"energy": 0.08}, "watch": {"fun": 0.7, "energy": 0.04}, "game": {"fun": 0.8, "energy": -0.05},
+    "listen": {"fun": 0.6}, "read": {"fun": 0.5, "energy": 0.04}, "write": {"fun": 0.35}, "daydream": {"fun": 0.25, "energy": 0.06},
     "phone": {"social": 1.0, "fun": 0.25}, "workout": {"fun": 0.3, "energy": -0.15, "hygiene": -0.4}, "mop": {"fun": -0.3, "energy": -0.12, "hygiene": -0.3},
     "shower": {"hygiene": 9, "fun": 0.3, "energy": 0.2},
     "date": {"social": 1.2, "fun": 0.5}, "cozy": {"fun": 0.35, "energy": 0.12}, "dancing": {"social": 1.0, "fun": 1.0, "energy": -0.1, "hygiene": -0.1},
 }
 
-BASE_DRIFT = {"hunger": -0.30, "energy": -0.11, "fun": -0.22, "social": -0.10, "hygiene": -0.06, "bladder": -0.15}
+BASE_DRIFT = {"hunger": -0.30, "energy": -0.09, "fun": -0.22, "social": -0.10, "hygiene": -0.06, "bladder": -0.15}
 
 NEED_RU = {"hunger": "сытость", "energy": "бодрость", "fun": "развлечённость (не про настроение, а про скуку)", "social": "общение",
            "hygiene": "свежесть", "bladder": "туалет (100 — не хочется)"}
@@ -58,7 +58,7 @@ def base_drift():
 def rest_rates(rates):
     r = S.get("rest") or {}
     if S["loop"] == "rest":
-        rates["energy"] = rates.get("energy", 0) + (0.18 if r.get("how") in ("lie", "belly") else 0.08 if r.get("how") == "sit" else 0)
+        rates["energy"] = rates.get("energy", 0) + (0.2 if r.get("how") in ("lie", "belly") else 0.08 if r.get("how") == "sit" else 0)
     return rates
 
 

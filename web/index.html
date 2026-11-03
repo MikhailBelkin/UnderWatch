@@ -565,7 +565,7 @@ const OUTFITS = {
   white:{shirt:'#f3f2ec',pants:'#3a4256',ru:'белое'}
 };
 const OUTFIT_KEYS = Object.keys(OUTFITS);
-const OUTFIT_TYPES = {casual:'футболка и брюки', pajamas:'пижама', dress:'романтичное платье', shorts:'шорты и футболка', warm:'джинсы и свитер', mini:'миниюбка и топ', swimsuit:'купальник', underwear:'нижнее бельё', bathrobe:'халат', towel:'полотенце'};
+const OUTFIT_TYPES = {casual:'футболка и брюки', pajamas:'пижама', dress:'романтичное платье', shorts:'шорты и футболка', warm:'джинсы и свитер', mini:'миниюбка и топ', swimsuit:'купальник', underwear:'нижнее бельё', bathrobe:'халат', towel:'полотенце', nude:"голое тело"};
 function normOutfit(o){ return typeof o === 'string' ? {type:'casual', color:o} : Object.assign({type:'casual', color:'blue'}, o || {}); }
 // a gifted garment worn as an outfit: "gift:<item id>", described by the model in the same terms as the built-in outfits
 function giftOutfit(type){ const m = /^gift:(\d+)$/.exec(type || ''); return m ? S.items.find(it => it.id === +m[1] && it.outfit) : null; }
@@ -582,13 +582,14 @@ function outfitSpec(raw){
     return sp;
   }
   switch (o.type){
+    case 'nude': return Object.assign(base, {top:null, bottom:null, sleeves:null, legs:null, shoes:null});
     case 'pajamas': return Object.assign(base, {top:col || '#9cc3e6', bottom:col || '#9cc3e6', sleeves:'long', legs:'long', shoes:'#f2b8c6', dots:true});
     case 'dress': return male ? Object.assign(base, {top:col || '#2f3036', bottom:'#2f3036', sleeves:'long', shoes:'#1b1b1f'}) : Object.assign(base, {top:col || '#c43d5a', bottom:col || '#c43d5a', sleeves:'none', legs:'none', skirt:col || '#c43d5a', skirtLen:1.05, shoes:'#2a2a30'});
     case 'shorts': return Object.assign(base, {top:col || '#f2c94c', bottom:'#3f5f8f', sleeves:'short', legs:'short', shoes:'#f3f2ec'});
     case 'warm': return Object.assign(base, {top:col || '#a5523d', bottom:'#3d5a8a', sleeves:'long', legs:'long', shoes:'#5a3a22'});
     case 'mini': return male ? Object.assign(base, {top:col || '#2f3036', bottom:'#3f5f8f', sleeves:'short', legs:'short', shoes:'#f3f2ec'}) : Object.assign(base, {top:col || '#f3f2ec', bottom:'#2a2a30', sleeves:'none', legs:'none', skirt:'#2a2a30', skirtLen:0.55, shoes:'#2a2a30'});
     case 'swimsuit': return male ? Object.assign(base, {top:null, bottom:col || '#3e6fd8', sleeves:'none', legs:'short', shoes:null}) : Object.assign(base, {top:col || '#e9803a', bottom:col || '#e9803a', sleeves:'none', legs:'none', shoes:null});
-    case 'underwear': return male ? Object.assign(base, {top:'#f3f2ec', bottom:'#8fa4c4', sleeves:'none', legs:'short', shoes:null}) : Object.assign(base, {top:'#f3f2ec', bottom:'#f3f2ec', sleeves:'short', legs:'short', shoes:null});
+    case 'underwear': return male ? Object.assign(base, {top:'#f3f2ec', bottom:col || '#8fa4c4', sleeves:'none', legs:'short', shoes:null}) : Object.assign(base, {top:col || '#f3f2ec', bottom:col || '#f3f2ec', sleeves:'short', legs:'short', shoes:null});
     case 'bathrobe': return Object.assign(base, {top:col || '#eae4d6', bottom:col || '#eae4d6', sleeves:'long', legs:'none', skirt:col || '#eae4d6', skirtLen:1.1, shoes:'#f2b8c6', belt:'#c9b8a0'});
     case 'towel': return Object.assign(base, {top:'#f7f2e8', bottom:'#f7f2e8', sleeves:'none', legs:'none', skirt:'#f7f2e8', skirtLen:0.7, shoes:null, turban:true});
     default: { const c = OUTFITS[o.color] || OUTFITS.blue; return Object.assign(base, {top:c.shirt, bottom:c.pants}); }
@@ -748,7 +749,7 @@ const ACT_RU = {
   walk_to:'идёт', wave:'машет', nod:'кивает', shake_head:'мотает головой', shrug:'пожимает плечами', jump:'прыгает', dance:'танцует',
   think:'думает', laugh:'смеётся', bow:'кланяется', stretch:'потягивается', sit:'садится', stand:'встаёт', watch_tv:'смотрит телек',
   tv_off:'выключает телек', play_game:'играет в приставку', music_on:'включает музыку', music_off:'выключает музыку', cook:'готовит',
-  eat:'ест', drink:'пьёт', sleep:'ложится спать', wake_up:'просыпается', change_clothes:'переодевается', light_on:'включает свет',
+  eat:'ест', drink:'пьёт', coffee:'варит кофе', sleep:'ложится спать', wake_up:'просыпается', change_clothes:'переодевается', light_on:'включает свет',
   light_off:'выключает свет', look_window:'смотрит в окно', open_fridge:'заглядывает в холодильник', read_book:'читает', write_diary:'пишет в блокнот',
   phone_call:'звонит по телефону', workout:'делает зарядку', tidy_up:'прибирается', console_off:'выключает приставку',
   move:'двигается', rest:'устраивается', cozy:'укутывается в плед', light_candle:'зажигает свечу', wear_item:'надевает',
@@ -810,6 +811,8 @@ function expand(a, plan){
         walk('stove'), gest('reachup'),
         fx(() => { S.stove = true; S.hold.R = 'spoon'; S.hold.L = null; }), gest('stir', {dur:30}),
         fx(() => { S.stove = false; }), gest('reachup', {end:() => { S.hold.R = null; S.hold.L = 'plate'; }})];
+    case 'coffee': return [walk('stove'), gest('reach', {end:() => { S.hold.R = 'turka'; S.hold.L = null; }}), fx(() => { S.stove = true; }), gest('stir', {dur:8}),  // the turka on the fire…
+      fx(() => { S.stove = false; }), gest('reach', {end:() => { S.hold.R = 'cup'; }}), gest('drink', {end:() => { S.hold.R = null; }})];  // …back on the counter, a cup (or a gifted mug)
     case 'wash_dishes': return [walk('ksink'), gest('scrub', {dur:22, end:() => { S.dishes = 0; }})];
     case 'eat': {
       const pre = plan.plate ? [] : [walk('fridge'), gest('reach', {start:() => { S.fridge = true; }, end:() => { S.fridge = false; S.hold.L = 'plate'; S.hold.R = 'spoon'; }})];
@@ -876,14 +879,14 @@ function nextOutfit(){ const cur = normOutfit(S.outfit).color; return pick(OUTFI
 function clearQueue(){
   S.spec = null; S.pile = null;  // an interrupted change leaves no half-dressed stage behind
   if (S.cur && S.cur.k === 'gest' && S.cur.g === 'reach' && S.fridge) S.fridge = false;
-  if (S.cur && S.cur.k === 'gest' && S.cur.g === 'cook') S.stove = false;
+  if (S.cur && S.cur.k === 'gest' && (S.cur.g === 'cook' || S.cur.g === 'stir')) S.stove = false;  // an interrupted cooking or coffee turns the fire off
   if (S.cur && S.cur.k === 'gest' && GEST[S.cur.g].end) GEST[S.cur.g].end(S.cur);
   S.wardrobe = false;
   S.queue = []; S.cur = null;
   if (S.loop !== 'game' && S.hold.R === 'pad') S.hold.R = null;
   for (const h of ['L', 'R']){ const k = S.hold[h]; if (k && /^(thing|treat|garment|svg):|^groceries$|^toothbrush$|^comb$/.test(k)) S.hold[h] = null; }
   S.changing = false; S.taken = null;
-  if (S.hold.R === 'spoon' || S.hold.R === 'cup') S.hold.R = null;
+  if (S.hold.R === 'spoon' || S.hold.R === 'cup' || S.hold.R === 'turka') S.hold.R = null;  // the turka goes back to the counter
   if (S.hold.L === 'plate') S.hold.L = null;
 }
 
@@ -1397,6 +1400,8 @@ function drawKitchen(){
   // pan
   ellipse(918, FLOOR - 71, 13, 4, '#3c3f45'); line(930, FLOOR - 72, 946, FLOOR - 78, 3, '#2a2a30');
   if (S.stove){ ellipse(915, FLOOR - 73, 4, 2, '#ffd166'); ellipse(922, FLOOR - 73, 3, 1.6, '#e98a3c'); }
+  // the turka every flat has (it leaves the counter while she brews coffee)
+  if (S.hold.R !== 'turka') drawTurka(900, FLOOR - 66);
   // kettle
   rr(944, FLOOR - 82, 18, 14, 5, '#d2493f'); line(962, FLOOR - 76, 968, FLOOR - 82, 2.5, '#d2493f');
   // fridge
@@ -1515,6 +1520,10 @@ function drawThing(kind, x, y){
   else if (kind === 'drink' || kind === 'sweet'){ drawTreat(kind === 'drink' ? 'какао' : '', x, y); }
   else { rr(x - 6, y - 10, 12, 10, 1.5, '#9fb2a8'); rect(x - 1, y - 10, 2, 10, '#e0457a'); }
 }
+function drawTurka(x, y){  // a small copper pot with a long wooden handle, standing on y
+  ctx.fillStyle = '#c4703a'; ctx.beginPath(); ctx.moveTo(x - 4, y); ctx.lineTo(x + 4, y); ctx.lineTo(x + 3, y - 7); ctx.lineTo(x + 4.5, y - 9); ctx.lineTo(x - 4.5, y - 9); ctx.lineTo(x - 3, y - 7); ctx.closePath(); ctx.fill();
+  rect(x - 4.5, y - 9.5, 9, 1.2, '#e09a5e'); line(x + 4, y - 7, x + 11, y - 10, 1.8, '#7a4a2a');
+}
 function drawItem(kind, hand){
   const stand = kind && !kind.includes(':') && propGift(kind);
   if (stand){ drawHeldSprite('svg:' + stand.id, hand); return; }
@@ -1528,6 +1537,7 @@ function drawItem(kind, hand){
   const {hd, a2} = hand;
   if (kind === 'pad'){ rr(hd.x - 8, hd.y - 4, 16, 8, 3, '#2a2a30'); circle(hd.x + 4, hd.y - 1, 1.2, '#ef476f'); circle(hd.x - 4, hd.y - 1, 1.2, '#06d6a0'); }
   else if (kind === 'spoon'){ const e = sg(hd, a2, 10); line(hd.x, hd.y, e.x, e.y, 1.8, '#9aa3ab'); circle(e.x, e.y, 2.2, '#9aa3ab'); }
+  else if (kind === 'turka'){ drawTurka(hd.x + 2, hd.y + 4); }
   else if (kind === 'cup'){ rr(hd.x - 3, hd.y - 7, 8, 9, 2, '#d2493f'); ctx.strokeStyle = '#d2493f'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(hd.x + 6, hd.y - 3, 2.5, -PI/2, PI/2); ctx.stroke(); }
   else if (kind === 'toothbrush'){ const e = sg(hd, a2 + 0.9, 9); line(hd.x, hd.y, e.x, e.y, 1.8, '#3e6fd8'); circle(e.x, e.y, 1.6, '#ffffff'); }
   else if (kind === 'comb'){ const e = sg(hd, a2 + 1.2, 9); line(hd.x, hd.y, e.x, e.y, 3, '#c96f4a'); }
@@ -1745,7 +1755,7 @@ const thingMax = it => it.spot === 'floor' ? 110 : 48;
 // surfaces things can stand on: [x from, x to, surface y], filled left to right
 const SPOT_GEO = {
   shelf:[[604,716,212]], windowsill:[[110,166,218],[72,92,218]], nightstand:[[214,250,FLOOR - 34]], coffee_table:[[482,532,FLOOR - 18]],
-  kitchen:[[964,978,FLOOR - 66],[896,904,FLOOR - 66],[812,860,FLOOR - 186]], stove:[[896,904,FLOOR - 66],[964,978,FLOOR - 66]],
+  kitchen:[[964,978,FLOOR - 66],[812,860,FLOOR - 186]], stove:[[964,978,FLOOR - 66],[812,860,FLOOR - 186]],
   bathroom:[[1112,1130,GROUND],[998,1014,FLOOR - 84]], wardrobe:[[312,326,FLOOR - 206]], bed:[[96,116,FLOOR - 46]], floor:[[600,722,GROUND],[330,350,GROUND]]
 };
 // when a surface is full, the thing goes to a neighbour in the same room, and only then to the floor

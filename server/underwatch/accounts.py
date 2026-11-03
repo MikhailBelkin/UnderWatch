@@ -64,6 +64,8 @@ def new_session(uid, who=""):
         for k in mine[:-20]:  # at most 20 devices per person; the oldest go first
             del ses[k]
         ACC.set("sessions", ses)
+    ACC.touch(uid)
+    RESIDENTS[uid].guest_seen = time.time()
     return token
 
 
@@ -83,6 +85,7 @@ def session_user(token):
             s["seen"] = time.time()
             ACC.set("sessions", ses)
             ACC.touch(s["uid"])
+    RESIDENTS[s["uid"]].guest_seen = time.time()
     return s["uid"]
 
 
