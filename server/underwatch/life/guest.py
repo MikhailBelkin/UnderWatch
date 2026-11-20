@@ -5,11 +5,12 @@ import time
 from ..context import S, emit_event, g, hub, save_state, spawn, state_lock
 from ..settings import trait
 from ..clock import is_awake_time
-from ..world import LAMP_RU, LOOP_LABEL, PLACES, TOGETHER
+from ..catalog import LOOP_LABEL
+from ..world import LAMP_RU, PLACES, TOGETHER
 from . import bonds, drawings, emotions, needs, state
 
 
-POKES = ("bed", "night", "liv", "floor", "kit", "bath", "tv", "console", "music", "flood", "pat", "kiss", "hand", "hug", "flowers")
+POKES = ("cabin", "night", "lounge", "galley", "bridge", "bath", "lock", "tv", "console", "music", "flood", "pat", "kiss", "hand", "hug", "flowers")
 
 # tender touches: (what she perceives, what the guest did, joy, surprise)
 TOUCHES = {
@@ -17,7 +18,7 @@ TOUCHES = {
     "kiss": ("Ты почувствовал{a} лёгкий поцелуй в щёку — кажется, это гость.", "чмокнули в щёчку", 0.6, 0.35),
     "hand": ("Кто-то тёплый взял тебя за руку и немного подержал.", "взяли за руку", 0.45, 0.2),
     "hug": ("Тебя вдруг тепло и крепко обняли — никого не видно, но объятие настоящее.", "обняли", 0.65, 0.3),
-    "flowers": ("На подоконнике в спальне вдруг появился букет свежих цветов!", "подарили цветы", 0.6, 0.6),
+    "flowers": ("На полке под иллюминатором в каюте вдруг появился букет свежих цветов — откуда они в космосе?!", "подарили цветы", 0.6, 0.6),
 }
 
 
@@ -28,7 +29,7 @@ def poke_custom(kind, text):
         return None
     emotions.guest_here()
     if kind == "world":
-        perceived = f"В квартире случилось: {text}"
+        perceived = f"На корабле случилось: {text}"
         guest = "своё вмешательство: " + text
         emotions.appraise("surprise", 0.45)
     else:
@@ -75,13 +76,13 @@ def poke(what):
             on = True
         elif what in LAMP_RU:
             on = S["lights"][what] = not S["lights"][what]
-            text = ("Сам собой включился " if on else "Внезапно погас ") + LAMP_RU[what] if what in ("floor", "night") else \
+            text = ("Сама собой включилась " if on else "Внезапно погасла ") + LAMP_RU[what] if what == "night" else \
                    ("Сам собой зажёгся " if on else "Внезапно погас ") + LAMP_RU[what]
             guest = ("включили " if on else "выключили ") + LAMP_RU[what]
         elif what == "tv":
             S["tv"] = "off" if S["tv"] != "off" else ("game" if S["console"] else "show")
             on = S["tv"] != "off"
-            text, guest = ("Телевизор сам включился." if on else "Телевизор вдруг погас."), ("включили" if on else "выключили") + " телевизор"
+            text, guest = ("Экран в кают-компании сам включился." if on else "Экран в кают-компании вдруг погас."), ("включили" if on else "выключили") + " экран"
             if not on and S["loop"] in ("watch", "game"):
                 S["loop"], S["label"] = "sit", LOOP_LABEL["sit"]
         elif what == "console":
@@ -103,7 +104,7 @@ def poke(what):
             if S["leak"]:
                 return None
             S["leak"] = True
-            text, guest = "Под мойкой с грохотом прорвало трубу — по полу разливается вода!", "прорвали трубу под мойкой"
+            text, guest = "Под мойкой на камбузе с грохотом прорвало трубу — по полу кают-компании разливается вода!", "прорвали трубу на камбузе"
         else:
             return None
         if what in TOUCHES:

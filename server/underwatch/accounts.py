@@ -173,6 +173,6 @@ def register(b, client, who):
         ACC.db.execute("UPDATE invites SET used_by=? WHERE code=?", (uid, code))
         ACC.db.commit()
     RESIDENTS[uid] = Resident(ACC.user(uid=uid))
-    as_resident(RESIDENTS[uid], emit_event, "system", f"{ch['name']} въезжает в квартиру. Знакомьтесь!")
+    as_resident(RESIDENTS[uid], emit_event, "system", f"{ch['name']} поднимается на борт «Странника». Знакомьтесь!")
     log(f"new user «{login}» with resident {ch['name']} ({ch['rel']})")
     return 200, {"ok": True}, new_session(uid, who)

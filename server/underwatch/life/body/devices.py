@@ -1,4 +1,4 @@
-"""The flat's devices: the TV, the console, the record player and the lights."""
+"""The ship's devices: the lounge screen, the console, the record player and the lights."""
 from ...context import S
 from ...world import ROOMS, room_of
 

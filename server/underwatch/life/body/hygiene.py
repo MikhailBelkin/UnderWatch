@@ -1,4 +1,4 @@
-"""The bathroom: shower, toilet, teeth, washing. Their effect on needs is in needs.INSTANT and needs.PER_MIN."""
+"""The bathroom: shower, toilet, teeth, washing. Their effect on needs is in their entries in catalog.py."""
 from ...context import S
 
 

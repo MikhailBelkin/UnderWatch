@@ -31,7 +31,6 @@ KIND_RU = {"sweet": "вкусняшка", "drink": "напиток", "book": "к
            "clothes": "одежда", "flowers": "цветы", "decor": "вещь для дома", "other": "вещь"}
 
 # actions that, given an item id, open, eat or use that gift (see gift_effects)
-GIFT_ACTIONS = ("open_gift", "eat_treat", "use_item", "read_book", "music_on", "look_window", "cozy", "light_candle", "wear_item")
 
 
 def guess_kind(name):
@@ -218,9 +217,9 @@ def give_gift(key=None, name=None, kind=None, wish_id=None):
         S["next_id"] += 1
         if kind == "flowers":
             it["state"], S["flowers_ts"] = "open", time.time()
-            text = f"На подоконнике в спальне появился букет: {name}" + (" — ты же об этом просил" + g("", "а") + "!" if wish else "!")
+            text = f"На книжной полке под иллюминатором в каюте появился букет — живые цветы посреди космоса: {name}" + (" — ты же об этом просил" + g("", "а") + "!" if wish else "!")
         else:
-            text = "Перед телевизором появилась коробка с бантом — подарок от гостя" + (f". Кажется, это то, что ты просил{g('', 'а')}: {name}!" if wish else ". Что внутри — непонятно.")
+            text = "Бортовой синтезатор пискнул и выдал коробку с бантом — гость передал по радио подарок" + (f". Кажется, это то, что ты просил{g('', 'а')}: {name}!" if wish else ". Что внутри — непонятно.")
         S["items"] = (S["items"] + [it])[-40:]
         emotions.appraise("surprise", 0.45)
         emotions.appraise("joy", 0.5 if wish else 0.25)
@@ -236,11 +235,11 @@ def give_gift(key=None, name=None, kind=None, wish_id=None):
 
 
 # everyday props a gift can replace, and the action that uses them
-PROPS = {"pad": ("геймпад", "play_game"), "book": ("книга", "read_book"), "phone": ("телефон", "phone_call"), "cup": ("чашка", "drink"),
+PROPS = {"pad": ("геймпад", "play_game"), "book": ("книга", "read_book"), "cup": ("чашка", "drink"),
          "plate": ("тарелка", "eat"), "pen": ("ручка", "write_diary"), "note": ("блокнот", "write_diary"), "toothbrush": ("зубная щётка", "brush_teeth"), "comb": ("расчёска", "comb_hair")}
 
 PROP_DOC = ("если эта вещь заменяет обычный предмет в бытовом действии — какой: " + ", ".join(f"{k} ({v[0]}, {v[1]})" for k, v in PROPS.items())
-            + "; например, руль или джойстик для приставки — pad, кружка — cup, смартфон — phone; иначе none")
+            + "; например, руль или джойстик для приставки — pad, кружка — cup; иначе none")
 
 
 def redrawing(item_id):

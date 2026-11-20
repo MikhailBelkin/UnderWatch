@@ -1,7 +1,8 @@
-"""Residents: loading each user's flat, moving the old single-user flat in, creating one at registration, starting over."""
+"""Residents: loading each user's ship, moving the old flats on board, creating one at registration, starting over."""
 import json
 import random
 import secrets
+import sqlite3
 import threading
 import time
 
@@ -34,6 +35,45 @@ def new_game():
     hub.publish({"type": "reset"})
 
 
+def SHIP_LINE(male):
+    return (f"- Я {'астронавт' if male else 'астронавтка'}: лечу {'один' if male else 'одна'} на корабле «Странник» к Проксиме Центавра. "
+            "Всё, что сказано обо мне ниже, — моя жизнь на Земле до полёта.")
+
+
+def move_to_ship(r):
+    """The flat became the ship «Странник» (November 2026): the resident's life starts over on board.
+    Name, character, looks, the player's identity and what she knows about the guest (notes, facts, closeness) stay;
+    the diary, the feed, self-notes, gifts, wishes and goals go. The old database is copied to data/backup first."""
+    st = r.store
+    if st.get("world") == "ship":
+        return
+    backup = DATA / "backup"
+    backup.mkdir(exist_ok=True)
+    dest = sqlite3.connect(backup / f"{r.login}-flat-{time.strftime('%Y%m%d-%H%M%S')}.sqlite")
+    with st.lock:
+        st.db.backup(dest)
+    dest.close()
+    old, male = r.S, r.S["male"]
+    state = json.loads(json.dumps(DEFAULT_STATE))
+    state.update({k: old[k] for k in ("name", "male", "guest_facts", "closeness", "closeness_day", "closeness_today") if k in old})
+    color = (old.get("outfit") or {}).get("color") if isinstance(old.get("outfit"), dict) else old.get("outfit")
+    state["outfit"] = {"type": "casual", "color": color if color in COLORS else random.choice(list(COLORS))}
+    state["last_tick"] = state["reflect_ts"] = time.time()
+    r.S.clear()
+    r.S.update(state)
+    st.set("state", state)
+    with st.lock:
+        st.db.execute("DELETE FROM events")
+        st.db.execute("DELETE FROM kv WHERE k IN ('self_notes', 'day_memory', 'memory_upto')")
+        st.db.commit()
+    lines = [l for l in (st.get("identity") or "").splitlines() if "квартир" not in l]
+    st.set("identity", "\n".join([SHIP_LINE(male)] + lines))
+    st.set("world", "ship")
+    st.add_event("system", f"Квартира осталась на Земле: {state['name']} теперь летит на «Страннике» к Проксиме Центавра. "
+                           f"Жизнь на борту начинается заново, но всё, что {'он' if male else 'она'} знал{'' if male else 'а'} о вас, — с {'ним' if male else 'ней'}.")
+    log(f"{r.login}: moved on board the ship (backup in data/backup)")
+
+
 class Resident:
     """One user's resident: their own database, state, settings and live channel."""
 
@@ -54,7 +94,7 @@ class Resident:
         self.settings["traits"].update(saved.get("traits") or {})
         S = dict(DEFAULT_STATE, **(st.get("state") or {}))
         S["needs"] = dict(DEFAULT_STATE["needs"], **S.get("needs", {}))
-        S["lights"] = dict(DEFAULT_STATE["lights"], **S.get("lights", {}))
+        S["lights"] = {k: S.get("lights", {}).get(k, v) for k, v in DEFAULT_STATE["lights"].items()}
         S["emo"] = dict(DEFAULT_STATE["emo"], **S.get("emo", {}))
         self.S = S
 
@@ -71,6 +111,7 @@ def boot():
         log(f"owner account «{OWNER_LOGIN}» created")
     for u in ACC.users():
         RESIDENTS[u["id"]] = Resident(u)
+        move_to_ship(RESIDENTS[u["id"]])
 
 
 REL_IDENTITY = {
@@ -86,7 +127,7 @@ def years(n):
 
 
 def create_resident(uid, login, c):
-    """A new flat with a new resident, built from what the player chose at registration."""
+    """A new ship with a new resident, built from what the player chose at registration."""
     db = f"residents/{uid}.sqlite"
     st = Store(DATA / db)
     male, name, age = bool(c["male"]), c["name"], c["age"]
@@ -95,12 +136,13 @@ def create_resident(uid, login, c):
     likes = c.get("interests") or ""
     identity = "\n".join(x for x in [
         f"- Мне {age} {years(age)}." + (f" Работаю: {prof}." if prof else ""),
-        f"- Живу {a('один', 'одна')} в небольшой квартире.",
+        SHIP_LINE(male),
         f"- Люблю: {likes}." if likes else "",
         "- " + REL_IDENTITY[c["rel"]],
     ] if x)
     st.set("identity", identity)
-    st.set("self_notes", f"- Недавно {a('переехал', 'переехала')} в эту квартиру и потихоньку обустраиваюсь." + (f"\n- Хочу больше времени на то, что люблю: {likes}." if likes else ""))
+    st.set("self_notes", "- Полёт только начался: обживаю корабль и привыкаю к звёздам за иллюминатором." + (f"\n- Хочу больше времени на то, что люблю: {likes}." if likes else ""))
+    st.set("world", "ship")
     traits = {k: int(max(0, min(100, float(c["traits"].get(k, TRAITS[k][2]))))) for k in TRAITS}
     st.set("settings", {"wake": 9, "sleep": 23, "hunger_rate": 1.0, "traits": traits, "look": c.get("look") or {}})  # people visit after work: awake into the evening
     state = json.loads(json.dumps(DEFAULT_STATE))

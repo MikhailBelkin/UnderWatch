@@ -1,4 +1,4 @@
-"""Trouble in the flat: the leak under the sink and the water on the floor."""
+"""Trouble on board: the leak under the galley sink and the water on the floor."""
 from ...context import S
 
 

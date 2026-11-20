@@ -5,7 +5,7 @@ import time
 from ..config import MODEL_DEEP
 from ..context import S, busy_lock, emit_event, g, hub, save_state, set_busy, state_lock, world_epoch
 from ..clock import is_awake_time, now
-from ..world import ACTIONS
+from ..catalog import ACTIONS
 from ..brain import LLMError, llm
 from . import emotions, needs, prompts, state
 
@@ -55,9 +55,9 @@ def make_goal(spec, source):
             "progress": 0.0, "sessions": [], "source": source, "started": time.time()}
 
 
-GOAL_DESIGN = """Спроектируй цель для персонажа, который живёт в маленькой квартире (спальня, гостиная с диваном, телевизором, проигрывателем, кухня, санузел) и может делать зарядку, двигаться в любых позах, готовить, читать, рисовать в блокноте, слушать музыку.
+GOAL_DESIGN = """Спроектируй цель для персонажа, который один летит на космическом корабле (каюта с капсулой для сна и книжной полкой, кают-компания с диваном, экраном, проигрывателем и камбузом, санблок с душем, рубка с креслом пилота и звёздной картой) и может делать зарядку, двигаться в любых позах, готовить, читать, рисовать в блокноте, слушать музыку.
 Цель должна быть достижима дома за несколько дней регулярных занятий. Если цель измеримая (секунды, повторы, сантиметры, блюда) — задай показатель со стартом и целью, реалистичными для обычного человека.
-Ответ JSON: {"title": "коротко", "description": "1 предложение, зачем и что получится", "metric": {"name": "что меряем", "unit": "ед.", "start": число, "target": число} или null, "days": сколько дней (3–21), "practice": "как тренироваться в квартире, 1–2 предложения, через доступные действия (workout, move с позами, cook, read_book, write_diary, look_window…)", "practice_minutes": минут в день, "default_action": "одно действие для тренировки: workout | cook | read_book | write_diary | look_window | dance", "milestones": ["3–5 этапов по порядку"]}"""
+Ответ JSON: {"title": "коротко", "description": "1 предложение, зачем и что получится", "metric": {"name": "что меряем", "unit": "ед.", "start": число, "target": число} или null, "days": сколько дней (3–21), "practice": "как тренироваться на корабле, 1–2 предложения, через доступные действия (workout, move с позами, cook, read_book, write_diary, look_window, star_map, pilot…)", "practice_minutes": минут в день, "default_action": "одно действие для тренировки: workout | cook | read_book | write_diary | look_window | star_map | pilot | dance", "milestones": ["3–5 этапов по порядку"]}"""
 
 
 def set_goal_from_text(text, source="guest"):

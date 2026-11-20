@@ -3,8 +3,9 @@ this file walks the chain, keeps track of where the body ends up, and tells the 
 import time
 
 from ...context import S, emit_event, g, hub, save_state, state_lock
-from ...world import ACTIONS, CHAIN_HOLD, HOW_RU, LOOP_LABEL, PLACES, SURF_RU
-from .. import emotions, gifts, goals, needs, state, wardrobe
+from ...catalog import ACTIONS, CHAIN_HOLD, GIFT_ACTIONS, LOOP_LABEL
+from ...world import HOW_RU, PLACES, SURF_RU
+from .. import emotions, gifts, goals, needs, route, state, wardrobe
 from . import clothes, company, devices, house, hygiene, kitchen, moves, rest
 
 
@@ -26,15 +27,15 @@ class Body:
 # what each action does to the world, by theme; an action with no entry only moves the body and changes needs
 EFFECTS = {**devices.EFFECTS, **clothes.EFFECTS, **hygiene.EFFECTS, **kitchen.EFFECTS, **rest.EFFECTS,
            **house.EFFECTS, **moves.EFFECTS, **company.EFFECTS,
-           "practice": lambda a, body: goals.practice(a)}
+           "practice": lambda a, body: goals.practice(a), "eva": route.eva, "pilot": route.duty, "check_systems": route.duty}
 # what happens once the whole chain is done, in this order
-AFTER = [hygiene.after_chain, rest.after_chain, house.after_chain, company.after_chain]
+AFTER = [route.after_chain, hygiene.after_chain, rest.after_chain, house.after_chain, company.after_chain]
 
 
 def do_one(a, body):
     """One action: move the body, settle it, apply the action's own effect, the gift it uses, and its effect on needs."""
     d = a["do"]
-    place, new_loop, _ = ACTIONS[d]
+    place, new_loop = ACTIONS[d].at, ACTIONS[d].loop
     if d == "walk_to":
         place = a["place"]
     elif d == "use_item" and a.get("at"):
@@ -47,7 +48,7 @@ def do_one(a, body):
     effect = EFFECTS.get(d)
     if effect:
         effect(a, body)
-    if a.get("id") is not None and d in gifts.GIFT_ACTIONS:
+    if a.get("id") is not None and d in GIFT_ACTIONS:
         gifts.gift_effects(a)
     needs.instant(d)
 
@@ -73,6 +74,8 @@ def busy_until(actions, body, minutes):
         return time.time() + hold + 30 * 60  # mopping lasts until the floor is dry (see needs.update_needs)
     if body.loop == "shower":
         return time.time() + hold + 165  # a shower takes ~2.5 min, then she dries off and decides what's next
+    if body.loop == "eva":
+        minutes = min(float(minutes or 20), route.EVA_O2_MIN)  # no longer than the suit's oxygen
     if body.loop in LOOP_LABEL and minutes:
         return time.time() + hold + max(1, float(minutes)) * 60
     if actions:
@@ -91,7 +94,7 @@ def action_text(a):
     elif d == "shoo" and a.get("name"):
         text = f"выгоняет: {a['name']}"
     else:
-        text = ACTIONS[d][2]
+        text = ACTIONS[d].feed
     if a.get("place"):
         text += " → " + PLACES[a["place"]]
     if d == "change_clothes" and a.get("outfit"):

@@ -14,12 +14,14 @@ from .config import HOST, MODEL_DEEP, MODEL_FAST, PORT, TLS_DIR, TZ, WEB, log
 from .context import ACC, R, RESIDENTS, S, SETTINGS, _cur, admin_resident, busy_what, emit_event, hub, save_state, spawn, state_lock, store
 from .settings import apply_settings, sleep_h, wake_h
 from .world import TOGETHER
+from . import catalog
 from .brain import LLMError, brain, claude_bin, loaded_models, local_models, mind_paused, set_paused
 from .accounts import register as register_user, SESSION_DAYS, admin_view, auth_lock, check_password, drop_sessions, new_session, note_fail, session_user, set_password, token_key, too_many_fails
 from .life.drawings import drop_visitor
 from .life.gifts import drop_wishes, give_gift, item_action
 from .life.goals import set_goal_from_text
 from .life.guest import POKES, invite, poke, poke_custom, set_identity
+from .life.route import SKY, start_event
 from .life.mind import chat, mind_loop
 from .life.state import notes, public_state
 from .residents import boot, new_game
@@ -44,6 +46,7 @@ def snapshot():
         "feed": store.events(["thought", "action", "aloud", "plan", "note", "system", "world", "gift", "wish", "learned", "goal", "practice", "milestone"], limit=40),
         "diary": store.events(["diary"], limit=10),
         "notes": notes(), "usage": store.usage_today(), "me": {"login": R().login, "admin": R().admin}, "rel": R().meta.get("rel", "romantic"),
+        "catalog": catalog.for_page(),
     }
 
 
@@ -56,7 +59,7 @@ form{background:var(--panel);border:1px solid var(--line);border-radius:12px;pad
 h1{margin:0;font-size:20px} p{margin:0;color:var(--muted);font-size:14px} .err{color:var(--danger)}
 input{font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
 button{font:inherit;font-weight:600;padding:10px;border-radius:10px;border:0;background:var(--accent);color:#fff;cursor:pointer}
-</style></head><body><form method="post" action="/login"><h1>За стеклом</h1><p>Войдите, чтобы заглянуть в свою квартиру.</p>%ERR%
+</style></head><body><form method="post" action="/login"><h1>За стеклом</h1><p>Войдите, чтобы выйти на связь с кораблём.</p>%ERR%
 <input name="login" autofocus autocomplete="username" aria-label="Логин" placeholder="логин" required autocapitalize="none" spellcheck="false">
 <input type="password" name="password" autocomplete="current-password" aria-label="Пароль" placeholder="пароль" required><button>Войти</button>
 <p>Есть приглашение? <a href="/register">Заведите своего жильца</a>.</p></form></body></html>"""
@@ -321,6 +324,11 @@ class Handler(BaseHTTPRequestHandler):
             emit_event("system", "Личность и память персонажа отредактированы в настройках.")
             hub.publish({"type": "notes", "notes": notes(), "diary": store.events(["diary"], limit=10)})
             self.send_json({"ok": True, "notes": notes()})
+        elif path == "/api/sky":
+            kind = str(body.get("kind") or "")
+            if kind not in SKY:
+                return self.send_json({"error": "неизвестное событие"}, 400)
+            self.send_json({"ok": True, "state": start_event(kind, by_guest=True)})
         elif path == "/api/poke":
             what = str(body.get("what") or "")
             if what not in POKES:

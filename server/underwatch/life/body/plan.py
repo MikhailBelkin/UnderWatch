@@ -1,9 +1,10 @@
 """Reading what the model wants the body to do: cleaning a chain of actions and filling in what is obvious."""
 import re
 
-from ...context import S, emit_event, g
-from ...clock import is_awake_time, now, today_sleep
-from ...world import ACTIONS, COLORS, MOTIONS, MOVE_RANGES, NATURAL, PLACES, ROOMS, SPOTS, SURFACES, TOGETHER
+from ...config import log
+from ...context import S, emit_event
+from ...catalog import ACTIONS, NATURAL
+from ...world import COLORS, MOTIONS, MOVE_RANGES, PLACES, ROOMS, SPOTS, SURFACES, TOGETHER
 from .. import gifts, goals, state, wardrobe
 from . import clothes
 
@@ -135,7 +136,10 @@ def complete_chain(actions):
     for i, a in enumerate(actions):
         nxt = actions[i + 1] if i + 1 < len(actions) else None
         # a walk right before an action that walks there by itself is redundant
-        if a["do"] == "walk_to" and nxt and ACTIONS[nxt["do"]][0]:
+        if a["do"] == "walk_to" and nxt and ACTIONS[nxt["do"]].at:
+            continue
+        # sitting down on the sofa only to get up and go somewhere else at once
+        if a["do"] == "sit" and nxt and ACTIONS[nxt["do"]].at not in (None, "sofa"):
             continue
         out.append(a)
     if out and out[-1]["do"] == "walk_to" and out[-1]["place"] in NATURAL:
@@ -171,18 +175,37 @@ def resolve_together(actions):
     return out
 
 
-def body_allows(actions):
-    """The body has a say: you can't fall asleep in the daytime when you're full of energy."""
-    t = now()
-    left = (today_sleep(t) - t).total_seconds() / 60
-    if any(a["do"] == "sleep" for a in actions) and is_awake_time(t) and S["needs"]["energy"] >= 30 and left > 15:
-        e = int(S["needs"]["energy"])
-        where = next((a.get("on") for a in actions if a["do"] == "sleep" and a.get("on")), "bed")
-        emit_event("system", f"Хотел{g('', 'а')} лечь спать, но сна ни в одном глазу (бодрость {e}) — вместо этого просто прилег{g('', 'ла')}.")
-        actions = [a for a in actions if a["do"] not in ("sleep", "walk_to")] + [{"do": "rest", "on": where, "how": "lie"}]
-    return actions
+def body_allows(actions, asked=False):
+    """The body has a say: each action's own condition from the catalogue (you can't fall asleep in the daytime
+    when you're full of energy), and what she does only when the guest asks for it."""
+    out = []
+    for a in actions:
+        e = ACTIONS[a["do"]]
+        if e.asked and not asked:
+            log(f"{a['do']}: only when the guest asks, dropped")
+            continue
+        why = e.when(a) if e.when else None
+        if why:
+            emit_event("system", why)
+            if e.instead:
+                out.append(e.instead(a))
+            continue
+        out.append(a)
+    return out
 
 
-def understand(raw):
-    """The model's actions → what the body will do: cleaned, completed, checked against the body, gifts and time together resolved."""
-    return goals.with_practice_activity(resolve_together(gifts.resolve_gifts(body_allows(complete_chain(clean_actions(raw))))))
+def on_tether(actions):
+    """Outside on the tether she is already in the suit: no second going out (that would refill the oxygen and replay
+    the suiting up), no waves and poses — only something that takes her back inside."""
+    if S["loop"] != "eva":
+        return actions
+    out = [a for a in actions if a["do"] != "eva" and (ACTIONS[a["do"]].at or ACTIONS[a["do"]].loop)]
+    if len(out) != len(actions):
+        log("on the tether, dropped:", [a["do"] for a in actions if a not in out])
+    return out
+
+
+def understand(raw, asked=False):
+    """The model's actions → what the body will do: cleaned, completed, checked against the body, gifts and time together resolved.
+    asked: the actions answer the guest in the chat, so what she does only on request is allowed."""
+    return on_tether(goals.with_practice_activity(resolve_together(gifts.resolve_gifts(body_allows(complete_chain(clean_actions(raw)), asked)))))

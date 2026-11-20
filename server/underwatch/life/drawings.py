@@ -1,4 +1,4 @@
-"""Drawings made on the fly: gifts and the guest's creatures as SVG, and the creatures' life in the flat."""
+"""Drawings made on the fly: gifts and the guest's creatures as SVG, and the creatures' life on board."""
 import re
 import time
 
@@ -12,7 +12,7 @@ from . import gifts, state, wardrobe
 
 SVG_TAGS = {"svg", "g", "path", "rect", "circle", "ellipse", "polygon", "polyline", "line"}
 
-SVG_SYS = ("Ты художник и геймдизайнер маленькой 2D-игры: квартира в разрезе в плоском векторном стиле (flat), "
+SVG_SYS = ("Ты художник и геймдизайнер маленькой 2D-игры: уютный космический корабль в разрезе в плоском векторном стиле (flat), "
            "у предмета 3–6 цветов, без градиентов, без текста, вид сбоку или спереди. Отвечай только JSON.")
 
 SVG_RULES = ("SVG: viewBox по размеру рисунка (например \"0 0 48 64\"), прозрачный фон, только теги svg, g, path, rect, circle, ellipse, polygon, polyline, line; "
@@ -74,9 +74,9 @@ def visualize_item(item_id, hint=""):
         others = ", ".join(f"{x['name']} (id={x['id']})" for x in S["items"] if x["id"] != item_id and x["state"] != "eaten") or "ничего"
         name, kind = it["name"], it["kind"]
     redo = f"\nЭто перерисовка: прошлый рисунок не устроил гостя. Его подсказка: {hint}" if hint else ""
-    prompt = f"""Гость дарит жильцу квартиры подарок: «{name}» (тип: {gifts.KIND_RU.get(kind, 'вещь')}).{redo}
+    prompt = f"""Гость дарит астронавту подарок (бортовой синтезатор печатает его по чертежу): «{name}» (тип: {gifts.KIND_RU.get(kind, 'вещь')}).{redo}
 Подаренные раньше вещи: {others}.
-1. Можно ли показать это маленьким рисунком в квартире? Нельзя (visible=false), если это слишком большое (мебель, машина), абстрактное (поездка, любовь, деньги, подписка), непонятное или то, что не узнать в маленьком рисунке.
+1. Можно ли показать это маленьким рисунком на корабле? Нельзя (visible=false), если это слишком большое (мебель, машина), абстрактное (поездка, любовь, деньги, подписка), непонятное или то, что не узнать в маленьком рисунке.
 2. Если можно — нарисуй. {SVG_RULES}
 3. Куда это естественно поставить (spot): {"; ".join(f"{k} — {v}" for k, v in SPOTS.items())}.
 Ответ JSON: {{"visible": true или false, "svg": "<svg ...>...</svg>" или "", "height_cm": реальная высота в см, "spot": "...", "uses": "для чего это и как этим пользоваться, 1 предложение", "works_with": "с какими из подаренных раньше вещей это работает вместе и как (с id), или пусто", "motion": "как выглядит использование: {'|'.join(MOTIONS)}", "kind": "что это: {'|'.join(gifts.GIFT_KINDS)} (sweet и drink — только то, что едят и пьют; посуда — decor или other)", "replaces": "{gifts.PROP_DOC}"}}"""
@@ -116,10 +116,10 @@ BEHAVIORS = ("fly", "crawl", "walk", "hop", "wall", "perch", "static")
 def visualize_world(text):
     """Something the guest made up: if it's a thing or a creature, draw it and let it live in the flat."""
     epoch = world_epoch["v"]
-    prompt = f"""Гость вмешался в мир квартиры: «{text}».
-Покажи это, только если в квартире появился конкретный предмет или существо (птица, кот, паук, мышь, мяч, воздушный шарик, письмо). Погоду, звуки, запахи, свет, чувства и события без нового предмета не показывай (visible=false). Если существ несколько — нарисуй одно, а сколько их — в count.
+    prompt = f"""Гость вмешался в мир корабля: «{text}».
+Покажи это, только если на корабле появился конкретный предмет или существо (птица, кот, паук, мышь, мяч, воздушный шарик, письмо). Погоду, звуки, запахи, свет, чувства и события без нового предмета не показывай (visible=false). Если существ несколько — нарисуй одно, а сколько их — в count.
 {SVG_RULES} Существо рисуй в профиль, головой в сторону facing.
-Ответ JSON: {{"visible": true или false, "name": "коротко, что это (например «синица»)", "svg": "<svg ...>...</svg>" или "", "height_cm": реальная высота в см, "facing": "left" или "right", "behavior": "fly — летает | crawl — ползает по полу | walk — бегает по полу | hop — прыгает по полу | wall — ползает по стене | perch — сидит на месте и шевелится | static — предмет, просто лежит/стоит", "room": "bedroom|living|kitchen|bathroom", "spot": "для perch и static — где: {'|'.join(SPOTS)}", "count": 1–6, "enter": "window — влетает в окно | door — входит из прихожей | appear — просто появляется", "stays_min": "через сколько минут уйдёт само (0 — пока не выгонят)"}}"""
+Ответ JSON: {{"visible": true или false, "name": "коротко, что это (например «синица»)", "svg": "<svg ...>...</svg>" или "", "height_cm": реальная высота в см, "facing": "left" или "right", "behavior": "fly — летает | crawl — ползает по полу | walk — бегает по полу | hop — прыгает по полу | wall — ползает по стене | perch — сидит на месте и шевелится | static — предмет, просто лежит/стоит", "room": "cabin — каюта | lounge — кают-компания с камбузом | bridge — рубка | bath — санблок", "spot": "для perch и static — где: {'|'.join(SPOTS)}", "count": 1–6, "enter": "window — вылезает из вентиляции под потолком | door — входит через шлюз | appear — просто появляется", "stays_min": "через сколько минут уйдёт само (0 — пока не выгонят)"}}"""
     try:
         sp = draw_sprite(sprite_key("world", text), prompt)
     except (LLMError, ValueError) as e:
@@ -140,14 +140,14 @@ def visualize_world(text):
         v = {"id": S["next_id"], "name": str(meta.get("name") or text)[:40], "sprite": sp["id"], "sw": sp["w"], "sh": sp["h"],
              "px": round(max(12, min(70 if small else 110, cm * (2.0 if small else 1.4)))),
              "facing": "left" if meta.get("facing") == "left" else "right", "behavior": behavior,
-             "room": meta.get("room") if meta.get("room") in ROOMS and meta.get("room") != "all" else "living",
+             "room": meta.get("room") if meta.get("room") in ROOMS and meta.get("room") != "all" else "lounge",
              "spot": spot_or(meta.get("spot"), "floor"), "count": count,
              "enter": meta.get("enter") if meta.get("enter") in ("window", "door", "appear") else "appear",
              "since": time.time(), "until": time.time() + stays * 60 if stays else 0}
         S["next_id"] += 1
         S["visitors"] = (S["visitors"] + [v])[-8:]
         if is_awake_time():
-            S["react_reasons"] = (S.get("react_reasons") or [])[-5:] + [f"Теперь в квартире: {v['name']}" + (f" ×{count}" if count > 1 else "") + f" (id={v['id']}). Если мешает — можно выгнать: shoo{{{v['id']}}}."]
+            S["react_reasons"] = (S.get("react_reasons") or [])[-5:] + [f"Теперь на корабле: {v['name']}" + (f" ×{count}" if count > 1 else "") + f" (id={v['id']}). Если мешает — можно выгнать: shoo{{{v['id']}}}."]
             S["react_at"] = max(time.time() + 3, (S.get("last_react") or 0) + 20)
         save_state()
         st = state.public_state()
@@ -161,7 +161,7 @@ def drop_visitor(vid, by_guest=False):
             return None
         S["visitors"] = [x for x in S["visitors"] if x["id"] != vid]
         if by_guest and is_awake_time():
-            S["react_reasons"] = (S.get("react_reasons") or [])[-5:] + [f"{v['name'].capitalize()} вдруг исчез(ла) из квартиры — кажется, гость убрал."]
+            S["react_reasons"] = (S.get("react_reasons") or [])[-5:] + [f"{v['name'].capitalize()} вдруг исчез(ла) с корабля — кажется, гость убрал."]
             S["react_at"] = max(time.time() + 3, (S.get("last_react") or 0) + 20)
         save_state()
         st = state.public_state()

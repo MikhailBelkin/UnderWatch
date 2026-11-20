@@ -9,7 +9,7 @@ def rest(a, body):
 
 
 def sleep(a, body):
-    """Goes to sleep (in bed, or a nap on the sofa or the floor): everything is switched off, the lights too."""
+    """Goes to sleep (in the capsule, or a nap on the sofa or the floor): everything is switched off, the lights too."""
     body.loc = a.get("on") or "bed"
     S["rest"] = {"on": body.loc, "how": "lie"}
     S.update(tv="off", music=False, console=False)
@@ -18,9 +18,9 @@ def sleep(a, body):
 
 
 def after_chain(actions, body):
-    """Waking up: the bedroom light goes on."""
+    """Waking up: the cabin light goes on."""
     if body.was_sleeping and body.loop != "sleep":
-        S["lights"]["bed"] = True
+        S["lights"]["cabin"] = True
 
 
 EFFECTS = {"rest": rest, "sleep": sleep}

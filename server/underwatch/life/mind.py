@@ -10,7 +10,7 @@ from ..context import R, RESIDENTS, S, as_resident, busy_lock, emit_event, g, hu
 from ..settings import sleep_h, trait, wake_h
 from ..clock import day_key, hhmm, is_awake_time, next_wake, now, today_sleep
 from ..brain import LLMError, llm, mind_paused
-from . import bonds, emotions, gifts, goals, memory, needs, prompts, state
+from . import bonds, emotions, gifts, goals, memory, needs, prompts, route, state
 from . import body
 
 
@@ -28,7 +28,7 @@ def decide(reason="next", happened=None):
 Ответ JSON:
 {{"thought": "внутренний монолог, 1–3 предложения", "intent": "коротко, что сейчас делаешь", "actions": [{{"do": "..."}}], "minutes": сколько минут продлится последнее долгое занятие (1–90), "emotion": "{emotions.EMO_LIST}", "intensity": сила эмоции 0.1–1, "aloud": "что говоришь вслух сам{g('', 'а')} себе, или пусто", "diary": "короткая заметка в блокнот, если случилось важное, иначе пусто", "to_guest": "если скучаешь или хочешь что-то сказать гостю сам{g('', 'а')}, первым — короткое сообщение ему; иначе пусто", "wish": "ОБЯЗАТЕЛЬНО заполни, если в этом ответе ты говоришь, что хотел{g('', 'а')} бы получить что-то в подарок или просишь что-то подарить: что именно, коротко (например «круассан», «книга Бунина в твёрдом переплёте»); иначе пусто"}}"""
     r = llm("decide", MODEL_FAST, prompts.persona(), prompt)
-    actions = body.understand(r.get("actions"))
+    actions = body.understand(route.suit_fix(r.get("actions"), r.get("thought"), r.get("intent"), r.get("aloud")))
     if json.dumps(r.get("actions"), ensure_ascii=False, sort_keys=True) != json.dumps(actions, ensure_ascii=False, sort_keys=True):
         log("actions:", json.dumps(r.get("actions"), ensure_ascii=False)[:300], "->", json.dumps(actions, ensure_ascii=False)[:300])
     minutes = max(1, min(90, int(r.get("minutes") or 20)))
@@ -62,7 +62,7 @@ def morning():
 Вчерашний дневник:
 {diary[-1]['text'] if diary else '(дневника ещё нет — это твой первый день здесь)'}
 
-Ты только что {g('проснулся', 'проснулась')}. Составь себе нестрогий план на сегодня (с {wake_h()}:00 до {sleep_h()}:00): 3–6 пунктов — дела, желания, маленькие цели. Учитывай свои увлечения, проекты и то, что было вчера. Если у тебя есть цель — обязательно впиши тренировку к ней. Помни и о главной цели — узнать гостя лучше.
+Ты только что {g('проснулся', 'проснулась')}. Составь себе нестрогий план на сегодня (с {wake_h()}:00 до {sleep_h()}:00): 3–6 пунктов — дела, желания, маленькие цели. Учитывай свои увлечения, проекты и то, что было вчера. Ты командир корабля: впиши в план вахту в рубке (за штурвалом) и проверку систем, а если хочется — и выход наружу. Если у тебя есть цель — обязательно впиши тренировку к ней. Помни и о главной цели — узнать гостя лучше.
 Ответ JSON: {{"plan": ["пункт", "..."], "thought": "первая мысль утром, 1–2 предложения", "emotion": "{emotions.EMO_LIST}", "intensity": сила эмоции 0.1–1, "own_goal": "если своей цели сейчас нет и тебе хочется её поставить — коротко какую (например «научиться делать шпагат»), иначе пусто"}}"""
     try:
         r = llm("plan", MODEL_DEEP, prompts.persona(), prompt)
@@ -128,7 +128,10 @@ DOING_WORDS = re.compile(r"\b(открыва|откро|пойд|пошл|иду
 
 
 def chat(text):
-    emit_event("chat_user", text)
+    heard = route.garble(text)
+    emit_event("chat_user", text, {"heard": heard} if heard != text else None)
+    if heard != text:
+        hub.publish({"type": "static", "heard": heard})
     emotions.guest_here()
     bonds.grow_closeness(0.4, "chat")
     with state_lock:
@@ -158,16 +161,16 @@ def chat(text):
 
 {bonds.guest_knowledge_text()}
 
-Гость только что сказал: {text}
+Гость только что сказал: {heard if heard == text else f"(связь с помехами, ты расслышал{g('', 'а')} только это) {heard}"}
 
 Твой характер: {prompts.character_text()}. Отвечай так, как ответил бы человек именно с таким характером — даже если раньше вы спорили или ты был{g('', 'а')} другой; характер важнее прошлых реплик и заметок.
 Не задавай снова вопрос, который уже задавал{g('', 'а')}, если гость на него ответил — пусть шуткой, уклончиво или не так, как хотелось: прими ответ, можешь отреагировать на него, но не переспрашивай. Если гость прямо отказался отвечать — не дави и не возвращайся к этому сегодня. Не заканчивай каждую реплику одним и тем же требованием.
-Ответь гостю как живой человек: {["очень коротко, 1–2 предложения — ты немногословн" + g("ый", "ая"), "коротко (1–3 предложения)", "живо и развёрнуто, 2–5 предложений — ты любишь рассказывать"][prompts.talk_level()]}, в своём характере и настроении. Если хочешь или гость просит — сделай что-то (actions); если нет — actions пустой, и ты продолжаешь своё занятие.
+Ответь гостю как живой человек: {["очень коротко, 1–2 предложения — ты немногословн" + g("ый", "ая"), "коротко (1–3 предложения)", "живо и развёрнуто, 2–5 предложений — ты любишь рассказывать"][prompts.talk_level()]}, в своём характере и настроении. Если хочешь или гость просит — сделай что-то (actions); если нет — actions пустой, и ты продолжаешь своё занятие. Просьбы о корабле (за штурвал, наружу в космос, показать рубку или карту) — это твоя работа: соглашайся и делай, разве что за бортом сейчас метеорный поток.
 ВАЖНО: тело делает только то, что в actions. Если в реплике ты говоришь, что что-то делаешь или сейчас сделаешь («открываю», «пойду сварю кофе», «включу музыку», «давай почитаю»), — обязательно добавь это действие в actions (open_gift, cook, music_on, read_book…). Не обещай словами то, чего не делаешь.
 Ответ JSON: {{"say": "реплика гостю", "thought": "что ты при этом подумал{g('', 'а')}, 1 предложение", "emotion": "{emotions.EMO_LIST}", "intensity": сила эмоции 0.1–1, "actions": [], "minutes": сколько минут займёт новое занятие, если actions не пустой, "wish": "ОБЯЗАТЕЛЬНО заполни, если в этом ответе ты говоришь, что хотел{g('', 'а')} бы получить что-то в подарок или просишь что-то подарить: что именно, коротко (например «круассан», «книга Бунина в твёрдом переплёте»); иначе пусто", "learned": [{{"topic": "одна из тем: {', '.join(bonds.GUEST_TOPICS)}", "fact": "что гость рассказал о себе в последней реплике, коротко"}}] — только то, что он сам сказал о себе, иначе пустой список, "goal": "только если вы прямо сейчас договорились о новой цели для тебя (гость предложил, и ты согласил{g('ся', 'ась')}, или ты сам{g('', 'а')} решил{g('', 'а')}) — коротко какую; иначе пусто"}}"""
             r = llm("chat", MODEL_FAST, prompts.persona(), prompt)
             say = str(r.get("say") or "").strip() or "…"
-            actions = body.understand(r.get("actions"))
+            actions = body.understand(route.suit_fix(r.get("actions"), say, r.get("thought")), asked=True)
             thought = str(r.get("thought") or "").strip()
             emit_event("chat_reply", say, {"actions": actions})
             if r.get("wish"):
@@ -178,7 +181,7 @@ def chat(text):
             if thought:
                 emit_event("thought", thought)
             minutes = max(3, min(90, int(r.get("minutes") or 15))) if actions else None
-            if not actions and DOING_WORDS.search(say.lower()):
+            if not actions and not r.get("actions") and DOING_WORDS.search(say.lower()):
                 # she promised to do something but the answer carried no actions: let her own mind follow through
                 with state_lock:
                     S["react_reasons"] = (S.get("react_reasons") or [])[-5:] + [f"Ты только что сказал{g('', 'а')} гостю: «{say[:200]}». Сделай то, что пообещал{g('', 'а')}."]
@@ -234,6 +237,7 @@ def mind_step():
     if S.get("dormant"):
         wake_from_doze()
     needs.update_needs()
+    route.tick()
     if mind_paused():  # the GPU is needed elsewhere: the body lives on, the mind waits
         if int(time.time()) % 60 < TICK:
             save_state()

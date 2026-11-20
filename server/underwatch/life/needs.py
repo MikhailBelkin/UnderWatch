@@ -5,24 +5,10 @@ import time
 from ..context import S, SETTINGS, state_lock
 from ..settings import trait
 from ..clock import is_awake_time
-from ..world import LOOP_LABEL, MOP_RATE, WATER_MAX, WATER_RISE
+from ..catalog import ACTIONS, LOOP_LABEL, LOOPS
+from ..world import MOP_RATE, WATER_MAX, WATER_RISE
 from . import emotions
 
-
-INSTANT = {  # need changes applied when the action happens
-    "eat": {"hunger": 55, "fun": 4, "bladder": -12, "energy": 4}, "drink": {"hunger": 6, "energy": 4, "bladder": -30}, "dance": {"fun": 10, "energy": -1.5, "hygiene": -5},
-    "workout": {"energy": -3}, "change_clothes": {"fun": 3}, "laugh": {"fun": 3}, "shower": {"energy": 5},
-    "use_toilet": {"bladder": 100}, "brush_teeth": {"hygiene": 15}, "wash_face": {"hygiene": 6, "energy": 2}, "comb_hair": {"fun": 2},
-    "cook": {"hygiene": -4}, "tidy_up": {"hygiene": -6}, "open_fridge": {},
-}
-
-PER_MIN = {  # need drift per awake minute, by loop
-    None: {}, "sit": {"energy": 0.08}, "watch": {"fun": 0.7, "energy": 0.04}, "game": {"fun": 0.8, "energy": -0.05},
-    "listen": {"fun": 0.6}, "read": {"fun": 0.5, "energy": 0.04}, "write": {"fun": 0.35}, "daydream": {"fun": 0.25, "energy": 0.06},
-    "phone": {"social": 1.0, "fun": 0.25}, "workout": {"fun": 0.3, "energy": -0.15, "hygiene": -0.4}, "mop": {"fun": -0.3, "energy": -0.12, "hygiene": -0.3},
-    "shower": {"hygiene": 9, "fun": 0.3, "energy": 0.2},
-    "date": {"social": 1.2, "fun": 0.5}, "cozy": {"fun": 0.35, "energy": 0.12}, "dancing": {"social": 1.0, "fun": 1.0, "energy": -0.1, "hygiene": -0.1},
-}
 
 BASE_DRIFT = {"hunger": -0.30, "energy": -0.09, "fun": -0.22, "social": -0.10, "hygiene": -0.06, "bladder": -0.15}
 
@@ -79,7 +65,7 @@ def fun_gain(x):
 def live_rates():
     """Per-minute change of each need while awake."""
     rates = base_drift()
-    for k, v in PER_MIN.get(S["loop"], {}).items():
+    for k, v in (LOOPS[S["loop"]].needs if S["loop"] in LOOPS else {}).items():
         rates[k] = rates.get(k, 0) + (fun_gain(v) if k == "fun" else v)
     rates["fun"] -= 0.3 * S["emo"]["sadness"]  # gloom makes everything dull
     return rest_rates(rates)
@@ -145,5 +131,5 @@ def update_needs():
 
 def instant(do):
     """What an action does to the needs right away (eating fills hunger, the toilet empties the bladder…)."""
-    for k, v in INSTANT.get(do, {}).items():
+    for k, v in ACTIONS[do].needs.items():
         S["needs"][k] = clampn(S["needs"][k] + (fun_gain(v) if k == "fun" else v))
